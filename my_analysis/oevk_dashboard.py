@@ -932,7 +932,7 @@ _USE_COLS = ["Name", "Sex", "WeightClassKg", "BodyweightKg", "Team", "TotalKg",
              "Best3SquatKg", "Best3BenchKg", "Best3DeadliftKg"]
 
 
-@st.cache_data(show_spinner="Lade OeVK-Wettkämpfe …")
+@st.cache_data(show_spinner="Lade Wettkämpfe …")
 def load_data() -> pd.DataFrame:
     """Lädt und verarbeitet alle OeVK-Meets im Qualifikationszeitraum. Ergebnis wird gecacht."""
     if not BASE_PATH.exists():
@@ -1391,7 +1391,7 @@ def kpi_card(label, value, suffix="", icon="", accent=False, foot="", raw_value=
 # --- UI ---
 _favicon_path = PROJECT_DATA_DIR / "oevklogo.png"
 st.set_page_config(
-    page_title="ÖVK Dashboard",
+    page_title="SM Dashboard 2026",
     layout="wide",
     page_icon=str(_favicon_path) if _favicon_path.exists() else "🏋️",
     initial_sidebar_state="expanded",
