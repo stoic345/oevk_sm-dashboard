@@ -168,8 +168,10 @@ a.brand.brand--link:hover { opacity:0.85; }
 .target .v2 { font-family:var(--font-mono); font-size:12.5px; color:var(--gold-bright); letter-spacing:0.02em; margin-top:2px; font-weight:500; }
 .target__count { display:flex; flex-direction:column; align-items:center; justify-content:center;
   padding-left:18px; border-left:1px solid var(--line); min-width:68px; }
-.target__count .num { font-family:var(--font-mono); font-size:44px; font-weight:700; color:var(--gold-bright); line-height:1; }
-.target__count .unit { font-family:var(--font-mono); font-size:11px; letter-spacing:0.16em; color:var(--gold); text-transform:uppercase; margin-top:6px; font-weight:600; }
+.target__count .num { font-family:var(--font-mono); font-size:72px; font-weight:700; color:var(--gold-bright); line-height:1; }
+.target__count .unit { font-family:var(--font-mono); font-size:13px; letter-spacing:0.16em; color:var(--gold); text-transform:uppercase; margin-top:8px; font-weight:600; white-space:nowrap; }
+.target--solo { padding:20px 28px; min-width:0; }
+.target--solo .target__count { padding-left:0; border-left:none; }
 
 /* KPI cards */
 .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:14px; }
@@ -1549,14 +1551,10 @@ st.markdown(
           <div class="brand__sub">Alle Athlet:innen, die das Limit erreicht haben — hier zusammengefasst.</div>
         </div>
       </a>
-      <div class="target">
-        <div class="target__body">
-          <div class="v">Österreichische Staatsmeisterschaft</div>
-          <div class="v2">KDK Classic · 5.–6. September 2026</div>
-        </div>
+      <div class="target target--solo">
         <div class="target__count">
           <span class="num">{_count_num}</span>
-          <span class="unit">{_count_unit}</span>
+          <span class="unit">{_count_unit} bis zur SM</span>
         </div>
       </div>
     </div>
