@@ -321,29 +321,12 @@ aside[data-testid="stSidebar"].oevk-folded {
 button[kind="header"][data-testid="baseButton-headerNoPadding"] {
   display:none !important; visibility:hidden !important;
 }
-/* Unser eigener Fold-Toggle in der Sidebar ("« Filter ausblenden") */
-a.sidebar-toggle, a.sidebar-toggle:link, a.sidebar-toggle:visited,
-a.sidebar-toggle:hover, a.sidebar-toggle:active {
+/* Ein einziger schwebender Toggle-Button — fix oben links, Pfeilrichtung dreht je nach State */
+a.sidebar-switch, a.sidebar-switch:link, a.sidebar-switch:visited,
+a.sidebar-switch:hover, a.sidebar-switch:active {
   text-decoration:none !important;
 }
-a.sidebar-toggle--close {
-  display:flex; align-items:center; justify-content:center; gap:8px;
-  width:100%; padding:8px 12px; margin:0 0 10px;
-  background:linear-gradient(180deg, var(--surface) 0%, var(--bg-elev) 100%);
-  border:1px solid var(--gold-dim); border-radius:var(--r-sm);
-  font-family:var(--font-mono); font-size:11px; font-weight:600;
-  letter-spacing:0.14em; text-transform:uppercase; color:var(--gold-bright) !important;
-  cursor:pointer; transition:background .14s ease, border-color .14s ease, color .14s ease;
-  box-shadow:0 1px 3px rgba(0,0,0,0.3);
-}
-a.sidebar-toggle--close:hover {
-  background:var(--gold); border-color:var(--gold-bright); color:#0B0B0C !important;
-}
-a.sidebar-toggle--close .chev {
-  font-size:14px; font-weight:700; line-height:1;
-}
-/* Floating Unfold-Button (oben links, wenn Sidebar gefaltet ist) */
-a.sidebar-toggle--open {
+a.sidebar-switch {
   position:fixed; top:14px; left:14px; z-index:9999;
   display:flex; align-items:center; justify-content:center;
   width:42px; height:42px;
@@ -352,12 +335,14 @@ a.sidebar-toggle--open {
   color:#0B0B0C !important; font-family:var(--font-mono); font-size:22px; font-weight:700;
   line-height:1; cursor:pointer;
   box-shadow:0 4px 18px rgba(201,174,91,0.45), inset 0 1px 0 rgba(255,255,255,0.32);
-  transition:transform .14s ease, filter .14s ease, box-shadow .14s ease;
+  transition:transform .18s ease, filter .14s ease, box-shadow .14s ease;
 }
-a.sidebar-toggle--open:hover {
-  transform:translateX(2px); filter:brightness(1.08);
+a.sidebar-switch:hover {
+  filter:brightness(1.08);
   box-shadow:0 6px 24px rgba(201,174,91,0.6), inset 0 1px 0 rgba(255,255,255,0.4);
 }
+a.sidebar-switch::after { content:"«"; display:block; }
+a.sidebar-switch.is-folded::after { content:"»"; display:block; }
 /* Sidebar Header: FILTER-Kicker + Live-Scope-Counter */
 .sb-kicker { font-family:var(--font-mono); font-size:11px; letter-spacing:0.22em;
   text-transform:uppercase; color:var(--gold-bright); font-weight:700;
@@ -1493,54 +1478,51 @@ if not PROFILE_MODE:
         unsafe_allow_html=True,
     )
 
-    # Close-Button in der Sidebar — JS wandelt ihn in einen Toggle ohne Reload.
-    st.sidebar.markdown(
-        '<a class="sidebar-toggle sidebar-toggle--close" href="#" '
-        'aria-label="Filterleiste ausblenden" title="Filterleiste ausblenden">'
-        '<span class="chev">«</span> Filter ausblenden'
-        '</a>',
-        unsafe_allow_html=True,
-    )
-    # Floating Open-Button — immer im DOM, JS regelt Sichtbarkeit per CSS-Klasse.
+    # Ein einziger schwebender Toggle-Button — Pfeil zeigt « wenn offen, » wenn gefaltet.
     st.markdown(
-        '<a class="sidebar-toggle sidebar-toggle--open" href="#" '
-        'aria-label="Filterleiste öffnen" title="Filterleiste öffnen">»</a>',
+        '<a class="sidebar-switch" href="#" '
+        'aria-label="Filterleiste umschalten" title="Filterleiste umschalten"></a>',
         unsafe_allow_html=True,
     )
-    # Mini-JS-Komponente, die Klicks auf die beiden Buttons abfängt, die Sidebar via
-    # CSS-Klasse animiert ein-/ausblendet und den State in localStorage persistiert.
+    # Client-seitiges Fold-Handling. Default beim Seiten-Erstaufruf: AUSGEKLAPPT.
+    # Innerhalb einer Tab-Session bleibt der State über Reruns hinweg erhalten,
+    # weil die CSS-Klasse am DOM-Element haftet.
     _components.html(
         """
 <script>
 (function () {
   const P = window.parent.document;
-  const KEY = 'oevk_sidebar_folded';
+  const W = window.parent;
 
   function applyFold(folded) {
     const sb = P.querySelector('[data-testid="stSidebar"]');
-    const openBtn = P.querySelector('a.sidebar-toggle--open');
-    if (sb) sb.classList.toggle('oevk-folded', folded);
-    if (openBtn) openBtn.style.display = folded ? 'flex' : 'none';
-    try { localStorage.setItem(KEY, folded ? '1' : '0'); } catch (e) {}
+    const btn = P.querySelector('a.sidebar-switch');
+    if (sb)  sb.classList.toggle('oevk-folded', folded);
+    if (btn) btn.classList.toggle('is-folded', folded);
   }
 
   function wire() {
-    const closeBtn = P.querySelector('a.sidebar-toggle--close');
-    const openBtn  = P.querySelector('a.sidebar-toggle--open');
-    if (closeBtn && !closeBtn.dataset.wired) {
-      closeBtn.dataset.wired = '1';
-      closeBtn.addEventListener('click', function (e) { e.preventDefault(); applyFold(true); });
+    const sb  = P.querySelector('[data-testid="stSidebar"]');
+    const btn = P.querySelector('a.sidebar-switch');
+    if (!sb || !btn) return false;
+
+    if (!btn.dataset.wired) {
+      btn.dataset.wired = '1';
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        applyFold(!sb.classList.contains('oevk-folded'));
+      });
     }
-    if (openBtn && !openBtn.dataset.wired) {
-      openBtn.dataset.wired = '1';
-      openBtn.addEventListener('click', function (e) { e.preventDefault(); applyFold(false); });
+
+    // Erstaufruf in dieser Tab-Sitzung: Default = ausgeklappt.
+    if (!W.__oevkSidebarInit) {
+      W.__oevkSidebarInit = true;
+      applyFold(false);
+    } else {
+      // Bei Streamlit-Reruns: aktuellen DOM-Zustand respektieren.
+      applyFold(sb.classList.contains('oevk-folded'));
     }
-    // Initialer State aus localStorage übernehmen
-    try {
-      const stored = localStorage.getItem(KEY);
-      applyFold(stored === '1');
-    } catch (e) { applyFold(false); }
-    return !!(closeBtn && openBtn);
+    return true;
   }
 
   if (!wire()) {
