@@ -168,9 +168,9 @@ a.brand.brand--link:hover { opacity:0.85; }
 .target .v2 { font-family:var(--font-mono); font-size:12.5px; color:var(--gold-bright); letter-spacing:0.02em; margin-top:2px; font-weight:500; }
 .target__count { display:flex; flex-direction:column; align-items:center; justify-content:center;
   padding-left:18px; border-left:1px solid var(--line); min-width:68px; }
-.target__count .num { font-family:var(--font-mono); font-size:72px; font-weight:700; color:var(--gold-bright); line-height:1; }
-.target__count .unit { font-family:var(--font-mono); font-size:13px; letter-spacing:0.16em; color:var(--gold); text-transform:uppercase; margin-top:8px; font-weight:600; white-space:nowrap; }
-.target--solo { padding:20px 28px; min-width:0; }
+.target__count .num { font-family:var(--font-mono); font-size:48px; font-weight:700; color:var(--gold-bright); line-height:1; }
+.target__count .unit { font-family:var(--font-mono); font-size:11px; letter-spacing:0.14em; color:var(--gold); text-transform:uppercase; margin-top:5px; font-weight:600; white-space:nowrap; }
+.target--solo { padding:10px 18px; min-width:0; }
 .target--solo .target__count { padding-left:0; border-left:none; }
 
 /* KPI cards */
@@ -323,54 +323,21 @@ aside[data-testid="stSidebar"].oevk-folded {
 [data-testid="stMain"], section[data-testid="stMain"] {
   transition: margin-left 320ms cubic-bezier(.4,0,.2,1);
 }
-/* Streamlits native Collapse-/Expand-Buttons IMMER sichtbar + im Goldlook stylen */
+/* Sidebar dauerhaft sichtbar — Fold-Funktion vorübergehend entfernt */
+[data-testid="stSidebar"], section[data-testid="stSidebar"], aside[data-testid="stSidebar"] {
+  display:block !important; visibility:visible !important; opacity:1 !important;
+  transform:none !important;
+  min-width:296px !important; width:296px !important; max-width:296px !important;
+  margin-left:0 !important;
+}
+[data-testid="stSidebar"] > div:first-child {
+  transform:none !important; min-width:296px !important; width:296px !important;
+}
 [data-testid="stSidebarCollapseButton"],
-[data-testid="stSidebarCollapseButton"] button,
 [data-testid="stSidebarCollapsedControl"],
-[data-testid="stSidebarCollapsedControl"] button,
 [data-testid="collapsedControl"],
-[data-testid="collapsedControl"] button,
 button[kind="header"][data-testid="baseButton-headerNoPadding"] {
-  opacity:1 !important; visibility:visible !important; display:flex !important;
-  pointer-events:auto !important;
-  align-items:center !important; justify-content:center !important;
-  width:42px !important; height:42px !important;
-  background:linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 100%) !important;
-  border:1px solid var(--gold-bright) !important; border-radius:var(--r-sm) !important;
-  color:#0B0B0C !important;
-  box-shadow:0 4px 18px rgba(201,174,91,0.45), inset 0 1px 0 rgba(255,255,255,0.32) !important;
-  transition:filter .14s ease, box-shadow .14s ease !important;
-}
-[data-testid="stSidebarCollapseButton"]:hover,
-[data-testid="stSidebarCollapseButton"] button:hover,
-[data-testid="stSidebarCollapsedControl"]:hover,
-[data-testid="stSidebarCollapsedControl"] button:hover,
-[data-testid="collapsedControl"]:hover,
-[data-testid="collapsedControl"] button:hover {
-  filter:brightness(1.08) !important;
-  box-shadow:0 6px 24px rgba(201,174,91,0.6), inset 0 1px 0 rgba(255,255,255,0.4) !important;
-}
-/* Wenn die Sidebar geschlossen ist: Floating-Open-Button fix oben links */
-[data-testid="stSidebarCollapsedControl"],
-[data-testid="collapsedControl"] {
-  position:fixed !important; top:14px !important; left:14px !important; z-index:9999 !important;
-}
-/* SVG-Default-Icons verbergen, Doppelpfeile via ::after einsetzen */
-[data-testid="stSidebarCollapseButton"] svg,
-[data-testid="stSidebarCollapseButton"] button svg,
-[data-testid="stSidebarCollapsedControl"] svg,
-[data-testid="stSidebarCollapsedControl"] button svg,
-[data-testid="collapsedControl"] svg,
-[data-testid="collapsedControl"] button svg { display:none !important; }
-[data-testid="stSidebarCollapseButton"] button::after,
-[data-testid="stSidebarCollapseButton"]::after {
-  content:"«"; color:#0B0B0C; font-family:var(--font-mono); font-size:22px; font-weight:700; line-height:1;
-}
-[data-testid="stSidebarCollapsedControl"] button::after,
-[data-testid="stSidebarCollapsedControl"]::after,
-[data-testid="collapsedControl"] button::after,
-[data-testid="collapsedControl"]::after {
-  content:"»"; color:#0B0B0C; font-family:var(--font-mono); font-size:22px; font-weight:700; line-height:1;
+  display:none !important; visibility:hidden !important;
 }
 /* Sidebar Header: FILTER-Kicker + Live-Scope-Counter */
 .sb-kicker { font-family:var(--font-mono); font-size:11px; letter-spacing:0.22em;
