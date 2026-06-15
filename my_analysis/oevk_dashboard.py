@@ -283,75 +283,49 @@ a.nm-link:hover { color:var(--gold-bright) !important; }
   text-decoration:none; white-space:nowrap; }
 .profile-close:hover { color:var(--gold-bright); border-color:var(--gold-dim); }
 .profile-note { font-family:var(--font-mono); font-size:10px; color:var(--text-3); margin-top:10px; opacity:0.8; }
-/* Sidebar Collapse-Button (Hamburger/Pfeil) — deutlich sichtbar in Gold */
+/* Streamlits eingebaute Collapse-Buttons komplett verstecken — wir steuern den Fold-State selbst. */
 [data-testid="stSidebarCollapseButton"],
-[data-testid="stSidebarCollapseButton"] button,
-[data-testid="collapsedControl"],
-[data-testid="collapsedControl"] button,
 [data-testid="stSidebarCollapsedControl"],
-[data-testid="stSidebarCollapsedControl"] button,
-button[kind="header"][data-testid="baseButton-headerNoPadding"],
-button[aria-label*="sidebar" i],
-button[aria-label*="Sidebar" i],
-button[aria-label*="expand" i],
-button[aria-label="Open sidebar"],
-button[aria-label="Close sidebar"] {
-  background:var(--surface) !important; border:1px solid var(--gold-dim) !important;
-  border-radius:var(--r-sm) !important; color:#FFFFFF !important;
-  width:36px !important; height:36px !important;
-  box-shadow:0 2px 8px rgba(201,174,91,0.18) !important;
-  transition:all .14s ease !important;
-  opacity:1 !important; visibility:visible !important; display:flex !important;
-  pointer-events:auto !important;
-  align-items:center !important; justify-content:center !important;
-}
-/* Wenn Sidebar geschlossen ist: Reopen-Pfeil zwingend sichtbar oben links */
 [data-testid="collapsedControl"],
-[data-testid="stSidebarCollapsedControl"] {
-  position:fixed !important; left:14px !important; top:14px !important; z-index:9999 !important;
+button[kind="header"][data-testid="baseButton-headerNoPadding"] {
+  display:none !important; visibility:hidden !important;
 }
-/* Streamlit blendet den Collapse-Button per Default nur bei Hover ein — wir zwingen ihn dauerhaft sichtbar */
-[data-testid="stSidebar"] [data-testid="stSidebarCollapseButton"],
-[data-testid="stSidebar"] [data-testid="stSidebarCollapseButton"] * {
-  opacity:1 !important; visibility:visible !important;
+/* Unser eigener Fold-Toggle in der Sidebar ("« Filter ausblenden") */
+a.sidebar-toggle, a.sidebar-toggle:link, a.sidebar-toggle:visited,
+a.sidebar-toggle:hover, a.sidebar-toggle:active {
+  text-decoration:none !important;
 }
-[data-testid="stSidebarHeader"], [data-testid="stSidebarUserContent"] + * {
-  opacity:1 !important;
+a.sidebar-toggle--close {
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  width:100%; padding:8px 12px; margin:0 0 10px;
+  background:linear-gradient(180deg, var(--surface) 0%, var(--bg-elev) 100%);
+  border:1px solid var(--gold-dim); border-radius:var(--r-sm);
+  font-family:var(--font-mono); font-size:11px; font-weight:600;
+  letter-spacing:0.14em; text-transform:uppercase; color:var(--gold-bright) !important;
+  cursor:pointer; transition:background .14s ease, border-color .14s ease, color .14s ease;
+  box-shadow:0 1px 3px rgba(0,0,0,0.3);
 }
-[data-testid="stSidebarCollapseButton"] *,
-[data-testid="collapsedControl"] *,
-[data-testid="stSidebarCollapseButton"] svg *,
-[data-testid="collapsedControl"] svg * {
-  color:#FFFFFF !important; fill:#FFFFFF !important; stroke:#FFFFFF !important;
+a.sidebar-toggle--close:hover {
+  background:var(--gold); border-color:var(--gold-bright); color:#0B0B0C !important;
 }
-[data-testid="stSidebarCollapseButton"]:hover,
-[data-testid="stSidebarCollapseButton"] button:hover,
-[data-testid="collapsedControl"]:hover,
-[data-testid="collapsedControl"] button:hover {
-  background:var(--gold) !important; border-color:var(--gold-bright) !important;
-  color:#0B0B0C !important;
-  box-shadow:0 4px 14px rgba(201,174,91,0.36) !important;
+a.sidebar-toggle--close .chev {
+  font-size:14px; font-weight:700; line-height:1;
 }
-/* SVG-Icons der Streamlit-Collapse-Buttons verstecken — wir setzen eigene Doppelpfeile via ::after */
-[data-testid="stSidebarCollapseButton"] svg,
-[data-testid="stSidebarCollapseButton"] button svg,
-[data-testid="collapsedControl"] svg,
-[data-testid="collapsedControl"] button svg,
-[data-testid="stSidebarCollapsedControl"] svg,
-[data-testid="stSidebarCollapsedControl"] button svg {
-  display:none !important;
+/* Floating Unfold-Button (oben links, wenn Sidebar gefaltet ist) */
+a.sidebar-toggle--open {
+  position:fixed; top:14px; left:14px; z-index:9999;
+  display:flex; align-items:center; justify-content:center;
+  width:42px; height:42px;
+  background:linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 100%);
+  border:1px solid var(--gold-bright); border-radius:var(--r-sm);
+  color:#0B0B0C !important; font-family:var(--font-mono); font-size:22px; font-weight:700;
+  line-height:1; cursor:pointer;
+  box-shadow:0 4px 18px rgba(201,174,91,0.45), inset 0 1px 0 rgba(255,255,255,0.32);
+  transition:transform .14s ease, filter .14s ease, box-shadow .14s ease;
 }
-[data-testid="stSidebarCollapseButton"] button::after,
-[data-testid="stSidebarCollapseButton"]::after {
-  content:"«"; color:inherit; font-family:var(--font-mono); font-size:20px; font-weight:700;
-  line-height:1; letter-spacing:-1px;
-}
-[data-testid="collapsedControl"] button::after,
-[data-testid="collapsedControl"]::after,
-[data-testid="stSidebarCollapsedControl"] button::after,
-[data-testid="stSidebarCollapsedControl"]::after {
-  content:"»"; color:inherit; font-family:var(--font-mono); font-size:20px; font-weight:700;
-  line-height:1; letter-spacing:-1px;
+a.sidebar-toggle--open:hover {
+  transform:translateX(2px); filter:brightness(1.08);
+  box-shadow:0 6px 24px rgba(201,174,91,0.6), inset 0 1px 0 rgba(255,255,255,0.4);
 }
 /* Sidebar Header: FILTER-Kicker + Live-Scope-Counter */
 .sb-kicker { font-family:var(--font-mono); font-size:11px; letter-spacing:0.22em;
@@ -1468,24 +1442,32 @@ _GEN = st.session_state.get("_widget_gen", 0)
 _profile_param = st.query_params.get("athlete")
 PROFILE_MODE = bool(_profile_param)
 
-# Dashboard-Modus: Sidebar startet offen, Nutzer:innen können sie ein-/ausklappen.
-# Der Collapse-Button (« in der Sidebar) und der Reopen-Button (» schwebend) bleiben
-# jederzeit sichtbar — damit die Filterleiste nie unerreichbar wird.
+# Dashboard-Modus: Sidebar-Fold-State per Session-State (eigene Steuerung statt Streamlit-Default).
 if not PROFILE_MODE:
+    if "sidebar_folded" not in st.session_state:
+        st.session_state["sidebar_folded"] = False
+    if st.query_params.get("toggle_fold"):
+        st.session_state["sidebar_folded"] = not st.session_state["sidebar_folded"]
+        try:
+            del st.query_params["toggle_fold"]
+        except (KeyError, AttributeError):
+            pass
+        st.rerun()
+
+    _folded = st.session_state.get("sidebar_folded", False)
+
+    # Mobile-Anpassungen + Sidebar verstecken wenn gefaltet
+    _hide_sidebar_css = (
+        '[data-testid="stSidebar"], section[data-testid="stSidebar"], aside[data-testid="stSidebar"] {'
+        '  display:none !important; visibility:hidden !important;'
+        '}'
+        '[data-testid="stMain"], section[data-testid="stMain"] { margin-left:0 !important; }'
+    ) if _folded else ""
+
     st.markdown(
         '<style>'
-        '/* Beide Collapse-Knöpfe IMMER sichtbar (Streamlit blendet sie sonst nur bei Hover ein). */'
-        '[data-testid="stSidebarCollapseButton"],'
-        '[data-testid="stSidebarCollapseButton"] button,'
-        '[data-testid="stSidebarCollapsedControl"],'
-        '[data-testid="stSidebarCollapsedControl"] button,'
-        '[data-testid="collapsedControl"],'
-        '[data-testid="collapsedControl"] button {'
-        '  opacity:1 !important; visibility:visible !important; display:flex !important;'
-        '  pointer-events:auto !important;'
-        '}'
+        + _hide_sidebar_css +
         '@media (max-width:900px) {'
-        '  /* Mobile: Topbar stapeln, Logo kleiner, Status-Pills 1-spaltig */'
         '  .topbar { flex-direction:column; gap:8px; padding:10px 14px; }'
         '  .logo--img img { height:120px !important; }'
         '  .brand { margin-right:0 !important; }'
@@ -1499,6 +1481,23 @@ if not PROFILE_MODE:
         '</style>',
         unsafe_allow_html=True,
     )
+
+    # Schwebender »-Button, wenn die Sidebar gefaltet ist
+    if _folded:
+        st.markdown(
+            '<a class="sidebar-toggle sidebar-toggle--open" href="?toggle_fold=1" '
+            'target="_self" aria-label="Filterleiste öffnen" title="Filterleiste öffnen">»</a>',
+            unsafe_allow_html=True,
+        )
+    else:
+        # In-Sidebar Close-Button ganz oben
+        st.sidebar.markdown(
+            '<a class="sidebar-toggle sidebar-toggle--close" href="?toggle_fold=1" '
+            'target="_self" aria-label="Filterleiste ausblenden" title="Filterleiste ausblenden">'
+            '<span class="chev">«</span> Filter ausblenden'
+            '</a>',
+            unsafe_allow_html=True,
+        )
 if PROFILE_MODE:
     # Sidebar ausblenden, voller Hauptbereich
     st.markdown(
