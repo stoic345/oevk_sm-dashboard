@@ -297,6 +297,15 @@ a[href*="streamlit.io"]:has(> img),
 a[href*="github.com"][title*="View source"],
 #MainMenu,
 footer { display: none !important; visibility: hidden !important; }
+/* Unused space above the header — Streamlit's default block top-padding minimieren */
+[data-testid="stMain"] .block-container,
+.block-container,
+[data-testid="stAppViewBlockContainer"] {
+  padding-top: 1rem !important;
+}
+[data-testid="stMain"] [data-testid="stVerticalBlock"] {
+  gap: 0.6rem !important;
+}
 /* Sanfte Fold-Animation für die Sidebar (gesteuert via JS-Klassentoggle 'oevk-folded') */
 [data-testid="stSidebar"], section[data-testid="stSidebar"], aside[data-testid="stSidebar"] {
   transition: transform 320ms cubic-bezier(.4,0,.2,1),
@@ -314,35 +323,55 @@ aside[data-testid="stSidebar"].oevk-folded {
 [data-testid="stMain"], section[data-testid="stMain"] {
   transition: margin-left 320ms cubic-bezier(.4,0,.2,1);
 }
-/* Streamlits eingebaute Collapse-Buttons komplett verstecken — wir steuern den Fold-State selbst. */
+/* Streamlits native Collapse-/Expand-Buttons IMMER sichtbar + im Goldlook stylen */
 [data-testid="stSidebarCollapseButton"],
+[data-testid="stSidebarCollapseButton"] button,
 [data-testid="stSidebarCollapsedControl"],
+[data-testid="stSidebarCollapsedControl"] button,
 [data-testid="collapsedControl"],
+[data-testid="collapsedControl"] button,
 button[kind="header"][data-testid="baseButton-headerNoPadding"] {
-  display:none !important; visibility:hidden !important;
+  opacity:1 !important; visibility:visible !important; display:flex !important;
+  pointer-events:auto !important;
+  align-items:center !important; justify-content:center !important;
+  width:42px !important; height:42px !important;
+  background:linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 100%) !important;
+  border:1px solid var(--gold-bright) !important; border-radius:var(--r-sm) !important;
+  color:#0B0B0C !important;
+  box-shadow:0 4px 18px rgba(201,174,91,0.45), inset 0 1px 0 rgba(255,255,255,0.32) !important;
+  transition:filter .14s ease, box-shadow .14s ease !important;
 }
-/* Ein einziger schwebender Toggle-Button — fix oben links, Pfeilrichtung dreht je nach State */
-a.sidebar-switch, a.sidebar-switch:link, a.sidebar-switch:visited,
-a.sidebar-switch:hover, a.sidebar-switch:active {
-  text-decoration:none !important;
+[data-testid="stSidebarCollapseButton"]:hover,
+[data-testid="stSidebarCollapseButton"] button:hover,
+[data-testid="stSidebarCollapsedControl"]:hover,
+[data-testid="stSidebarCollapsedControl"] button:hover,
+[data-testid="collapsedControl"]:hover,
+[data-testid="collapsedControl"] button:hover {
+  filter:brightness(1.08) !important;
+  box-shadow:0 6px 24px rgba(201,174,91,0.6), inset 0 1px 0 rgba(255,255,255,0.4) !important;
 }
-a.sidebar-switch {
-  position:fixed; top:14px; left:14px; z-index:9999;
-  display:flex; align-items:center; justify-content:center;
-  width:42px; height:42px;
-  background:linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 100%);
-  border:1px solid var(--gold-bright); border-radius:var(--r-sm);
-  color:#0B0B0C !important; font-family:var(--font-mono); font-size:22px; font-weight:700;
-  line-height:1; cursor:pointer;
-  box-shadow:0 4px 18px rgba(201,174,91,0.45), inset 0 1px 0 rgba(255,255,255,0.32);
-  transition:transform .18s ease, filter .14s ease, box-shadow .14s ease;
+/* Wenn die Sidebar geschlossen ist: Floating-Open-Button fix oben links */
+[data-testid="stSidebarCollapsedControl"],
+[data-testid="collapsedControl"] {
+  position:fixed !important; top:14px !important; left:14px !important; z-index:9999 !important;
 }
-a.sidebar-switch:hover {
-  filter:brightness(1.08);
-  box-shadow:0 6px 24px rgba(201,174,91,0.6), inset 0 1px 0 rgba(255,255,255,0.4);
+/* SVG-Default-Icons verbergen, Doppelpfeile via ::after einsetzen */
+[data-testid="stSidebarCollapseButton"] svg,
+[data-testid="stSidebarCollapseButton"] button svg,
+[data-testid="stSidebarCollapsedControl"] svg,
+[data-testid="stSidebarCollapsedControl"] button svg,
+[data-testid="collapsedControl"] svg,
+[data-testid="collapsedControl"] button svg { display:none !important; }
+[data-testid="stSidebarCollapseButton"] button::after,
+[data-testid="stSidebarCollapseButton"]::after {
+  content:"«"; color:#0B0B0C; font-family:var(--font-mono); font-size:22px; font-weight:700; line-height:1;
 }
-a.sidebar-switch::after { content:"«"; display:block; }
-a.sidebar-switch.is-folded::after { content:"»"; display:block; }
+[data-testid="stSidebarCollapsedControl"] button::after,
+[data-testid="stSidebarCollapsedControl"]::after,
+[data-testid="collapsedControl"] button::after,
+[data-testid="collapsedControl"]::after {
+  content:"»"; color:#0B0B0C; font-family:var(--font-mono); font-size:22px; font-weight:700; line-height:1;
+}
 /* Sidebar Header: FILTER-Kicker + Live-Scope-Counter */
 .sb-kicker { font-family:var(--font-mono); font-size:11px; letter-spacing:0.22em;
   text-transform:uppercase; color:var(--gold-bright); font-weight:700;
@@ -1478,64 +1507,6 @@ if not PROFILE_MODE:
         unsafe_allow_html=True,
     )
 
-    # Ein einziger schwebender Toggle-Button — Pfeil zeigt « wenn offen, » wenn gefaltet.
-    st.markdown(
-        '<a class="sidebar-switch" href="#" '
-        'aria-label="Filterleiste umschalten" title="Filterleiste umschalten"></a>',
-        unsafe_allow_html=True,
-    )
-    # Client-seitiges Fold-Handling. Default beim Seiten-Erstaufruf: AUSGEKLAPPT.
-    # Innerhalb einer Tab-Session bleibt der State über Reruns hinweg erhalten,
-    # weil die CSS-Klasse am DOM-Element haftet.
-    _components.html(
-        """
-<script>
-(function () {
-  const P = window.parent.document;
-  const W = window.parent;
-
-  function applyFold(folded) {
-    const sb = P.querySelector('[data-testid="stSidebar"]');
-    const btn = P.querySelector('a.sidebar-switch');
-    if (sb)  sb.classList.toggle('oevk-folded', folded);
-    if (btn) btn.classList.toggle('is-folded', folded);
-  }
-
-  function wire() {
-    const sb  = P.querySelector('[data-testid="stSidebar"]');
-    const btn = P.querySelector('a.sidebar-switch');
-    if (!sb || !btn) return false;
-
-    if (!btn.dataset.wired) {
-      btn.dataset.wired = '1';
-      btn.addEventListener('click', function (e) {
-        e.preventDefault();
-        applyFold(!sb.classList.contains('oevk-folded'));
-      });
-    }
-
-    // Erstaufruf in dieser Tab-Sitzung: Default = ausgeklappt.
-    if (!W.__oevkSidebarInit) {
-      W.__oevkSidebarInit = true;
-      applyFold(false);
-    } else {
-      // Bei Streamlit-Reruns: aktuellen DOM-Zustand respektieren.
-      applyFold(sb.classList.contains('oevk-folded'));
-    }
-    return true;
-  }
-
-  if (!wire()) {
-    let tries = 0;
-    const id = setInterval(function () {
-      if (wire() || ++tries > 30) clearInterval(id);
-    }, 100);
-  }
-})();
-</script>
-        """,
-        height=0,
-    )
 if PROFILE_MODE:
     # Sidebar ausblenden, voller Hauptbereich
     st.markdown(
