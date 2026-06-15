@@ -332,19 +332,26 @@ button[aria-label="Close sidebar"] {
   color:#0B0B0C !important;
   box-shadow:0 4px 14px rgba(201,174,91,0.36) !important;
 }
+/* SVG-Icons der Streamlit-Collapse-Buttons verstecken — wir setzen eigene Doppelpfeile via ::after */
 [data-testid="stSidebarCollapseButton"] svg,
 [data-testid="stSidebarCollapseButton"] button svg,
 [data-testid="collapsedControl"] svg,
-[data-testid="collapsedControl"] button svg {
-  width:18px !important; height:18px !important;
-  fill:#FFFFFF !important; color:#FFFFFF !important;
-  stroke:#FFFFFF !important;
+[data-testid="collapsedControl"] button svg,
+[data-testid="stSidebarCollapsedControl"] svg,
+[data-testid="stSidebarCollapsedControl"] button svg {
+  display:none !important;
 }
-[data-testid="stSidebarCollapseButton"]:hover svg,
-[data-testid="stSidebarCollapseButton"] button:hover svg,
-[data-testid="collapsedControl"]:hover svg,
-[data-testid="collapsedControl"] button:hover svg {
-  fill:#0B0B0C !important; color:#0B0B0C !important; stroke:#0B0B0C !important;
+[data-testid="stSidebarCollapseButton"] button::after,
+[data-testid="stSidebarCollapseButton"]::after {
+  content:"«"; color:inherit; font-family:var(--font-mono); font-size:20px; font-weight:700;
+  line-height:1; letter-spacing:-1px;
+}
+[data-testid="collapsedControl"] button::after,
+[data-testid="collapsedControl"]::after,
+[data-testid="stSidebarCollapsedControl"] button::after,
+[data-testid="stSidebarCollapsedControl"]::after {
+  content:"»"; color:inherit; font-family:var(--font-mono); font-size:20px; font-weight:700;
+  line-height:1; letter-spacing:-1px;
 }
 /* Sidebar Header: FILTER-Kicker + Live-Scope-Counter */
 .sb-kicker { font-family:var(--font-mono); font-size:11px; letter-spacing:0.22em;
@@ -1461,40 +1468,24 @@ _GEN = st.session_state.get("_widget_gen", 0)
 _profile_param = st.query_params.get("athlete")
 PROFILE_MODE = bool(_profile_param)
 
-# Im Dashboard-Modus: Sidebar auf Desktop dauerhaft sichtbar (Collapse-Button versteckt).
-# Auf Mobile (≤ 900 px) lassen wir Streamlits natives Collapse-Verhalten wirken, damit
-# der Hauptbereich auf kleinen Bildschirmen den ganzen Platz nutzen kann.
+# Dashboard-Modus: Sidebar startet offen, Nutzer:innen können sie ein-/ausklappen.
+# Der Collapse-Button (« in der Sidebar) und der Reopen-Button (» schwebend) bleiben
+# jederzeit sichtbar — damit die Filterleiste nie unerreichbar wird.
 if not PROFILE_MODE:
     st.markdown(
         '<style>'
-        '@media (min-width:901px) {'
-        '  [data-testid="stSidebar"], section[data-testid="stSidebar"], aside[data-testid="stSidebar"] {'
-        '    display:block !important; visibility:visible !important; opacity:1 !important;'
-        '    transform:none !important;'
-        '    min-width:296px !important; width:296px !important; max-width:296px !important;'
-        '    margin-left:0 !important;'
-        '  }'
-        '  [data-testid="stSidebar"] > div:first-child {'
-        '    transform:none !important; min-width:296px !important; width:296px !important;'
-        '  }'
-        '  [data-testid="stSidebarUserContent"] { display:block !important; opacity:1 !important; }'
-        '  [data-testid="stSidebarCollapseButton"],'
-        '  [data-testid="stSidebarCollapsedControl"],'
-        '  [data-testid="collapsedControl"],'
-        '  button[aria-label*="sidebar" i],'
-        '  button[aria-label*="Sidebar" i] {'
-        '    display:none !important; visibility:hidden !important;'
-        '  }'
+        '/* Beide Collapse-Knöpfe IMMER sichtbar (Streamlit blendet sie sonst nur bei Hover ein). */'
+        '[data-testid="stSidebarCollapseButton"],'
+        '[data-testid="stSidebarCollapseButton"] button,'
+        '[data-testid="stSidebarCollapsedControl"],'
+        '[data-testid="stSidebarCollapsedControl"] button,'
+        '[data-testid="collapsedControl"],'
+        '[data-testid="collapsedControl"] button {'
+        '  opacity:1 !important; visibility:visible !important; display:flex !important;'
+        '  pointer-events:auto !important;'
         '}'
         '@media (max-width:900px) {'
-        '  /* Mobile: Streamlits Default-Collapse erlauben + Reopen-Button garantiert sichtbar */'
-        '  [data-testid="stSidebarCollapseButton"],'
-        '  [data-testid="stSidebarCollapsedControl"],'
-        '  [data-testid="collapsedControl"] {'
-        '    opacity:1 !important; visibility:visible !important; display:flex !important;'
-        '    pointer-events:auto !important;'
-        '  }'
-        '  /* Topbar: Logo + Countdown stapeln, Logo kleiner */'
+        '  /* Mobile: Topbar stapeln, Logo kleiner, Status-Pills 1-spaltig */'
         '  .topbar { flex-direction:column; gap:8px; padding:10px 14px; }'
         '  .logo--img img { height:120px !important; }'
         '  .brand { margin-right:0 !important; }'
