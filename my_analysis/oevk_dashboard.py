@@ -104,7 +104,7 @@ THEME_CSS = """
   overflow:hidden; text-overflow:ellipsis; }
 /* Data-Freshness-Status-Pills (Datenstand, letzte Aktualisierung, Quelle) */
 .data-status { display:grid; grid-template-columns:repeat(4, 1fr); gap:16px;
-  margin:14px 0 22px; align-items:stretch; }
+  margin:18px 0 18px; align-items:stretch; }
 @media (max-width:900px) { .data-status { grid-template-columns:1fr 1fr; } }
 .status-pill { display:flex; align-items:center; justify-content:center; gap:10px;
   background:var(--bg-elev); border:1px solid var(--gold-dim); border-radius:var(--r-sm);
