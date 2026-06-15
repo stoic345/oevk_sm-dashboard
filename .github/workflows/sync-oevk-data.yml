@@ -1,0 +1,47 @@
+name: Sync OeVK data from OpenPowerlifting
+
+on:
+  schedule:
+    # Täglich um 03:30 UTC (≈ 04:30/05:30 in Österreich)
+    - cron: "30 3 * * *"
+  workflow_dispatch:   # erlaubt manuelles Auslösen über die GitHub-UI
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+
+      - name: Clone upstream OpenPowerlifting (only meet-data/oevk)
+        run: |
+          git clone --depth=1 --filter=blob:none --sparse \
+            https://gitlab.com/openpowerlifting/opl-data.git _upstream
+          cd _upstream
+          git sparse-checkout set meet-data/oevk
+
+      - name: Replace local meet-data/oevk with upstream version
+        run: |
+          rm -rf meet-data/oevk
+          mkdir -p meet-data
+          cp -r _upstream/meet-data/oevk meet-data/oevk
+          rm -rf _upstream
+
+      - name: Touch sync marker
+        run: touch .last_check
+
+      - name: Commit & push if anything changed
+        run: |
+          git config user.name  "oevk-sync-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add meet-data/oevk .last_check
+          if git diff --cached --quiet; then
+            echo "Nothing changed — only touching marker."
+            git commit -m "chore(data): sync check ($(date -u +'%Y-%m-%d %H:%M UTC')) — no new data" --allow-empty
+          else
+            git commit -m "chore(data): sync OeVK meets from OpenPowerlifting ($(date -u +'%Y-%m-%d'))"
+          fi
+          git push

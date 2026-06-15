@@ -1,0 +1,104 @@
+# Configuration for the OEVK.
+
+[options]
+    valid_federations = ["OEVK"]
+    require_manual_disambiguation = true
+
+[divisions]
+    open = {name = "Open", min=0, max=999}
+    guests = {name = "Guest", min=0, max=999, place="G"}
+    juniors = {name = "Juniors", min=0, max=22.5}
+    subjuniors = {name = "Sub-Juniors", min=0, max=17.5}
+    youth = {name = "Youth", min=14, max=18}
+    masters1 = {name = "Masters 1", min=39.5, max=48.5}
+    masters2 = {name = "Masters 2", min=49.5, max=58.5}
+    masters3 = {name = "Masters 3", min=59.5, max=68.5}
+    masters4 = {name = "Masters 4", min=69.5, max=999}
+
+
+[weightclasses.default_M]
+    classes = ["59","66","74","83","93","105","120","120+"]
+    date_range=["2011-01-01","9999-01-01"]
+    sex = "M"
+
+[weightclasses.year2020_F]
+    classes = ["47","52","57","63","72","84","84+"]
+    date_range=["2011-01-01","2020-12-31"]
+    sex = "F"
+
+[weightclasses.default_F]
+    classes = ["47","52","57","63","69","76","84","84+"]
+    date_range=["2021-01-01","9999-12-31"]
+    sex = "F"
+
+
+[weightclasses.junior_M]
+    classes = ["53","59","66","74","83","93","105","120","120+"]
+    date_range=["2011-01-01","9999-01-01"]
+    sex = "M"
+    divisions = ["Juniors","Sub-Juniors","Youth"]
+
+[weightclasses.year2020_junior_F]
+    classes = ["43","47","52","57","63","72","84","84+"]
+    date_range=["2011-01-01","2020-12-31"]
+    sex = "F"
+    divisions = ["Juniors","Sub-Juniors","Youth"]
+
+[weightclasses.junior_F]
+    classes = ["47","52","57","63","69","76","84","84+"]
+    date_range=["2021-01-01","9999-12-31"]
+    sex = "F"
+    divisions = ["Juniors","Sub-Juniors","Youth"]
+
+[weightclasses.old_M]
+    classes = ["52","56","60","67.5","75","82.5","90","100","110","125","125+"]
+    date_range = ["0000-01-01","2010-12-31"]
+    sex = "M"
+
+[weightclasses.old_F]
+    classes = ["44","48","52","56","60","67.5","75","82.5","90","90+"]
+    date_range = ["0000-01-01","2010-12-31"]
+    sex = "F"
+
+[exemptions]
+    1914 = ["ExemptWeightClassConsistency"]
+    1910 = ["ExemptWeightClassConsistency"]
+    2008 = ["ExemptWeightClassConsistency"]
+
+    2101 = ["ExemptWeightClassConsistency"] # Länderpokal
+    2109 = ["ExemptDuplicates"] # With 2110.
+    2110 = ["ExemptDuplicates"] # With 2109.
+    2113 = ["ExemptDuplicates"] # With 2214.
+    2114 = ["ExemptDuplicates"] # With 2213.
+
+    2203 = ["ExemptDuplicates"] # With 2229 and 2230.
+    2212 = ["ExemptDuplicates"] # 2212, 2213, 2222, 2223.
+    2213 = ["ExemptDuplicates"] # 2212, 2213, 2222, 2223.
+    2222 = ["ExemptDuplicates"] # 2212, 2213, 2222, 2223.
+    2223 = ["ExemptDuplicates"] # 2212, 2213, 2222, 2223.
+    2229 = ["ExemptDuplicates"] # With 2203.
+    2230 = ["ExemptDuplicates"] # With 2203.
+
+    2303 = ["ExemptWeightClassConsistency"] # Länderpokal
+    2309 = ["ExemptDuplicates"] # With 2326 and 2328.
+    2310 = ["ExemptDuplicates"] # With 2327.
+    2315 = ["ExemptDuplicates"] # With 2316.
+    2316 = ["ExemptDuplicates"] # With 2315.
+    2318 = ["ExemptDuplicates"] # With 2320.
+    2319 = ["ExemptDuplicates"] # With 2321.
+    2320 = ["ExemptDuplicates"] # With 2318.
+    2321 = ["ExemptDuplicates"] # With 2319.
+    2326 = ["ExemptDuplicates"] # With 2309.
+    2327 = ["ExemptDuplicates"] # With 2310.
+    2328 = ["ExemptDuplicates"] # With 2309.
+
+    2412 = ["ExemptDuplicates"] # 2412, 2413, 2414, 2415
+    2413 = ["ExemptDuplicates"] # 2412, 2413, 2414, 2415
+    2414 = ["ExemptDuplicates"] # 2412, 2413, 2414, 2415
+    2415 = ["ExemptDuplicates"] # 2412, 2413, 2414, 2415
+    2424 = ["ExemptDuplicates"] # 2424, 2425
+    2425 = ["ExemptDuplicates"] # 2424, 2425
+
+    2519 = ["ExemptDuplicates"] # With 2519, 2520, 2524
+    2520 = ["ExemptDuplicates"] # With 2519, 2520, 2524
+    2524 = ["ExemptDuplicates"] # With 2519, 2520, 2524
