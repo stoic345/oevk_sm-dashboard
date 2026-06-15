@@ -135,11 +135,10 @@ a.brand.brand--link:hover { opacity:0.85; }
 .logo--img { width:auto; height:auto; min-width:0; padding:0;
   background:transparent; border:none; border-radius:0;
   box-shadow:none; line-height:0; }
-.logo--img img { display:block; height:116px; width:auto;
-  border:1.5px solid var(--gold-dim); border-radius:6px;
-  box-shadow:0 2px 12px rgba(201,174,91,0.18);
-  transition:border-color .14s ease, box-shadow .14s ease; }
-.logo--img:hover img { border-color:var(--gold-bright); box-shadow:0 4px 18px rgba(201,174,91,0.32); }
+.logo--img img { display:block; height:160px; width:auto;
+  border:none; border-radius:0; box-shadow:none; background:transparent;
+  transition:opacity .14s ease; }
+.logo--img:hover img { opacity:0.85; }
 .brand__divider { width:1px; align-self:stretch; background:var(--line); margin:0 4px; }
 .brand__title { font-family:var(--font-display); font-weight:800; font-size:30px; letter-spacing:-0.01em;
   line-height:1.15; text-transform:none; color:var(--text); }
@@ -1543,7 +1542,7 @@ st.markdown(
     f"""
     <div class="topbar">
       <a class="brand brand--link" href="?reset=1" target="_self">
-        <div class="logo logo--img">{logo_html(116)}</div>
+        <div class="logo logo--img">{logo_html(160)}</div>
         <div class="brand__divider"></div>
         <div>
           <div class="brand__title"><span class="accent">ÖSTERREICHISCHE STAATSMEISTERSCHAFT 2026!</span> Wer ist qualifiziert?<span class="beta">BETA</span></div>
