@@ -1938,17 +1938,12 @@ def _build_export_df(df: pd.DataFrame) -> pd.DataFrame:
         })
     return pd.DataFrame(rows)
 
-_hdr_left, _hdr_right = st.columns([4, 1])
-with _hdr_left:
-    st.markdown(
-        f'<div class="section-head"><div>'
-        f'<h2>{section_title}</h2></div></div>',
-        unsafe_allow_html=True,
-    )
-with _hdr_right:
-    if not table_df.empty:
-        _export_df = _build_export_df(best_per_athlete)
-        _csv_bytes = _export_df.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+# CSV-Export-Button — eigene Zeile, zentriert zwischen KPI-Karten und Tabellen-Header.
+if not table_df.empty:
+    _export_df = _build_export_df(best_per_athlete)
+    _csv_bytes = _export_df.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+    _exp_l, _exp_c, _exp_r = st.columns([2, 1, 2])
+    with _exp_c:
         st.download_button(
             "⬇ CSV-Export",
             data=_csv_bytes,
@@ -1957,6 +1952,12 @@ with _hdr_right:
             key="dl_csv",
             use_container_width=True,
         )
+
+st.markdown(
+    f'<div class="section-head"><div>'
+    f'<h2>{section_title}</h2></div></div>',
+    unsafe_allow_html=True,
+)
 
 if not table_df.empty:
     def _sh(label: str, sort_type: str = "text", cls: str = "") -> str:
