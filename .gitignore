@@ -23,8 +23,9 @@ desktop.ini
 .streamlit/secrets.toml
 .streamlit/cache/
 
-# Sync marker (regenerated at runtime / by the GitHub Action)
-.last_check
+# Sync marker is INTENTIONALLY tracked — the GitHub Action commits a new
+# timestamp into it on every run, which updates the dashboard's
+# "Zuletzt nach Updates gesucht"-Anzeige across deploys. Do not ignore.
 
 # Local build artifacts / scratch
 *.log
