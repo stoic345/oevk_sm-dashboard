@@ -135,7 +135,7 @@ a.brand.brand--link:hover { opacity:0.85; }
 .logo--img { width:auto; height:auto; min-width:0; padding:0;
   background:transparent; border:none; border-radius:0;
   box-shadow:none; line-height:0; }
-.logo--img img { display:block; height:220px; width:auto;
+.logo--img img { display:block; height:130px; width:auto;
   border:none; border-radius:0; box-shadow:none; background:transparent;
   transition:opacity .14s ease; }
 .logo--img:hover img { opacity:0.85; }
@@ -1558,7 +1558,7 @@ st.markdown(
     f"""
     <div class="topbar">
       <a class="brand brand--link" href="?reset=1" target="_self">
-        <div class="logo logo--img">{logo_html(220)}</div>
+        <div class="logo logo--img">{logo_html(130)}</div>
         <div class="brand__divider"></div>
         <div>
           <div class="brand__title"><span class="accent">ÖSTERREICHISCHE STAATSMEISTERSCHAFT 2026!</span> Wer ist qualifiziert?<span class="beta">BETA</span></div>
