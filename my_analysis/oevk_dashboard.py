@@ -104,7 +104,7 @@ THEME_CSS = """
   overflow:hidden; text-overflow:ellipsis; }
 /* Data-Freshness-Status-Pills (Datenstand, letzte Aktualisierung, Quelle) */
 .data-status { display:grid; grid-template-columns:repeat(4, 1fr); gap:16px;
-  margin:18px 0 18px; align-items:stretch; }
+  margin:0; align-items:stretch; }
 @media (max-width:900px) { .data-status { grid-template-columns:1fr 1fr; } }
 .status-pill { display:flex; align-items:center; justify-content:center; gap:10px;
   background:var(--bg-elev); border:1px solid var(--gold-dim); border-radius:var(--r-sm);
@@ -150,7 +150,7 @@ a.brand.brand--link:hover { opacity:0.85; }
 .dev-banner { display:flex; align-items:center; justify-content:center; gap:10px;
   background:rgba(217,164,65,0.10); border:1px solid rgba(217,164,65,0.45);
   border-left:3px solid var(--amber); border-radius:var(--r-sm);
-  padding:10px 16px; margin:0 0 18px;
+  padding:10px 16px; margin:0;
   font-family:var(--font-mono); font-size:12px; color:var(--text);
   letter-spacing:0.02em; text-align:center; }
 .dev-banner .ic { color:var(--amber); font-size:16px; line-height:1; }
@@ -174,7 +174,7 @@ a.brand.brand--link:hover { opacity:0.85; }
 .target--solo .target__count { padding-left:0; border-left:none; }
 
 /* KPI cards */
-.kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:14px; }
+.kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin:0; }
 .kpis--3 { grid-template-columns:repeat(3,1fr); }
 @media (max-width:760px) { .kpis--3 { grid-template-columns:1fr; } }
 
@@ -304,7 +304,7 @@ footer { display: none !important; visibility: hidden !important; }
   padding-top: 1rem !important;
 }
 [data-testid="stMain"] [data-testid="stVerticalBlock"] {
-  gap: 0.6rem !important;
+  gap: 18px !important;
 }
 /* Sanfte Fold-Animation für die Sidebar (gesteuert via JS-Klassentoggle 'oevk-folded') */
 [data-testid="stSidebar"], section[data-testid="stSidebar"], aside[data-testid="stSidebar"] {
@@ -1938,12 +1938,18 @@ def _build_export_df(df: pd.DataFrame) -> pd.DataFrame:
         })
     return pd.DataFrame(rows)
 
-# CSV-Export-Button — eigene Zeile, zentriert zwischen KPI-Karten und Tabellen-Header.
-if not table_df.empty:
-    _export_df = _build_export_df(best_per_athlete)
-    _csv_bytes = _export_df.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
-    _exp_l, _exp_c, _exp_r = st.columns([2, 1, 2])
-    with _exp_c:
+# CSV-Export-Button rechts neben der Section-Headline.
+_hdr_left, _hdr_right = st.columns([4, 1])
+with _hdr_left:
+    st.markdown(
+        f'<div class="section-head"><div>'
+        f'<h2>{section_title}</h2></div></div>',
+        unsafe_allow_html=True,
+    )
+with _hdr_right:
+    if not table_df.empty:
+        _export_df = _build_export_df(best_per_athlete)
+        _csv_bytes = _export_df.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
         st.download_button(
             "⬇ CSV-Export",
             data=_csv_bytes,
@@ -1952,12 +1958,6 @@ if not table_df.empty:
             key="dl_csv",
             use_container_width=True,
         )
-
-st.markdown(
-    f'<div class="section-head"><div>'
-    f'<h2>{section_title}</h2></div></div>',
-    unsafe_allow_html=True,
-)
 
 if not table_df.empty:
     def _sh(label: str, sort_type: str = "text", cls: str = "") -> str:
