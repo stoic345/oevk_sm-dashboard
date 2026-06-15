@@ -1489,8 +1489,6 @@ if PROFILE_MODE:
         <div class="topbar topbar--profile">
           <div class="brand">
             <a href="{_back_href}" target="_self">
-              <div class="logo logo--img">{logo_html(72)}</div>
-              <div class="brand__divider"></div>
               <div>
                 <div class="pname">{_html.escape(str(_profile_param))}</div>
                 <div class="psub">Athlet:innen-Profil</div>
