@@ -1583,25 +1583,22 @@ def _fmt_sync_dt(dt):
         return f"vor {delta_days} Tagen ({dt.strftime('%d.%m.%Y')})"
     return dt.strftime("%d.%m.%Y")
 
-_last_sync_dt = None
-try:
-    _mtimes = []
-    for _f in BASE_PATH.iterdir():
-        if _f.is_dir():
-            _ef = _f / "entries.csv"
-            if _ef.exists():
-                _mtimes.append(_ef.stat().st_mtime)
-    if _mtimes:
-        _last_sync_dt = datetime.fromtimestamp(max(_mtimes))
-except Exception:
-    pass
-
-# Marker-Datei für "zuletzt geprüft" — wird beim Sync-Skript getouched.
+# Marker-Datei "zuletzt geprüft" — Sync-Workflow touched sie bei JEDER Ausführung.
 _LAST_CHECK_FILE = Path(__file__).parent.parent / ".last_check"
 _last_check_dt = None
 try:
     if _LAST_CHECK_FILE.exists():
         _last_check_dt = datetime.fromtimestamp(_LAST_CHECK_FILE.stat().st_mtime)
+except Exception:
+    pass
+
+# Marker-Datei "Daten zuletzt aktualisiert" — wird NUR getouched, wenn der Workflow
+# tatsächlich neue OeVK-Daten von OpenPowerlifting bekommen hat.
+_LAST_DATA_FILE = Path(__file__).parent.parent / ".last_data_update"
+_last_sync_dt = None
+try:
+    if _LAST_DATA_FILE.exists():
+        _last_sync_dt = datetime.fromtimestamp(_LAST_DATA_FILE.stat().st_mtime)
 except Exception:
     pass
 

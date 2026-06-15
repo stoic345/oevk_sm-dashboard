@@ -30,24 +30,39 @@ jobs:
           cp -r _upstream/meet-data/oevk meet-data/oevk
           rm -rf _upstream
 
-      - name: Write sync marker (.last_check)
+      - name: Write check marker (.last_check)
         run: |
           date -u +'%Y-%m-%dT%H:%M:%SZ' > .last_check
           echo "Wrote $(cat .last_check) to .last_check"
 
-      - name: Commit & push if anything changed
+      - name: Detect data changes & write .last_data_update only if data really changed
+        id: detect
+        run: |
+          # Stage just the data so we can ask git whether anything in meet-data/oevk truly differs.
+          git add -f meet-data/oevk
+          if git diff --cached --quiet -- meet-data/oevk; then
+            echo "data_changed=false" >> "$GITHUB_OUTPUT"
+            echo "No OeVK data changes detected."
+          else
+            echo "data_changed=true" >> "$GITHUB_OUTPUT"
+            date -u +'%Y-%m-%dT%H:%M:%SZ' > .last_data_update
+            echo "OeVK data changed — wrote .last_data_update."
+          fi
+
+      - name: Commit & push
         run: |
           git config user.name  "oevk-sync-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add -f meet-data/oevk .last_check
-          if git diff --cached --quiet; then
-            echo "Nothing changed — skipping commit."
-            exit 0
-          fi
-          # Detect whether real meet data changed (anything beyond .last_check)
-          if git diff --cached --name-only | grep -qv '^\.last_check$'; then
+          git add -f .last_check
+          if [ "${{ steps.detect.outputs.data_changed }}" = "true" ]; then
+            git add -f .last_data_update
             git commit -m "chore(data): sync OeVK meets ($(date -u +'%Y-%m-%d'))"
           else
-            git commit -m "chore(data): sync check ($(date -u +'%Y-%m-%d %H:%M UTC')) — no new data"
+            # Only the check marker changed (or nothing). Empty commit keeps the run visible in git log.
+            if git diff --cached --quiet; then
+              git commit --allow-empty -m "chore(data): sync check ($(date -u +'%Y-%m-%d %H:%M UTC')) — no new data"
+            else
+              git commit -m "chore(data): sync check ($(date -u +'%Y-%m-%d %H:%M UTC')) — no new data"
+            fi
           fi
           git push
