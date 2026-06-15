@@ -283,6 +283,37 @@ a.nm-link:hover { color:var(--gold-bright) !important; }
   text-decoration:none; white-space:nowrap; }
 .profile-close:hover { color:var(--gold-bright); border-color:var(--gold-dim); }
 .profile-note { font-family:var(--font-mono); font-size:10px; color:var(--text-3); margin-top:10px; opacity:0.8; }
+/* Streamlit Cloud "View source on GitHub"-Badge + Toolbar verstecken */
+[data-testid="stToolbar"],
+[data-testid="stDecoration"],
+[data-testid="stHeader"],
+header[data-testid="stHeader"],
+.viewerBadge_container__1QSob,
+.viewerBadge_container__r5tak,
+.viewerBadge_link__1S137,
+.viewerBadge_link__qRIco,
+.viewerBadge_text__1JaDK,
+a[href*="streamlit.io"]:has(> img),
+a[href*="github.com"][title*="View source"],
+#MainMenu,
+footer { display: none !important; visibility: hidden !important; }
+/* Sanfte Fold-Animation für die Sidebar (gesteuert via JS-Klassentoggle 'oevk-folded') */
+[data-testid="stSidebar"], section[data-testid="stSidebar"], aside[data-testid="stSidebar"] {
+  transition: transform 320ms cubic-bezier(.4,0,.2,1),
+              min-width 320ms cubic-bezier(.4,0,.2,1),
+              width 320ms cubic-bezier(.4,0,.2,1),
+              opacity 200ms ease 80ms !important;
+}
+[data-testid="stSidebar"].oevk-folded,
+section[data-testid="stSidebar"].oevk-folded,
+aside[data-testid="stSidebar"].oevk-folded {
+  transform: translateX(-100%) !important;
+  min-width: 0 !important; width: 0 !important; max-width: 0 !important;
+  opacity: 0 !important; pointer-events: none !important;
+}
+[data-testid="stMain"], section[data-testid="stMain"] {
+  transition: margin-left 320ms cubic-bezier(.4,0,.2,1);
+}
 /* Streamlits eingebaute Collapse-Buttons komplett verstecken — wir steuern den Fold-State selbst. */
 [data-testid="stSidebarCollapseButton"],
 [data-testid="stSidebarCollapsedControl"],
@@ -1442,31 +1473,11 @@ _GEN = st.session_state.get("_widget_gen", 0)
 _profile_param = st.query_params.get("athlete")
 PROFILE_MODE = bool(_profile_param)
 
-# Dashboard-Modus: Sidebar-Fold-State per Session-State (eigene Steuerung statt Streamlit-Default).
+# Dashboard-Modus: Sidebar-Fold läuft CLIENT-SEITIG (CSS-Transition + JS-Klick-Handler).
+# Keine Server-Roundtrips, keine Reloads — der Sidebar gleitet sanft hinaus/herein.
 if not PROFILE_MODE:
-    if "sidebar_folded" not in st.session_state:
-        st.session_state["sidebar_folded"] = False
-    if st.query_params.get("toggle_fold"):
-        st.session_state["sidebar_folded"] = not st.session_state["sidebar_folded"]
-        try:
-            del st.query_params["toggle_fold"]
-        except (KeyError, AttributeError):
-            pass
-        st.rerun()
-
-    _folded = st.session_state.get("sidebar_folded", False)
-
-    # Mobile-Anpassungen + Sidebar verstecken wenn gefaltet
-    _hide_sidebar_css = (
-        '[data-testid="stSidebar"], section[data-testid="stSidebar"], aside[data-testid="stSidebar"] {'
-        '  display:none !important; visibility:hidden !important;'
-        '}'
-        '[data-testid="stMain"], section[data-testid="stMain"] { margin-left:0 !important; }'
-    ) if _folded else ""
-
     st.markdown(
         '<style>'
-        + _hide_sidebar_css +
         '@media (max-width:900px) {'
         '  .topbar { flex-direction:column; gap:8px; padding:10px 14px; }'
         '  .logo--img img { height:120px !important; }'
@@ -1482,22 +1493,67 @@ if not PROFILE_MODE:
         unsafe_allow_html=True,
     )
 
-    # Schwebender »-Button, wenn die Sidebar gefaltet ist
-    if _folded:
-        st.markdown(
-            '<a class="sidebar-toggle sidebar-toggle--open" href="?toggle_fold=1" '
-            'target="_self" aria-label="Filterleiste öffnen" title="Filterleiste öffnen">»</a>',
-            unsafe_allow_html=True,
-        )
-    else:
-        # In-Sidebar Close-Button ganz oben
-        st.sidebar.markdown(
-            '<a class="sidebar-toggle sidebar-toggle--close" href="?toggle_fold=1" '
-            'target="_self" aria-label="Filterleiste ausblenden" title="Filterleiste ausblenden">'
-            '<span class="chev">«</span> Filter ausblenden'
-            '</a>',
-            unsafe_allow_html=True,
-        )
+    # Close-Button in der Sidebar — JS wandelt ihn in einen Toggle ohne Reload.
+    st.sidebar.markdown(
+        '<a class="sidebar-toggle sidebar-toggle--close" href="#" '
+        'aria-label="Filterleiste ausblenden" title="Filterleiste ausblenden">'
+        '<span class="chev">«</span> Filter ausblenden'
+        '</a>',
+        unsafe_allow_html=True,
+    )
+    # Floating Open-Button — immer im DOM, JS regelt Sichtbarkeit per CSS-Klasse.
+    st.markdown(
+        '<a class="sidebar-toggle sidebar-toggle--open" href="#" '
+        'aria-label="Filterleiste öffnen" title="Filterleiste öffnen">»</a>',
+        unsafe_allow_html=True,
+    )
+    # Mini-JS-Komponente, die Klicks auf die beiden Buttons abfängt, die Sidebar via
+    # CSS-Klasse animiert ein-/ausblendet und den State in localStorage persistiert.
+    _components.html(
+        """
+<script>
+(function () {
+  const P = window.parent.document;
+  const KEY = 'oevk_sidebar_folded';
+
+  function applyFold(folded) {
+    const sb = P.querySelector('[data-testid="stSidebar"]');
+    const openBtn = P.querySelector('a.sidebar-toggle--open');
+    if (sb) sb.classList.toggle('oevk-folded', folded);
+    if (openBtn) openBtn.style.display = folded ? 'flex' : 'none';
+    try { localStorage.setItem(KEY, folded ? '1' : '0'); } catch (e) {}
+  }
+
+  function wire() {
+    const closeBtn = P.querySelector('a.sidebar-toggle--close');
+    const openBtn  = P.querySelector('a.sidebar-toggle--open');
+    if (closeBtn && !closeBtn.dataset.wired) {
+      closeBtn.dataset.wired = '1';
+      closeBtn.addEventListener('click', function (e) { e.preventDefault(); applyFold(true); });
+    }
+    if (openBtn && !openBtn.dataset.wired) {
+      openBtn.dataset.wired = '1';
+      openBtn.addEventListener('click', function (e) { e.preventDefault(); applyFold(false); });
+    }
+    // Initialer State aus localStorage übernehmen
+    try {
+      const stored = localStorage.getItem(KEY);
+      applyFold(stored === '1');
+    } catch (e) { applyFold(false); }
+    return !!(closeBtn && openBtn);
+  }
+
+  if (!wire()) {
+    let tries = 0;
+    const id = setInterval(function () {
+      if (wire() || ++tries > 30) clearInterval(id);
+    }, 100);
+  }
+})();
+</script>
+        """,
+        height=0,
+    )
 if PROFILE_MODE:
     # Sidebar ausblenden, voller Hauptbereich
     st.markdown(
@@ -1557,8 +1613,6 @@ st.markdown(
     f"""
     <div class="topbar">
       <a class="brand brand--link" href="?reset=1" target="_self">
-        <div class="logo logo--img">{logo_html(130)}</div>
-        <div class="brand__divider"></div>
         <div>
           <div class="brand__title"><span class="accent">ÖSTERREICHISCHE STAATSMEISTERSCHAFT 2026!</span> Wer ist qualifiziert?<span class="beta">BETA</span></div>
           <div class="brand__sub">Alle Athlet:innen, die das Limit erreicht haben — hier zusammengefasst.</div>
