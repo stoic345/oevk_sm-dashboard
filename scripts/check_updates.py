@@ -2,58 +2,86 @@
 
 Run manually or on a schedule (cron / Windows Task Scheduler / GitHub Action).
 
-Always touches `.last_check` to record the check time, even if nothing new was
-pulled. If `git pull` brought in new commits, the meet CSV mtimes will advance
-on their own, which is what `Daten zuletzt aktualisiert` reads.
+ALWAYS touches `.last_check` — that marker drives the dashboard's
+"Zuletzt nach Updates gesucht"-Anzeige and just records that we LOOKED.
+
+Touches `.last_data_update` ONLY when the pull brought in real changes inside
+`meet-data/oevk/` — that marker drives "Daten zuletzt aktualisiert".
 """
 
 from __future__ import annotations
-import os
+import datetime as _dt
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-MARKER = ROOT / ".last_check"
+CHECK_MARKER = ROOT / ".last_check"
+DATA_MARKER = ROOT / ".last_data_update"
+OEVK_DIR = ROOT / "meet-data" / "oevk"
 
 
-def touch(path: Path) -> None:
-    path.touch(exist_ok=True)
-    os.utime(path, None)
+def write_timestamp(path: Path) -> None:
+    path.write_text(_dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ") + "\n")
 
 
-def git_pull(cwd: Path) -> int:
-    """Run `git pull --ff-only` if cwd is a git repo. Returns the exit code, or -1 if not a repo."""
-    if not (cwd / ".git").exists():
-        print(f"[check_updates] no .git in {cwd} — skipping pull")
-        return -1
+def run_git(args: list[str], cwd: Path) -> tuple[int, str, str]:
     try:
         res = subprocess.run(
-            ["git", "pull", "--ff-only"],
-            cwd=str(cwd),
-            capture_output=True,
-            text=True,
-            timeout=120,
+            ["git", *args], cwd=str(cwd), capture_output=True, text=True, timeout=120,
         )
-        print(res.stdout.strip() or "(no stdout)")
-        if res.stderr.strip():
-            print(res.stderr.strip(), file=sys.stderr)
-        return res.returncode
+        return res.returncode, res.stdout, res.stderr
     except FileNotFoundError:
-        print("[check_updates] git not installed", file=sys.stderr)
-        return 127
+        return 127, "", "git not installed"
     except subprocess.TimeoutExpired:
-        print("[check_updates] git pull timed out", file=sys.stderr)
-        return 124
+        return 124, "", "git timed out"
 
 
 def main() -> int:
-    rc = git_pull(ROOT)
-    # Always touch the marker so the dashboard knows we checked, regardless of
-    # whether new commits arrived.
-    touch(MARKER)
-    print(f"[check_updates] touched {MARKER}")
-    return 0 if rc in (0, -1) else rc
+    if not (ROOT / ".git").exists():
+        print(f"[check_updates] no .git in {ROOT} — only touching {CHECK_MARKER.name}")
+        write_timestamp(CHECK_MARKER)
+        return 0
+
+    # Snapshot HEAD before pull so we can ask git whether oevk files changed.
+    rc, head_before, _ = run_git(["rev-parse", "HEAD"], ROOT)
+    if rc != 0:
+        print("[check_updates] could not read HEAD — aborting", file=sys.stderr)
+        return rc
+    head_before = head_before.strip()
+
+    rc, out, err = run_git(["pull", "--ff-only"], ROOT)
+    print(out.strip() or "(no stdout)")
+    if err.strip():
+        print(err.strip(), file=sys.stderr)
+    if rc != 0:
+        print(f"[check_updates] git pull failed (rc={rc}), still touching {CHECK_MARKER.name}")
+        write_timestamp(CHECK_MARKER)
+        return rc
+
+    rc2, head_after, _ = run_git(["rev-parse", "HEAD"], ROOT)
+    head_after = head_after.strip() if rc2 == 0 else head_before
+
+    # Diff between old and new HEAD, restricted to the OeVK directory.
+    real_data_change = False
+    if head_after != head_before:
+        rc3, names, _ = run_git(
+            ["diff", "--name-only", head_before, head_after, "--", "meet-data/oevk/"],
+            ROOT,
+        )
+        if rc3 == 0 and names.strip():
+            real_data_change = True
+
+    write_timestamp(CHECK_MARKER)
+    print(f"[check_updates] touched {CHECK_MARKER.name}")
+
+    if real_data_change:
+        write_timestamp(DATA_MARKER)
+        print(f"[check_updates] OeVK data changed — touched {DATA_MARKER.name}")
+    else:
+        print("[check_updates] no OeVK data changes in this pull")
+
+    return 0
 
 
 if __name__ == "__main__":

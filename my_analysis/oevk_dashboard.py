@@ -203,7 +203,7 @@ a.brand.brand--link:hover { opacity:0.85; }
 .kpi__foot .up { color:var(--green); }
 
 /* Section heading */
-.section-head { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin:0 0 14px; }
+.section-head { display:flex; align-items:center; justify-content:space-between; gap:16px; margin:0; }
 .section-head h2 { font-family:var(--font-body); font-size:26px; font-weight:700; letter-spacing:-0.01em; margin:0; }
 .section-head .meta { font-family:var(--font-mono); font-size:12px; color:var(--gold); font-weight:600; }
 /* CSV-Export-Button (Hauptbereich, neben dem Tabellen-Header) */
@@ -304,7 +304,7 @@ footer { display: none !important; visibility: hidden !important; }
   padding-top: 1rem !important;
 }
 [data-testid="stMain"] [data-testid="stVerticalBlock"] {
-  gap: 18px !important;
+  gap: 28px !important;
 }
 /* Sanfte Fold-Animation für die Sidebar (gesteuert via JS-Klassentoggle 'oevk-folded') */
 [data-testid="stSidebar"], section[data-testid="stSidebar"], aside[data-testid="stSidebar"] {
@@ -1938,8 +1938,8 @@ def _build_export_df(df: pd.DataFrame) -> pd.DataFrame:
         })
     return pd.DataFrame(rows)
 
-# CSV-Export-Button rechts neben der Section-Headline.
-_hdr_left, _hdr_right = st.columns([4, 1])
+# CSV-Export-Button rechts neben der Section-Headline (vertikal mittig).
+_hdr_left, _hdr_right = st.columns([4, 1], vertical_alignment="center")
 with _hdr_left:
     st.markdown(
         f'<div class="section-head"><div>'
