@@ -92,8 +92,8 @@ THEME_CSS = """
 
 /* Top header */
 .topbar { display:flex; align-items:center; justify-content:center; gap:20px;
-  padding:18px 22px; margin-bottom:22px; border:1px solid var(--line); border-radius:var(--r-lg);
-  background:linear-gradient(180deg, var(--surface), var(--bg-elev)); }
+  padding:6px 22px; margin-bottom:22px; border:1px solid var(--line); border-radius:var(--r-lg);
+  background:linear-gradient(180deg, var(--surface), var(--bg-elev)); overflow:hidden; }
 .hero { margin:6px 0 18px; }
 .hero__title { font-family:var(--font-display); font-size:34px; font-weight:800;
   letter-spacing:-0.01em; color:var(--text); line-height:1.1; }
@@ -135,7 +135,7 @@ a.brand.brand--link:hover { opacity:0.85; }
 .logo--img { width:auto; height:auto; min-width:0; padding:0;
   background:transparent; border:none; border-radius:0;
   box-shadow:none; line-height:0; }
-.logo--img img { display:block; height:160px; width:auto;
+.logo--img img { display:block; height:220px; width:auto;
   border:none; border-radius:0; box-shadow:none; background:transparent;
   transition:opacity .14s ease; }
 .logo--img:hover img { opacity:0.85; }
@@ -1542,7 +1542,7 @@ st.markdown(
     f"""
     <div class="topbar">
       <a class="brand brand--link" href="?reset=1" target="_self">
-        <div class="logo logo--img">{logo_html(160)}</div>
+        <div class="logo logo--img">{logo_html(220)}</div>
         <div class="brand__divider"></div>
         <div>
           <div class="brand__title"><span class="accent">ÖSTERREICHISCHE STAATSMEISTERSCHAFT 2026!</span> Wer ist qualifiziert?<span class="beta">BETA</span></div>
