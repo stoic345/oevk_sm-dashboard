@@ -61,13 +61,14 @@ THEME_CSS = """
   --r-sm:6px; --r-md:10px; --r-lg:14px; --r-xl:18px;
 }
 
-/* Streamlit chrome — Header bleibt sichtbar (enthält den Sidebar-Expand-Button!).
-   Wir machen ihn nur transparent + entfernen Menü/Footer. */
+/* Streamlit chrome — Header + Toolbar bleiben sichtbar (Toolbar enthält den Sidebar-Expand-Button!).
+   Nur die Menü-/Status-/Deploy-Elemente entfernen, NICHT die ganze Toolbar. */
 #MainMenu, footer {visibility:hidden; height:0;}
 header[data-testid="stHeader"] { background:transparent !important; }
-header[data-testid="stHeader"] [data-testid="stToolbar"],
 header[data-testid="stHeader"] [data-testid="stMainMenu"],
-header[data-testid="stHeader"] [data-testid="stStatusWidget"] { display:none !important; }
+header[data-testid="stHeader"] [data-testid="stStatusWidget"],
+header[data-testid="stHeader"] [data-testid="stAppDeployButton"],
+header[data-testid="stHeader"] [data-testid="stToolbarActions"] { display:none !important; }
 .stApp {
   background:
     radial-gradient(1200px 480px at 18% -10%, rgba(201,174,91,0.06), transparent 60%),
@@ -290,11 +291,12 @@ a.nm-link:hover { color:var(--gold-bright) !important; }
   text-decoration:none; white-space:nowrap; }
 .profile-close:hover { color:var(--gold-bright); border-color:var(--gold-dim); }
 .profile-note { font-family:var(--font-mono); font-size:10px; color:var(--text-3); margin-top:10px; opacity:0.8; }
-/* Streamlit Cloud "View source on GitHub"-Badge + Toolbar verstecken.
-   WICHTIG: NIEMALS header[data-testid="stHeader"] hier hinzufügen — der enthält den
-   Sidebar-Expand-Button (»). */
-[data-testid="stToolbar"],
+/* Streamlit Cloud "View source on GitHub"-Badge verstecken.
+   WICHTIG: NIEMALS stHeader oder stToolbar komplett verstecken — die Toolbar enthält den
+   Sidebar-Expand-Button (»). Nur die Badge-/Menü-/Deploy-Elemente entfernen. */
 [data-testid="stDecoration"],
+[data-testid="stToolbarActions"],
+[data-testid="stAppDeployButton"],
 .viewerBadge_container__1QSob,
 .viewerBadge_container__r5tak,
 .viewerBadge_link__1S137,
@@ -320,77 +322,45 @@ footer { display: none !important; visibility: hidden !important; }
   margin:0 !important; padding:0 !important; min-height:0 !important; height:0 !important;
   display:none !important;
 }
-/* Sidebar — Default: 296 px Expanded. Folded-State wird via Python conditional CSS gesetzt. */
-[data-testid="stSidebar"], section[data-testid="stSidebar"], aside[data-testid="stSidebar"] {
-  display:block !important; visibility:visible !important; opacity:1 !important;
-  transform:none !important; margin-left:0 !important;
-  min-width:296px !important; width:296px !important; max-width:296px !important;
-  transition: min-width .25s ease, width .25s ease, max-width .25s ease !important;
-  z-index:1 !important;  /* Bleibt unter floatenden Elementen wie Tooltips */
-}
-[data-testid="stSidebar"] > div:first-child {
-  min-width:296px !important; width:296px !important;
-}
-/* Hauptbereich folgt der Sidebarbreite glatt nach (Streamlit-Flex regelt die Breite automatisch,
-   wir glätten nur den Übergang). */
-[data-testid="stMain"], section[data-testid="stMain"] {
-  transition: margin-left .25s ease, width .25s ease !important;
-}
-/* Horizontale Table-Scroll-Container: bleibt innerhalb des Hauptbereichs, nicht der Sidebar
-   überlappen. Falls die Sidebar einen z-index hat, sicherstellen, dass Tabelle nicht darunter
-   verschwindet. */
+/* Tabellen-Karte über Stacking-Context sauber halten */
 .tablecard { position:relative; z-index:0; }
-/* Sidebar-Header bündig nach oben — kein Default-Padding */
-[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
-  padding-top:8px !important;
-}
-[data-testid="stSidebar"] [data-testid="stSidebarHeader"] { padding:0 !important; height:0 !important; }
 
-/* Toggle-Button (sb_toggle_btn) — Goldpille, oben rechts. Adressiert via key-Klasse. */
-.st-key-sb_toggle_btn { margin:0 0 8px 0 !important; padding:0 !important; }
-.st-key-sb_toggle_btn [data-testid="stButton"] {
-  display:flex !important; justify-content:flex-end !important; width:100% !important;
+/* === Sidebar Fold: Streamlits NATIVE Collapse nutzen ===
+   Keine Breiten-Sperre, kein transform:none — sonst kann Streamlit nicht einklappen.
+   Wichtig: Collapse-Button = <div data-testid><button>; Expand-Button = <button data-testid>.
+   Daher beide DOM-Strukturen abdecken. */
+/* Position (ortsfest oben links) — am äußersten Element */
+[data-testid="stSidebarCollapseButton"],
+button[data-testid="stExpandSidebarButton"] {
+  position:fixed !important; top:12px !important; left:12px !important; z-index:1000000 !important;
+  opacity:1 !important; visibility:visible !important;
 }
-body.sb-folded .st-key-sb_toggle_btn [data-testid="stButton"] {
-  justify-content:center !important;
-}
-[data-testid="stSidebar"] .st-key-sb_toggle_btn [data-testid="stButton"] button {
+/* Gold-Kreis-Optik — am tatsächlichen Button-Element beider Strukturen */
+[data-testid="stSidebarCollapseButton"] button,
+button[data-testid="stExpandSidebarButton"] {
+  width:42px !important; height:42px !important; min-width:42px !important; padding:0 !important; margin:0 !important;
+  display:flex !important; align-items:center !important; justify-content:center !important;
   background:linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 100%) !important;
   border:1px solid var(--gold-bright) !important; border-radius:50% !important;
-  color:#0B0B0C !important; font-family:var(--font-mono) !important; font-size:20px !important;
-  font-weight:700 !important; line-height:1 !important; letter-spacing:0 !important;
-  width:42px !important; min-width:42px !important; min-height:42px !important; height:42px !important;
-  padding:0 !important; margin:0 !important; text-transform:none !important;
   box-shadow:0 4px 14px rgba(201,174,91,0.45), inset 0 1px 0 rgba(255,255,255,0.35) !important;
-  transition:transform .15s ease, box-shadow .15s ease, filter .15s ease !important;
+  transition:transform .15s ease, filter .15s ease, box-shadow .15s ease !important;
+  opacity:1 !important; visibility:visible !important;
 }
-[data-testid="stSidebar"] .st-key-sb_toggle_btn [data-testid="stButton"] button:hover {
-  filter:brightness(1.10) !important; transform:scale(1.06);
+[data-testid="stSidebarCollapseButton"] button:hover,
+button[data-testid="stExpandSidebarButton"]:hover {
+  filter:brightness(1.08) !important; transform:scale(1.06) !important;
   box-shadow:0 6px 22px rgba(201,174,91,0.6), inset 0 1px 0 rgba(255,255,255,0.45) !important;
-  background:linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 100%) !important;
-  color:#0B0B0C !important; border-color:var(--gold-bright) !important;
 }
-[data-testid="stSidebar"] .st-key-sb_toggle_btn [data-testid="stButton"] button:focus,
-[data-testid="stSidebar"] .st-key-sb_toggle_btn [data-testid="stButton"] button:focus-visible,
-[data-testid="stSidebar"] .st-key-sb_toggle_btn [data-testid="stButton"] button:active {
-  background:linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 100%) !important;
-  border:1px solid var(--gold-bright) !important; color:#0B0B0C !important;
-  box-shadow:0 4px 14px rgba(201,174,91,0.45), inset 0 1px 0 rgba(255,255,255,0.35) !important;
-  outline:none !important;
+[data-testid="stSidebarCollapseButton"] button:active,
+button[data-testid="stExpandSidebarButton"]:active { transform:scale(0.96) !important; }
+/* Icon (SVG oder Material-Span) dunkel einfärben für Kontrast auf Gold */
+[data-testid="stSidebarCollapseButton"] button *,
+button[data-testid="stExpandSidebarButton"] * {
+  color:#0B0B0C !important; fill:#0B0B0C !important; -webkit-text-fill-color:#0B0B0C !important;
 }
-[data-testid="stSidebar"] .st-key-sb_toggle_btn [data-testid="stButton"] button:active { transform:scale(0.96); }
-[data-testid="stSidebar"] .st-key-sb_toggle_btn [data-testid="stButton"] button p,
-[data-testid="stSidebar"] .st-key-sb_toggle_btn [data-testid="stButton"] button span,
-[data-testid="stSidebar"] .st-key-sb_toggle_btn [data-testid="stButton"] button div {
-  margin:0 !important; line-height:1 !important; color:#0B0B0C !important; font-size:20px !important;
-}
-/* Streamlits eigene Collapse/Expand-Knöpfe verstecken — wir steuern den Fold selbst */
-[data-testid="stSidebarCollapseButton"],
-[data-testid="stExpandSidebarButton"],
-[data-testid="stSidebarCollapsedControl"],
-[data-testid="collapsedControl"] {
-  display:none !important; visibility:hidden !important;
-}
+/* Platz für den fixierten Button schaffen, damit er das "VEREIN"-Label nicht überdeckt */
+[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] { padding-top:44px !important; }
+[data-testid="stSidebar"] [data-testid="stSidebarHeader"] { min-height:0 !important; }
 /* Sidebar Header: FILTER-Kicker + Live-Scope-Counter */
 .sb-kicker { font-family:var(--font-mono); font-size:11px; letter-spacing:0.22em;
   text-transform:uppercase; color:var(--gold-bright); font-weight:700;
@@ -1484,49 +1454,12 @@ st.set_page_config(
     page_title="SM Dashboard 2026",
     layout="wide",
     page_icon=str(_favicon_path) if _favicon_path.exists() else "🏋️",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="auto",
 )
 inject_custom_css()
 
-# --- Sidebar-Fold conditional CSS (möglichst FRÜH injizieren, vor jeder sichtbaren Komponente,
-# damit der unsichtbare st.markdown-Wrapper keinen Layout-Jump im Hauptbereich verursacht). ---
-if st.session_state.get("sb_collapsed", False):
-    st.markdown(
-        """
-        <style>
-        [data-testid="stSidebar"], section[data-testid="stSidebar"], aside[data-testid="stSidebar"] {
-          min-width:64px !important; width:64px !important; max-width:64px !important;
-          overflow:hidden !important;
-        }
-        [data-testid="stSidebar"] > div:first-child,
-        [data-testid="stSidebar"] [data-testid="stSidebarContent"],
-        [data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
-          min-width:64px !important; width:64px !important; max-width:64px !important;
-          overflow:hidden !important;
-        }
-        [data-testid="stSidebar"] [data-testid="stSelectbox"],
-        [data-testid="stSidebar"] [data-testid="stCheckbox"],
-        [data-testid="stSidebar"] [data-testid="stMarkdown"],
-        [data-testid="stSidebar"] [data-testid="stMarkdownContainer"],
-        [data-testid="stSidebar"] [data-testid="stWidgetLabel"],
-        [data-testid="stSidebar"] .sb-divider,
-        [data-testid="stSidebar"] .sb-kicker,
-        [data-testid="stSidebar"] .sb-scope,
-        [data-testid="stSidebar"] .lim-card,
-        [data-testid="stSidebar"] label,
-        [data-testid="stSidebar"] [data-testid="stElementContainer"]:not(.st-key-sb_toggle_btn) {
-          display:none !important; visibility:hidden !important;
-        }
-        [data-testid="stSidebar"] .st-key-sb_toggle_btn,
-        [data-testid="stSidebar"] .st-key-sb_toggle_btn * {
-          display:revert !important; visibility:visible !important;
-        }
-        [data-testid="stSidebar"] .st-key-sb_toggle_btn { display:block !important; }
-        .st-key-sb_toggle_btn [data-testid="stButton"] { justify-content:center !important; }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+# Sidebar-Fold läuft komplett über Streamlits native Collapse (frontend-only, kein Rerun).
+# Die beiden nativen Buttons werden in THEME_CSS als ortsfeste Goldpille gestylt.
 
 # --- Filter-Zustand aus URL-Parametern ?ft=/?fn=/?fs=/?fw=/?fm=/?foq= übernehmen ---
 # Wird VOR PROFILE_MODE ausgeführt, damit auch der Back-Button im Profilmodus die
@@ -1820,18 +1753,6 @@ _PERSIST_PAIRS = (
 for _wkey, _pkey in _PERSIST_PAIRS:
     if _wkey not in st.session_state and _pkey in st.session_state:
         st.session_state[_wkey] = st.session_state[_pkey]
-
-
-# --- Sidebar Fold-Toggle (eigene Steuerung; lässt einen 64px-Streifen sichtbar) ---
-if "sb_collapsed" not in st.session_state:
-    st.session_state["sb_collapsed"] = False
-
-def _toggle_sb():
-    st.session_state["sb_collapsed"] = not st.session_state["sb_collapsed"]
-
-# Conditional fold-CSS wird oben (direkt nach inject_custom_css) injiziert — kein Layout-Jump.
-_sb_label = "»" if st.session_state["sb_collapsed"] else "«"
-st.sidebar.button(_sb_label, key="sb_toggle_btn", on_click=_toggle_sb)
 
 
 team_options = sorted(data["Team"].dropna().unique())
