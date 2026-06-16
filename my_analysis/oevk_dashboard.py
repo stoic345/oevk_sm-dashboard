@@ -326,10 +326,20 @@ footer { display: none !important; visibility: hidden !important; }
   transform:none !important; margin-left:0 !important;
   min-width:296px !important; width:296px !important; max-width:296px !important;
   transition: min-width .25s ease, width .25s ease, max-width .25s ease !important;
+  z-index:1 !important;  /* Bleibt unter floatenden Elementen wie Tooltips */
 }
 [data-testid="stSidebar"] > div:first-child {
   min-width:296px !important; width:296px !important;
 }
+/* Hauptbereich folgt der Sidebarbreite glatt nach (Streamlit-Flex regelt die Breite automatisch,
+   wir glätten nur den Übergang). */
+[data-testid="stMain"], section[data-testid="stMain"] {
+  transition: margin-left .25s ease, width .25s ease !important;
+}
+/* Horizontale Table-Scroll-Container: bleibt innerhalb des Hauptbereichs, nicht der Sidebar
+   überlappen. Falls die Sidebar einen z-index hat, sicherstellen, dass Tabelle nicht darunter
+   verschwindet. */
+.tablecard { position:relative; z-index:0; }
 /* Sidebar-Header bündig nach oben — kein Default-Padding */
 [data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
   padding-top:8px !important;
@@ -842,35 +852,9 @@ div[data-testid="stButton"] > button.filter-row,
   /* CSV-Export-Button volle Breite */
   [data-testid="stDownloadButton"] > button { width:100% !important; }
 
-  /* --- Tabelle → Karten-Layout --- */
-  table.tbl thead { display:none !important; }
-  .tablescroll { overflow-x:visible !important; }
-  table.tbl, table.tbl tbody, table.tbl tr, table.tbl td { display:block !important; width:100% !important; }
-  table.tbl tr {
-    border:1px solid var(--line) !important; border-radius:var(--r-md) !important;
-    margin:0 0 12px 0 !important; padding:12px 14px !important; background:var(--surface) !important;
-  }
-  table.tbl tr.row--q { border-left:3px solid var(--green) !important; }
-  table.tbl tr.row--w { border-left:3px solid var(--amber) !important; }
-  table.tbl tbody tr:hover td { background:transparent !important; }
-  table.tbl td {
-    display:flex !important; justify-content:space-between !important; align-items:center !important;
-    gap:14px !important; padding:5px 0 !important; border:none !important;
-    text-align:right !important; white-space:normal !important; box-shadow:none !important;
-  }
-  table.tbl td::before {
-    content:attr(data-label); color:var(--text-3); font-family:var(--font-mono);
-    font-size:10px; letter-spacing:0.08em; text-transform:uppercase; text-align:left;
-    flex:0 0 auto; white-space:nowrap;
-  }
-  table.tbl td.cell-name {
-    justify-content:flex-start !important; font-size:17px !important; font-weight:700 !important;
-    padding:0 0 8px 0 !important; margin-bottom:6px !important;
-    border-bottom:1px solid var(--line-soft) !important;
-  }
-  table.tbl td.cell-name::before { display:none !important; }
-  table.tbl td.rank { display:none !important; }
-  table.tbl tr.row--q td:first-child, table.tbl tr.row--w td:first-child { box-shadow:none !important; }
+  /* --- Tabelle bleibt wie Desktop, scrollt horizontal --- */
+  .tablescroll { overflow-x:auto !important; -webkit-overflow-scrolling:touch !important; }
+  table.tbl { min-width:100%; }
 }
 </style>
 """
