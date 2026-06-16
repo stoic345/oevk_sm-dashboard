@@ -156,6 +156,8 @@ a.brand.brand--link:hover { opacity:0.85; }
 .dev-banner .ic { color:var(--amber); font-size:16px; line-height:1; }
 .dev-banner b { color:var(--amber); font-weight:700; }
 .brand__title .accent { color:var(--gold-bright); }
+.brand__date { font-family:var(--font-mono); font-size:14px; letter-spacing:0.14em;
+  text-transform:uppercase; color:var(--gold); font-weight:600; margin-top:4px; }
 .brand__sub { font-family:var(--font-body); font-size:17px; letter-spacing:0.005em; color:var(--text);
   text-transform:none; margin-top:8px; font-weight:400; line-height:1.4; }
 .target { display:flex; align-items:stretch; gap:18px; padding:14px 20px 14px 18px;
@@ -1532,7 +1534,8 @@ st.markdown(
     <div class="topbar">
       <a class="brand brand--link" href="?reset=1" target="_self">
         <div>
-          <div class="brand__title"><span class="accent">ÖSTERREICHISCHE STAATSMEISTERSCHAFT 2026!</span> Wer ist qualifiziert?<span class="beta">BETA</span></div>
+          <div class="brand__title"><span class="accent">ÖSTERREICHISCHE STAATSMEISTERSCHAFT!</span> Wer ist qualifiziert?<span class="beta">BETA</span></div>
+          <div class="brand__date">5.–6. September 2026</div>
           <div class="brand__sub">Alle Athlet:innen, die das Limit erreicht haben — hier zusammengefasst.</div>
         </div>
       </a>
