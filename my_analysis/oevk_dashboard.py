@@ -61,8 +61,13 @@ THEME_CSS = """
   --r-sm:6px; --r-md:10px; --r-lg:14px; --r-xl:18px;
 }
 
-/* Streamlit chrome */
-#MainMenu, header[data-testid="stHeader"], footer {visibility:hidden; height:0;}
+/* Streamlit chrome — Header bleibt sichtbar (enthält den Sidebar-Expand-Button!).
+   Wir machen ihn nur transparent + entfernen Menü/Footer. */
+#MainMenu, footer {visibility:hidden; height:0;}
+header[data-testid="stHeader"] { background:transparent !important; }
+header[data-testid="stHeader"] [data-testid="stToolbar"],
+header[data-testid="stHeader"] [data-testid="stMainMenu"],
+header[data-testid="stHeader"] [data-testid="stStatusWidget"] { display:none !important; }
 .stApp {
   background:
     radial-gradient(1200px 480px at 18% -10%, rgba(201,174,91,0.06), transparent 60%),
@@ -285,11 +290,11 @@ a.nm-link:hover { color:var(--gold-bright) !important; }
   text-decoration:none; white-space:nowrap; }
 .profile-close:hover { color:var(--gold-bright); border-color:var(--gold-dim); }
 .profile-note { font-family:var(--font-mono); font-size:10px; color:var(--text-3); margin-top:10px; opacity:0.8; }
-/* Streamlit Cloud "View source on GitHub"-Badge + Toolbar verstecken */
+/* Streamlit Cloud "View source on GitHub"-Badge + Toolbar verstecken.
+   WICHTIG: NIEMALS header[data-testid="stHeader"] hier hinzufügen — der enthält den
+   Sidebar-Expand-Button (»). */
 [data-testid="stToolbar"],
 [data-testid="stDecoration"],
-[data-testid="stHeader"],
-header[data-testid="stHeader"],
 .viewerBadge_container__1QSob,
 .viewerBadge_container__r5tak,
 .viewerBadge_link__1S137,
@@ -308,37 +313,72 @@ footer { display: none !important; visibility: hidden !important; }
 [data-testid="stMain"] [data-testid="stVerticalBlock"] {
   gap: 28px !important;
 }
-/* Sanfte Fold-Animation für die Sidebar (gesteuert via JS-Klassentoggle 'oevk-folded') */
-[data-testid="stSidebar"], section[data-testid="stSidebar"], aside[data-testid="stSidebar"] {
-  transition: transform 320ms cubic-bezier(.4,0,.2,1),
-              min-width 320ms cubic-bezier(.4,0,.2,1),
-              width 320ms cubic-bezier(.4,0,.2,1),
-              opacity 200ms ease 80ms !important;
+/* st.markdown-Wrapper um eingebettete Style-Tags visuell unsichtbar machen
+   (verhindert Vertical Jump bei conditional CSS-Injection). */
+[data-testid="stMarkdown"]:has(> [data-testid="stMarkdownContainer"] > style:only-child),
+[data-testid="stMarkdown"]:has(style:only-child) {
+  margin:0 !important; padding:0 !important; min-height:0 !important; height:0 !important;
+  display:none !important;
 }
-[data-testid="stSidebar"].oevk-folded,
-section[data-testid="stSidebar"].oevk-folded,
-aside[data-testid="stSidebar"].oevk-folded {
-  transform: translateX(-100%) !important;
-  min-width: 0 !important; width: 0 !important; max-width: 0 !important;
-  opacity: 0 !important; pointer-events: none !important;
-}
-[data-testid="stMain"], section[data-testid="stMain"] {
-  transition: margin-left 320ms cubic-bezier(.4,0,.2,1);
-}
-/* Sidebar dauerhaft sichtbar — Fold-Funktion vorübergehend entfernt */
+/* Sidebar — Default: 296 px Expanded. Folded-State wird via Python conditional CSS gesetzt. */
 [data-testid="stSidebar"], section[data-testid="stSidebar"], aside[data-testid="stSidebar"] {
   display:block !important; visibility:visible !important; opacity:1 !important;
-  transform:none !important;
+  transform:none !important; margin-left:0 !important;
   min-width:296px !important; width:296px !important; max-width:296px !important;
-  margin-left:0 !important;
+  transition: min-width .25s ease, width .25s ease, max-width .25s ease !important;
 }
 [data-testid="stSidebar"] > div:first-child {
-  transform:none !important; min-width:296px !important; width:296px !important;
+  min-width:296px !important; width:296px !important;
 }
+/* Sidebar-Header bündig nach oben — kein Default-Padding */
+[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
+  padding-top:8px !important;
+}
+[data-testid="stSidebar"] [data-testid="stSidebarHeader"] { padding:0 !important; height:0 !important; }
+
+/* Toggle-Button (sb_toggle_btn) — Goldpille, oben rechts. Adressiert via key-Klasse. */
+.st-key-sb_toggle_btn { margin:0 0 8px 0 !important; padding:0 !important; }
+.st-key-sb_toggle_btn [data-testid="stButton"] {
+  display:flex !important; justify-content:flex-end !important; width:100% !important;
+}
+body.sb-folded .st-key-sb_toggle_btn [data-testid="stButton"] {
+  justify-content:center !important;
+}
+[data-testid="stSidebar"] .st-key-sb_toggle_btn [data-testid="stButton"] button {
+  background:linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 100%) !important;
+  border:1px solid var(--gold-bright) !important; border-radius:50% !important;
+  color:#0B0B0C !important; font-family:var(--font-mono) !important; font-size:20px !important;
+  font-weight:700 !important; line-height:1 !important; letter-spacing:0 !important;
+  width:42px !important; min-width:42px !important; min-height:42px !important; height:42px !important;
+  padding:0 !important; margin:0 !important; text-transform:none !important;
+  box-shadow:0 4px 14px rgba(201,174,91,0.45), inset 0 1px 0 rgba(255,255,255,0.35) !important;
+  transition:transform .15s ease, box-shadow .15s ease, filter .15s ease !important;
+}
+[data-testid="stSidebar"] .st-key-sb_toggle_btn [data-testid="stButton"] button:hover {
+  filter:brightness(1.10) !important; transform:scale(1.06);
+  box-shadow:0 6px 22px rgba(201,174,91,0.6), inset 0 1px 0 rgba(255,255,255,0.45) !important;
+  background:linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 100%) !important;
+  color:#0B0B0C !important; border-color:var(--gold-bright) !important;
+}
+[data-testid="stSidebar"] .st-key-sb_toggle_btn [data-testid="stButton"] button:focus,
+[data-testid="stSidebar"] .st-key-sb_toggle_btn [data-testid="stButton"] button:focus-visible,
+[data-testid="stSidebar"] .st-key-sb_toggle_btn [data-testid="stButton"] button:active {
+  background:linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 100%) !important;
+  border:1px solid var(--gold-bright) !important; color:#0B0B0C !important;
+  box-shadow:0 4px 14px rgba(201,174,91,0.45), inset 0 1px 0 rgba(255,255,255,0.35) !important;
+  outline:none !important;
+}
+[data-testid="stSidebar"] .st-key-sb_toggle_btn [data-testid="stButton"] button:active { transform:scale(0.96); }
+[data-testid="stSidebar"] .st-key-sb_toggle_btn [data-testid="stButton"] button p,
+[data-testid="stSidebar"] .st-key-sb_toggle_btn [data-testid="stButton"] button span,
+[data-testid="stSidebar"] .st-key-sb_toggle_btn [data-testid="stButton"] button div {
+  margin:0 !important; line-height:1 !important; color:#0B0B0C !important; font-size:20px !important;
+}
+/* Streamlits eigene Collapse/Expand-Knöpfe verstecken — wir steuern den Fold selbst */
 [data-testid="stSidebarCollapseButton"],
+[data-testid="stExpandSidebarButton"],
 [data-testid="stSidebarCollapsedControl"],
-[data-testid="collapsedControl"],
-button[kind="header"][data-testid="baseButton-headerNoPadding"] {
+[data-testid="collapsedControl"] {
   display:none !important; visibility:hidden !important;
 }
 /* Sidebar Header: FILTER-Kicker + Live-Scope-Counter */
@@ -761,6 +801,76 @@ div[data-testid="stButton"] > button.filter-row,
 }
 [data-testid="stSidebar"] [data-testid="stCheckbox"] label[data-checked="true"] svg {
   fill:var(--gold) !important;
+}
+
+/* ============================================================
+   MOBILE (≤ 640 px) — kompakte Meta-Blöcke + Karten-Tabelle
+   ============================================================ */
+@media (max-width:640px) {
+  /* Weniger Innenabstand, engerer Block-Rhythmus */
+  [data-testid="stMain"] .block-container,
+  .block-container { padding-left:0.8rem !important; padding-right:0.8rem !important; padding-top:0.6rem !important; }
+  [data-testid="stMain"] [data-testid="stVerticalBlock"] { gap:16px !important; }
+
+  /* Header kompakter */
+  .topbar { flex-direction:column; gap:8px; padding:10px 14px; }
+  .brand { margin-right:0 !important; }
+  .brand__title { font-size:17px !important; line-height:1.25 !important; }
+  .brand__title .beta { font-size:9px !important; padding:1px 5px !important; margin-left:6px !important; }
+  .brand__date { font-size:12px !important; }
+  .brand__sub { font-size:12px !important; }
+  .target { display:none !important; }
+
+  /* Disclaimer kompakter, linksbündig */
+  .dev-banner { font-size:11px !important; padding:8px 10px !important; text-align:left !important;
+    line-height:1.35 !important; }
+
+  /* Status-Pills: enges 2×2-Raster statt voller Stapel */
+  .data-status { grid-template-columns:1fr 1fr !important; gap:8px !important; }
+  .status-pill { flex-direction:column !important; align-items:center !important; gap:2px !important;
+    padding:7px 8px !important; }
+  .status-pill .lab { font-size:9px !important; }
+  .status-pill .val { font-size:11px !important; }
+
+  /* KPI-Karten: eine kompakte Reihe mit 3 Karten */
+  .kpis, .kpis--3 { grid-template-columns:repeat(3,1fr) !important; gap:8px !important; }
+  .kpi { padding:10px 8px !important; }
+  .kpi__label { font-size:9.5px !important; letter-spacing:0.06em !important; margin-bottom:4px !important; }
+  .kpi__value { font-size:24px !important; }
+  .kpi__foot { font-size:8.5px !important; }
+
+  /* CSV-Export-Button volle Breite */
+  [data-testid="stDownloadButton"] > button { width:100% !important; }
+
+  /* --- Tabelle → Karten-Layout --- */
+  table.tbl thead { display:none !important; }
+  .tablescroll { overflow-x:visible !important; }
+  table.tbl, table.tbl tbody, table.tbl tr, table.tbl td { display:block !important; width:100% !important; }
+  table.tbl tr {
+    border:1px solid var(--line) !important; border-radius:var(--r-md) !important;
+    margin:0 0 12px 0 !important; padding:12px 14px !important; background:var(--surface) !important;
+  }
+  table.tbl tr.row--q { border-left:3px solid var(--green) !important; }
+  table.tbl tr.row--w { border-left:3px solid var(--amber) !important; }
+  table.tbl tbody tr:hover td { background:transparent !important; }
+  table.tbl td {
+    display:flex !important; justify-content:space-between !important; align-items:center !important;
+    gap:14px !important; padding:5px 0 !important; border:none !important;
+    text-align:right !important; white-space:normal !important; box-shadow:none !important;
+  }
+  table.tbl td::before {
+    content:attr(data-label); color:var(--text-3); font-family:var(--font-mono);
+    font-size:10px; letter-spacing:0.08em; text-transform:uppercase; text-align:left;
+    flex:0 0 auto; white-space:nowrap;
+  }
+  table.tbl td.cell-name {
+    justify-content:flex-start !important; font-size:17px !important; font-weight:700 !important;
+    padding:0 0 8px 0 !important; margin-bottom:6px !important;
+    border-bottom:1px solid var(--line-soft) !important;
+  }
+  table.tbl td.cell-name::before { display:none !important; }
+  table.tbl td.rank { display:none !important; }
+  table.tbl tr.row--q td:first-child, table.tbl tr.row--w td:first-child { box-shadow:none !important; }
 }
 </style>
 """
@@ -1394,6 +1504,46 @@ st.set_page_config(
 )
 inject_custom_css()
 
+# --- Sidebar-Fold conditional CSS (möglichst FRÜH injizieren, vor jeder sichtbaren Komponente,
+# damit der unsichtbare st.markdown-Wrapper keinen Layout-Jump im Hauptbereich verursacht). ---
+if st.session_state.get("sb_collapsed", False):
+    st.markdown(
+        """
+        <style>
+        [data-testid="stSidebar"], section[data-testid="stSidebar"], aside[data-testid="stSidebar"] {
+          min-width:64px !important; width:64px !important; max-width:64px !important;
+          overflow:hidden !important;
+        }
+        [data-testid="stSidebar"] > div:first-child,
+        [data-testid="stSidebar"] [data-testid="stSidebarContent"],
+        [data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
+          min-width:64px !important; width:64px !important; max-width:64px !important;
+          overflow:hidden !important;
+        }
+        [data-testid="stSidebar"] [data-testid="stSelectbox"],
+        [data-testid="stSidebar"] [data-testid="stCheckbox"],
+        [data-testid="stSidebar"] [data-testid="stMarkdown"],
+        [data-testid="stSidebar"] [data-testid="stMarkdownContainer"],
+        [data-testid="stSidebar"] [data-testid="stWidgetLabel"],
+        [data-testid="stSidebar"] .sb-divider,
+        [data-testid="stSidebar"] .sb-kicker,
+        [data-testid="stSidebar"] .sb-scope,
+        [data-testid="stSidebar"] .lim-card,
+        [data-testid="stSidebar"] label,
+        [data-testid="stSidebar"] [data-testid="stElementContainer"]:not(.st-key-sb_toggle_btn) {
+          display:none !important; visibility:hidden !important;
+        }
+        [data-testid="stSidebar"] .st-key-sb_toggle_btn,
+        [data-testid="stSidebar"] .st-key-sb_toggle_btn * {
+          display:revert !important; visibility:visible !important;
+        }
+        [data-testid="stSidebar"] .st-key-sb_toggle_btn { display:block !important; }
+        .st-key-sb_toggle_btn [data-testid="stButton"] { justify-content:center !important; }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
 # --- Filter-Zustand aus URL-Parametern ?ft=/?fn=/?fs=/?fw=/?fm=/?foq= übernehmen ---
 # Wird VOR PROFILE_MODE ausgeführt, damit auch der Back-Button im Profilmodus die
 # Filterwerte über _filter_qs() in seine href weitergeben kann.
@@ -1688,6 +1838,17 @@ for _wkey, _pkey in _PERSIST_PAIRS:
         st.session_state[_wkey] = st.session_state[_pkey]
 
 
+# --- Sidebar Fold-Toggle (eigene Steuerung; lässt einen 64px-Streifen sichtbar) ---
+if "sb_collapsed" not in st.session_state:
+    st.session_state["sb_collapsed"] = False
+
+def _toggle_sb():
+    st.session_state["sb_collapsed"] = not st.session_state["sb_collapsed"]
+
+# Conditional fold-CSS wird oben (direkt nach inject_custom_css) injiziert — kein Layout-Jump.
+_sb_label = "»" if st.session_state["sb_collapsed"] else "«"
+st.sidebar.button(_sb_label, key="sb_toggle_btn", on_click=_toggle_sb)
+
 
 team_options = sorted(data["Team"].dropna().unique())
 
@@ -1862,19 +2023,23 @@ n_qual = len(_qual_unique)
 n_qual_f = int((_qual_unique["Sex"].astype(str).str.upper() == "F").sum())
 n_qual_m = int((_qual_unique["Sex"].astype(str).str.upper() == "M").sum())
 
-_qual_total = max(n_qual_f + n_qual_m, 1)
-_qual_pct_f = round(n_qual_f / _qual_total * 100)
-_qual_pct_m = 100 - _qual_pct_f if (n_qual_f + n_qual_m) > 0 else 0
-qual_foot = (
-    f'<span style="color:var(--gold);font-weight:600">Frauen · {n_qual_f} ({_qual_pct_f}%)</span>'
-    f'<span style="opacity:0.4;margin:0 8px">|</span>'
-    f'<span style="color:var(--gold);font-weight:600">Männer · {n_qual_m} ({_qual_pct_m}%)</span>'
-)
-
-# Geschlechterverteilung (alle Athlet:innen im Filterscope) — als Fuß in der Athlet:innen-Karte
+# Gesamt-Teilnehmer:innen je Geschlecht (Basis: alle gefilterten Athlet:innen)
 _all_unique = df_filtered.drop_duplicates("Name")
 n_f = int((_all_unique["Sex"].astype(str).str.upper() == "F").sum())
 n_m = int((_all_unique["Sex"].astype(str).str.upper() == "M").sum())
+
+# Quote der Qualifizierten an allen Teilnehmer:innen je Geschlecht
+def _pct(part, total):
+    return round(part / total * 100, 1) if total else 0
+_qf_rate = _pct(n_qual_f, n_f)
+_qm_rate = _pct(n_qual_m, n_m)
+qual_foot = (
+    f'<span style="color:var(--gold);font-weight:600">Frauen · {n_qual_f} / {n_f} ({_qf_rate}%)</span>'
+    f'<span style="opacity:0.4;margin:0 8px">|</span>'
+    f'<span style="color:var(--gold);font-weight:600">Männer · {n_qual_m} / {n_m} ({_qm_rate}%)</span>'
+)
+
+# Geschlechterverteilung (alle Athlet:innen im Filterscope) — als Fuß in der Athlet:innen-Karte
 _ath_total = max(n_f + n_m, 1)
 _ath_pct_f = round(n_f / _ath_total * 100)
 _ath_pct_m = 100 - _ath_pct_f if (n_f + n_m) > 0 else 0
@@ -1991,20 +2156,20 @@ if not table_df.empty:
         _name_link = f'<a class="nm nm-link" href="{_athlete_href}" target="_self">{esc(r.Name)}</a>'
         _q_rows.append(
             f'<tr class="{row_cls}">'
-            f'<td class="num rank">{i}</td>'
-            f'<td class="cell-name l">{_name_link}</td>'
-            f'<td><span class="sex-tag">{sex_display(r.Sex)}</span></td>'
-            f'<td class="num mono">{fmt_age(r.Age)}</td>'
-            f'<td class="num mono">{fmt_kg(r.BodyweightKg, 2)}</td>'
-            f'<td class="mono">{wc_label(r.WeightClassKg)}</td>'
-            f'<td class="num mono-strong">{fmt_kg(r.TotalKg)}</td>'
-            f'<td class="num mono">{fmt_sbd(getattr(r, "Best3SquatKg", None), getattr(r, "Best3BenchKg", None), getattr(r, "Best3DeadliftKg", None))}</td>'
-            f'<td class="num mono">{fmt_kg(r.smLimit)}</td>'
-            f'<td><span class="diff {diff_class(r.Differenz)}">{fmt_diff(r.Differenz)}</span></td>'
-            f'<td class="num gold-strong">{fmt_kg(r.GL_Points, 2)}</td>'
-            f'<td class="l">{esc(r.Team)}</td>'
-            f'<td class="l">{esc(r.MeetName)}</td>'
-            f'<td class="mono">{fmt_date(r.Date)}</td></tr>'
+            f'<td class="num rank" data-label="">{i}</td>'
+            f'<td class="cell-name l" data-label="Name">{_name_link}</td>'
+            f'<td data-label="Geschlecht"><span class="sex-tag">{sex_display(r.Sex)}</span></td>'
+            f'<td class="num mono" data-label="Alter">{fmt_age(r.Age)}</td>'
+            f'<td class="num mono" data-label="Körpergewicht">{fmt_kg(r.BodyweightKg, 2)}</td>'
+            f'<td class="mono" data-label="Gewichtsklasse">{wc_label(r.WeightClassKg)}</td>'
+            f'<td class="num mono-strong" data-label="Total">{fmt_kg(r.TotalKg)}</td>'
+            f'<td class="num mono" data-label="SBD">{fmt_sbd(getattr(r, "Best3SquatKg", None), getattr(r, "Best3BenchKg", None), getattr(r, "Best3DeadliftKg", None))}</td>'
+            f'<td class="num mono" data-label="SM Limit">{fmt_kg(r.smLimit)}</td>'
+            f'<td data-label="Differenz"><span class="diff {diff_class(r.Differenz)}">{fmt_diff(r.Differenz)}</span></td>'
+            f'<td class="num gold-strong" data-label="IPF GL Punkte">{fmt_kg(r.GL_Points, 2)}</td>'
+            f'<td class="l" data-label="Verein">{esc(r.Team)}</td>'
+            f'<td class="l" data-label="Wettkampf">{esc(r.MeetName)}</td>'
+            f'<td class="mono" data-label="Wettkampfdatum">{fmt_date(r.Date)}</td></tr>'
         )
     st.markdown(
         f'<div class="tablecard" id="qual-tablecard"><div class="tablescroll"><table class="tbl" id="qual-table">'
