@@ -579,12 +579,49 @@ button[data-testid="stExpandSidebarButton"] * {
   font-weight:600 !important; letter-spacing:0.10em !important;
   text-transform:uppercase !important; color:var(--text) !important;
 }
-[data-testid="stTabs"] [data-baseweb="select"] > div,
+/* Selectboxes: einfacher gold-dim Rahmen NUR am äußeren Wrapper.
+   Das innere versteckte combobox-<input> darf KEINEN border haben — wäre sonst
+   als 2 px breiter goldener Streifen am linken Rand sichtbar. */
+[data-testid="stTabs"] [data-baseweb="select"] > div {
+  background:var(--bg-elev) !important;
+  border:1px solid var(--gold-dim) !important;
+  color:#FFFFFF !important;
+}
 [data-testid="stTabs"] [data-testid="stSelectbox"] input {
-  background:var(--bg-elev) !important; border-color:var(--line) !important;
+  background:transparent !important; background-color:transparent !important;
+  border:none !important; box-shadow:none !important;
+  color:#FFFFFF !important;
 }
 [data-testid="stTabs"] [data-baseweb="select"] > div:hover {
-  border-color:var(--gold-dim) !important;
+  border-color:var(--gold) !important;
+}
+/* NumberInput: Streamlit packt Input + +/- Buttons in einen Wrapper DIV (direkter
+   Child von [data-testid="stNumberInput"], geschwister zum LABEL). Den gold-dim
+   Rahmen auf DEN Wrapper setzen → Outline wickelt sich wie bei den Selectboxen
+   um den gesamten Filter inkl. Buttons, mit gleichem border-radius. */
+[data-testid="stTabs"] [data-testid="stNumberInput"] > div:not([class*="stWidgetLabel"]):not(label) {
+  background:var(--bg-elev) !important;
+  border:1px solid var(--gold-dim) !important;
+  border-radius:8px !important;
+  color:#FFFFFF !important;
+}
+[data-testid="stTabs"] [data-testid="stNumberInput"] > div:not([class*="stWidgetLabel"]):not(label):hover,
+[data-testid="stTabs"] [data-testid="stNumberInput"] > div:not([class*="stWidgetLabel"]):not(label):focus-within {
+  border-color:var(--gold) !important;
+}
+/* Innere Container, base-input, input, Buttons → keine eigenen Borders / Backgrounds,
+   damit nur der einzige gold-dim-Rahmen außen sichtbar bleibt. */
+[data-testid="stTabs"] [data-testid="stNumberInput"] [data-baseweb="input"],
+[data-testid="stTabs"] [data-testid="stNumberInput"] [data-baseweb="base-input"],
+[data-testid="stTabs"] [data-testid="stNumberInput"] input,
+[data-testid="stTabs"] [data-testid="stNumberInput"] button {
+  background:transparent !important; background-color:transparent !important;
+  border:none !important; box-shadow:none !important;
+  color:#FFFFFF !important;
+}
+[data-testid="stTabs"] [data-testid="stNumberInput"] button svg,
+[data-testid="stTabs"] [data-testid="stNumberInput"] button path {
+  fill:#FFFFFF !important; color:#FFFFFF !important;
 }
 /* Ausgewählter Wert + Placeholder innerhalb des Selectbox-Feldes — vollflächig weiß
    (Streamlits Baseweb-Placeholder hat sonst opacity:0.6 → wirkt grau) */
@@ -599,6 +636,9 @@ button[data-testid="stExpandSidebarButton"] * {
   color:#FFFFFF !important; fill:#FFFFFF !important; opacity:1 !important;
 }
 [data-testid="stTabs"] [data-testid="stSelectbox"] { max-width:260px; margin:4px 6px 10px 0; }
+/* Filter-Spalten im Bestenliste/Rekorde-Tab kompakt nebeneinander: schmaler Gap */
+[data-testid="stTabs"] [data-testid="stHorizontalBlock"] { gap:10px !important; }
+[data-testid="stTabs"] [data-testid="stColumn"] { padding-left:0 !important; padding-right:0 !important; }
 /* Trennlinie offiziell ↔ OPL */
 .tbl td.opl-sep, .tbl th.opl-sep { border-left:1px solid var(--gold-dim); }
 /* Rekorde-Tabellen: feste Spaltenausrichtung über alle 4 Disziplinen hinweg */
@@ -652,6 +692,11 @@ a.back-btn .arr { font-size:18px; line-height:1; margin-right:2px; color:#111111
 table.tbl tbody td { padding:11px 14px; border-bottom:1px solid var(--line-soft); white-space:nowrap; color:var(--text); text-align:center; }
 table.tbl tbody tr:last-child td { border-bottom:none; }
 table.tbl tbody tr:hover td { background:var(--surface-3); }
+table.tbl tbody tr.tbl-section td { background:rgba(201,174,91,0.10); color:var(--gold-bright);
+  font-family:var(--font-mono); font-size:12.5px; letter-spacing:0.10em;
+  text-transform:uppercase; padding:8px 12px; font-weight:700;
+  border-top:1px solid var(--gold-dim); border-bottom:1px solid var(--gold-dim); }
+table.tbl tbody tr.tbl-section:hover td { background:rgba(201,174,91,0.14); }
 tr.row--q td { background:transparent; }
 tr.row--q:hover td { background:var(--surface-3); }
 tr.row--q td:first-child { box-shadow:inset 3px 0 0 var(--green); }
@@ -1162,20 +1207,78 @@ def load_data() -> pd.DataFrame:
     if not all_entries:
         return pd.DataFrame()
     out = pd.concat(all_entries, ignore_index=True)
-    # _intl-Flag: True nur für EM/WM-Zeilen, sonst False (OeVK-Inlandsmeets)
+    return _fix_teams(out)
+
+
+def _fix_teams(out: pd.DataFrame) -> pd.DataFrame:
+    """Verein-Daten konsistent machen:
+       1) Für EM/WM-Zeilen (_intl=True) **und Länderpokal-Meets** (OeVK-Wettkampf, aber
+          mit Fun-Team-Namen wie "Team Vorarlberg" / "OFF1" / "Supakraft Overshoot Gang"):
+          Team mit dem zum Wettkampfdatum gültigen Verein aus der **regulären
+          Inlandshistorie** überschreiben.
+       2) Übrige leere Team-Felder aus dem zuletzt bekannten Team derselben Person füllen.
+    """
+    if out.empty or "Team" not in out.columns:
+        return out
     if "_intl" not in out.columns:
         out["_intl"] = False
     else:
         out["_intl"] = out["_intl"].fillna(False).astype(bool)
-    # Verein-Backfill: leere Team-Werte (typisch bei EM/WM-Zeilen) aus anderen Einträgen
-    # derselben Person übernehmen, damit Verein-Auswertungen konsistent bleiben.
-    def _pick_team(series: pd.Series):
-        s = series.dropna()
-        s = s[s.astype(str).str.strip().ne("") & s.astype(str).str.lower().ne("nan")]
-        return s.iloc[0] if not s.empty else None
-    _team_by_name = out.groupby("Name")["Team"].apply(_pick_team)
-    _empty_team = out["Team"].isna() | out["Team"].astype(str).str.strip().eq("") | out["Team"].astype(str).str.lower().eq("nan")
-    out.loc[_empty_team, "Team"] = out.loc[_empty_team, "Name"].map(_team_by_name)
+
+    # Länderpokal-Zeilen erkennen (OeVK-Inland, aber Team-Spalte hat Fun-Namen)
+    _meetname = out.get("MeetName", pd.Series([""] * len(out))).astype(str)
+    _is_laenderpokal = _meetname.str.contains("Länderpokal", case=False, na=False) | \
+                        _meetname.str.contains("Laenderpokal", case=False, na=False)
+    out["_lp"] = _is_laenderpokal.fillna(False).astype(bool)
+
+    # "Reguläre" Domestik-Einträge: nicht intl UND nicht Länderpokal, mit nicht-leerem Team
+    regular = out[(~out["_intl"].astype(bool)) & (~out["_lp"].astype(bool))].copy()
+    reg_team = regular["Team"]
+    reg_keep = reg_team.notna() & reg_team.astype(str).str.strip().ne("") & reg_team.astype(str).str.lower().ne("nan")
+    regular = regular[reg_keep]
+    regular["_dt"] = pd.to_datetime(regular.get("Date"), errors="coerce")
+    regular = regular[regular["_dt"].notna()]
+    pairs_by_name: dict = {}
+    for nm, grp in regular.groupby("Name"):
+        pairs_by_name[nm] = sorted(zip(grp["_dt"].tolist(), grp["Team"].tolist()))
+
+    def _team_at(name, mdate):
+        pairs = pairs_by_name.get(name)
+        if not pairs:
+            return None
+        dt = pd.to_datetime(mdate, errors="coerce")
+        if pd.isna(dt):
+            return pairs[-1][1]
+        prior = [t for d, t in pairs if d <= dt]
+        return prior[-1] if prior else pairs[0][1]
+
+    # Schritt 1 — EM/WM- und Länderpokal-Zeilen überschreiben
+    override_idx = out.index[out["_intl"].astype(bool) | out["_lp"].astype(bool)]
+    for idx in override_idx:
+        new_t = _team_at(out.at[idx, "Name"], out.at[idx, "Date"])
+        if new_t:
+            out.at[idx, "Team"] = new_t
+
+    # Schritt 2 — restliche Empties füllen: bevorzugt aus regulären Domestik-Einträgen,
+    # damit Länderpokal-Fun-Names nicht als "Verein" landen.
+    if pairs_by_name:
+        # neuester regulärer Team-Wert je Person
+        latest_by_name = {nm: pairs[-1][1] for nm, pairs in pairs_by_name.items()}
+    else:
+        latest_by_name = {}
+    def _pick(s):
+        s2 = s.dropna()
+        s2 = s2[s2.astype(str).str.strip().ne("") & s2.astype(str).str.lower().ne("nan")]
+        return s2.iloc[0] if not s2.empty else None
+    fallback_by_name = out.groupby("Name")["Team"].apply(_pick)
+    empty = (
+        out["Team"].isna()
+        | out["Team"].astype(str).str.strip().eq("")
+        | out["Team"].astype(str).str.lower().eq("nan")
+    )
+    out.loc[empty, "Team"] = out.loc[empty, "Name"].map(
+        lambda nm: latest_by_name.get(nm) or fallback_by_name.get(nm)
+    )
     return out
 
 
@@ -1218,20 +1321,7 @@ def load_full_history() -> pd.DataFrame:
     if not all_entries:
         return pd.DataFrame()
     out = pd.concat(all_entries, ignore_index=True)
-    if "_intl" not in out.columns:
-        out["_intl"] = False
-    else:
-        out["_intl"] = out["_intl"].fillna(False).astype(bool)
-    # Team-Backfill: leere Team-Werte aus anderen Einträgen der gleichen Person füllen,
-    # damit das Athlet:innen-Profil bei EM/WM-Zeilen den Verein anzeigt.
-    def _pick_team_h(series: pd.Series):
-        s = series.dropna()
-        s = s[s.astype(str).str.strip().ne("") & s.astype(str).str.lower().ne("nan")]
-        return s.iloc[0] if not s.empty else None
-    _team_by_name = out.groupby("Name")["Team"].apply(_pick_team_h)
-    _empty_team = out["Team"].isna() | out["Team"].astype(str).str.strip().eq("") | out["Team"].astype(str).str.lower().eq("nan")
-    out.loc[_empty_team, "Team"] = out.loc[_empty_team, "Name"].map(_team_by_name)
-    return out
+    return _fix_teams(out)
 
 
 import unicodedata as _ud
@@ -2017,6 +2107,13 @@ if PROFILE_MODE:
         if _rec_sex_back:
             _extra += "&rec_sex=" + _urlquote(str(_rec_sex_back))
         _back_qs = (_extra + "&" + _back_qs) if _back_qs else _extra
+    elif _from_param == "topn":
+        _extra = "tab=topn"
+        for _k in ("topn_metric", "topn_sex", "topn_ac", "topn_wc", "topn_n"):
+            _v = st.query_params.get(_k)
+            if _v:
+                _extra += f"&{_k}=" + _urlquote(str(_v))
+        _back_qs = (_extra + "&" + _back_qs) if _back_qs else _extra
     _back_href = "?" + _back_qs if _back_qs else "?"
     st.markdown(
         f'''
@@ -2454,43 +2551,74 @@ if _url_rec_sex and f"rec_sex_v{_GEN}" not in st.session_state:
     if _url_rec_sex in ("F", "M"):
         st.session_state[f"rec_sex_v{_GEN}"] = (_url_rec_sex, "Frauen" if _url_rec_sex == "F" else "Männer")
 
-_tab_quali, _tab_records = st.tabs(["Qualifikation", "Rekorde"])
+# Bestenliste-Tab Rückkehr-Zustand aus URL
+_url_topn_metric = st.query_params.get("topn_metric")
+_url_topn_sex = st.query_params.get("topn_sex")
+_url_topn_ac = st.query_params.get("topn_ac")
+_url_topn_wc = st.query_params.get("topn_wc")
+_url_topn_n = st.query_params.get("topn_n")
+_METRIC_OPTS = ["IPF GL Punkte", "Total kg pro Gew.kl."]
+if _url_topn_metric and f"topn_metric_v{_GEN}" not in st.session_state:
+    if _url_topn_metric == "gl":
+        st.session_state[f"topn_metric_v{_GEN}"] = _METRIC_OPTS[0]
+    elif _url_topn_metric == "total":
+        st.session_state[f"topn_metric_v{_GEN}"] = _METRIC_OPTS[1]
+if _url_topn_sex and f"topn_sex_v{_GEN}" not in st.session_state:
+    if _url_topn_sex in ("F", "M"):
+        st.session_state[f"topn_sex_v{_GEN}"] = (_url_topn_sex, "Frauen" if _url_topn_sex == "F" else "Männer")
+if _url_topn_ac and f"topn_age_v{_GEN}" not in st.session_state:
+    if _url_topn_ac in ("Jugend", "Junioren", "Open", "AK1", "AK2", "AK3", "AK4"):
+        st.session_state[f"topn_age_v{_GEN}"] = _url_topn_ac
+if _url_topn_wc and f"topn_wc_v{_GEN}" not in st.session_state:
+    try:
+        _tsex, _twc = str(_url_topn_wc).split("-", 1)
+        if (_tsex, _twc) in WC_OPTIONS:
+            st.session_state[f"topn_wc_v{_GEN}"] = (_tsex, _twc)
+    except Exception:
+        pass
+if _url_topn_n and f"topn_n_v{_GEN}" not in st.session_state:
+    try:
+        _n_val = int(_url_topn_n)
+        if 1 <= _n_val <= 5000:
+            st.session_state[f"topn_n_v{_GEN}"] = _n_val
+    except Exception:
+        pass
 
-# Wenn URL tab=records: nach dem Rendern programmatisch den Rekorde-Tab klicken.
-if _url_tab == "records":
+_tab_quali, _tab_records, _tab_topn = st.tabs(["Qualifikation", "Rekorde", "Bestenliste"])
+
+# Wenn URL tab=records oder tab=topn: nach dem Rendern programmatisch den jeweiligen Tab klicken.
+if _url_tab in ("records", "topn"):
+    _tab_idx = 1 if _url_tab == "records" else 2
     _components.html(
-        """
+        f"""
 <script>
-(function () {
+(function () {{
+  const TARGET = {_tab_idx};
   const doc = window.parent.document;
-  function trySwitch() {
+  function trySwitch() {{
     const tabs = doc.querySelectorAll('[data-testid="stTabs"] [role="tab"]');
-    if (tabs.length < 2) return false;
-    if (tabs[1].getAttribute('aria-selected') !== 'true') tabs[1].click();
+    if (tabs.length <= TARGET) return false;
+    if (tabs[TARGET].getAttribute('aria-selected') !== 'true') tabs[TARGET].click();
     return true;
-  }
-  if (!trySwitch()) {
+  }}
+  if (!trySwitch()) {{
     let n = 0;
-    const id = setInterval(function () {
+    const id = setInterval(function () {{
       if (trySwitch() || ++n > 30) clearInterval(id);
-    }, 120);
-  }
-})();
+    }}, 120);
+  }}
+}})();
 </script>
         """,
         height=0,
     )
-    # URL-Parameter aufräumen, damit ein normales Sidebar-Rerun nicht erneut auf Rekorde springt
+    # URL-Parameter aufräumen, damit normales Sidebar-Rerun nicht erneut springt
     try:
-        del st.query_params["tab"]
-        if "rec_wc" in st.query_params:
-            del st.query_params["rec_wc"]
-        if "rec_ac" in st.query_params:
-            del st.query_params["rec_ac"]
-        if "rec_sex" in st.query_params:
-            del st.query_params["rec_sex"]
-        if "from" in st.query_params:
-            del st.query_params["from"]
+        for _p in ("tab", "from",
+                   "rec_wc", "rec_ac", "rec_sex",
+                   "topn_metric", "topn_sex", "topn_ac", "topn_wc", "topn_n"):
+            if _p in st.query_params:
+                del st.query_params[_p]
     except Exception:
         pass
 
@@ -2990,8 +3118,17 @@ with _tab_records:
     )
 
     # --- Filter: Gewichtsklasse + Altersklasse + Geschlecht direkt nebeneinander, gleichmäßig kompakt ---
-    _flt_a, _flt_b, _flt_c, _flt_spacer = st.columns([1, 1, 1, 3])
+    _flt_a, _flt_b, _flt_c, _flt_spacer = st.columns([1.4, 1.4, 1.4, 6], gap="small")
     with _flt_a:
+        _rc_sex_pair = st.selectbox(
+            "Geschlecht",
+            [("F", "Frauen"), ("M", "Männer")],
+            index=None,
+            format_func=lambda o: o[1],
+            placeholder="Alle Geschlechter",
+            key=f"rec_sex_v{_GEN}",
+        )
+    with _flt_b:
         _rc_wc_pair = st.selectbox(
             "Gewichtsklasse",
             WC_OPTIONS,
@@ -3000,22 +3137,13 @@ with _tab_records:
             placeholder="Alle Gewichtsklassen",
             key=f"rec_wc_v{_GEN}",
         )
-    with _flt_b:
+    with _flt_c:
         _rc_age = st.selectbox(
             "Altersklasse",
             ["Jugend", "Junioren", "Open", "AK1", "AK2", "AK3", "AK4"],
             index=None,
             placeholder="Alle Altersklassen",
             key=f"rec_age_v{_GEN}",
-        )
-    with _flt_c:
-        _rc_sex_pair = st.selectbox(
-            "Geschlecht",
-            [("F", "Frauen"), ("M", "Männer")],
-            index=None,
-            format_func=lambda o: o[1],
-            placeholder="Alle Geschlechter",
-            key=f"rec_sex_v{_GEN}",
         )
 
     _LIFT_EN2DE = {"Total": "Total", "Squat": "Kniebeugen",
@@ -3192,6 +3320,258 @@ with _tab_records:
         f'</em></div>',
         unsafe_allow_html=True,
     )
+
+# ============================================================
+# === Bestenliste — Top-N nach IPF GL Points / Total kg ======
+# ============================================================
+with _tab_topn:
+    _hist_topn = load_full_history()
+
+    # --- Header + CSV-Export ---
+    _topn_hdr_left, _topn_hdr_right = st.columns([4, 1], vertical_alignment="center")
+    with _topn_hdr_left:
+        st.markdown(
+            '<div class="section-head"><div>'
+            '<h2>Bestenliste · Österreichische Lifetime-Best-Performances</h2></div></div>',
+            unsafe_allow_html=True,
+        )
+
+    # Hilfetext
+    st.markdown(
+        '<div class="rec-help">'
+        '<span class="ico">ℹ</span>'
+        '<div>Pro Athlet:in nur die <b>beste Performance</b> aus allen verzeichneten '
+        'KDK-Wettkämpfen (OeVK domestik + EM/WM Raw). Sortierung nach '
+        '<b>IPF GL Punkten</b> (universeller, klassen- und geschlechtsübergreifender '
+        'Vergleich). Daten aus '
+        '<a href="https://www.openpowerlifting.org" target="_blank" rel="noopener" '
+        'style="color:var(--gold-bright);text-decoration:none">OpenPowerlifting</a> – '
+        'können fehlerhaft oder unvollständig sein.</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    # --- Filter-Strip ---
+    _tflt_b, _tflt_c, _tflt_d, _tflt_e, _tflt_sp = st.columns([1.4, 1.4, 1.4, 1, 6], gap="small")
+    with _tflt_b:
+        _topn_sex_pair = st.selectbox(
+            "Geschlecht",
+            [("F", "Frauen"), ("M", "Männer")],
+            index=None,
+            format_func=lambda o: o[1],
+            placeholder="Alle Geschlechter",
+            key=f"topn_sex_v{_GEN}",
+        )
+    with _tflt_c:
+        _topn_wc_pair = st.selectbox(
+            "Gewichtsklasse",
+            WC_OPTIONS,
+            index=None,
+            format_func=_fmt_wc_option,
+            placeholder="Alle Gewichtsklassen",
+            key=f"topn_wc_v{_GEN}",
+        )
+    with _tflt_d:
+        _topn_age = st.selectbox(
+            "Altersklasse",
+            ["Jugend", "Junioren", "Open", "AK1", "AK2", "AK3", "AK4"],
+            index=None,
+            placeholder="Alle Altersklassen",
+            key=f"topn_age_v{_GEN}",
+        )
+    with _tflt_e:
+        # Default 25, falls weder URL noch State etwas mitgegeben hat — vor dem Widget setzen,
+        # damit Streamlit nicht warnt (Widget-Default + session_state-Default kollidieren sonst).
+        if f"topn_n_v{_GEN}" not in st.session_state:
+            st.session_state[f"topn_n_v{_GEN}"] = 25
+        _topn_n = st.number_input(
+            "Anzahl",
+            min_value=1,
+            max_value=5000,
+            step=5,
+            key=f"topn_n_v{_GEN}",
+        )
+
+    _is_total_mode = False
+
+    # --- Datenaufbereitung ---
+    if _hist_topn.empty:
+        st.markdown('<div class="rec-empty">Keine Wettkampfdaten verfügbar.</div>',
+                    unsafe_allow_html=True)
+    else:
+        _d = _hist_topn.copy()
+        # Pflichtfilter
+        _d = _d[(_d.get("Equipment", "").astype(str) == "Raw")
+                & (_d.get("Event_Display", "").astype(str) == "KDK")]
+        _d["_bw"] = pd.to_numeric(_d.get("BodyweightKg"), errors="coerce")
+        _d["_tot"] = pd.to_numeric(_d.get("TotalKg"), errors="coerce")
+        _d["_gl"] = pd.to_numeric(_d.get("GL_Points"), errors="coerce")
+        _d = _d[(_d["_bw"] > 0) & (_d["_tot"] > 0)]
+        # Cross-class Rollup für Altersklasse-Filter
+        _AGE_ROLLUP_TOPN = {
+            "Jugend":   ["Jugend"],
+            "Junioren": ["Jugend", "Junioren"],
+            "Open":     ["Jugend", "Junioren", "Open", "AK1", "AK2", "AK3", "AK4"],
+            "AK1":      ["AK1"],
+            "AK2":      ["AK2"],
+            "AK3":      ["AK3"],
+            "AK4":      ["AK4"],
+        }
+        if _topn_age:
+            _allowed = _AGE_ROLLUP_TOPN.get(_topn_age, [_topn_age])
+            _d = _d[_d.get("AgeClass").astype(str).isin(_allowed)]
+        if _topn_sex_pair is not None:
+            _d = _d[_d.get("Sex").astype(str).str.upper().str[:1] == _topn_sex_pair[0]]
+        # Gewichtsklasse: nur im Total-Modus wirklich sinnvoll, aber wir respektieren ihn überall
+        if _topn_wc_pair is not None:
+            _sx_f, _wc_f = _topn_wc_pair
+            _d = _d[(_d.get("Sex").astype(str).str.upper().str[:1] == _sx_f)
+                    & (_d["WeightClassKg"].astype(str).map(wc_display) == _wc_f)]
+
+        # Lifetime-Best pro Athlet:in nach gewählter Metrik
+        _metric_col = "_tot" if _is_total_mode else "_gl"
+        _d = _d.sort_values(_metric_col, ascending=False).drop_duplicates("Name", keep="first")
+
+        # --- Querystring-Suffix für Profil-Links ---
+        _topn_link_suffix = "&from=topn"
+        if _topn_sex_pair is not None:
+            _topn_link_suffix += f"&topn_sex={_topn_sex_pair[0]}"
+        if _topn_age:
+            _topn_link_suffix += f"&topn_ac={_urlquote(_topn_age)}"
+        if _topn_wc_pair is not None:
+            _topn_link_suffix += f"&topn_wc={_urlquote(_topn_wc_pair[0] + '-' + _topn_wc_pair[1])}"
+        if _topn_n:
+            _topn_link_suffix += f"&topn_n={int(_topn_n)}"
+        _fqs_topn = _filter_qs()
+        if _fqs_topn:
+            _topn_link_suffix += "&" + _fqs_topn
+
+        # --- Tabelle aufbauen ---
+        _T_COLGROUP = (
+            '<colgroup>'
+            '<col style="width:50px">'    # #
+            '<col style="width:220px">'   # Name
+            '<col style="width:70px">'    # Geschl.
+            '<col style="width:60px">'    # Alter
+            '<col style="width:100px">'   # Altersklasse
+            '<col style="width:80px">'    # Gew.kl.
+            '<col style="width:78px">'    # BW
+            '<col style="width:160px">'   # SBD
+            '<col style="width:90px">'    # Total
+            '<col style="width:108px">'   # GL Points
+            '<col style="width:200px">'   # Verein
+            '<col style="width:260px">'   # Wettkampf
+            '</colgroup>'
+        )
+        _T_HEAD = (
+            _T_COLGROUP
+            + '<thead><tr>'
+            '<th class="num">#</th>'
+            '<th class="l">Athlet:in</th>'
+            '<th>Geschl.</th>'
+            '<th class="num">Alter</th>'
+            '<th>Altersklasse</th>'
+            '<th>Gew.kl.</th>'
+            '<th class="num">BW</th>'
+            '<th class="num">SBD</th>'
+            '<th class="num">Total</th>'
+            '<th class="num">IPF GL</th>'
+            '<th class="l">Verein</th>'
+            '<th class="l">Wettkampf</th>'
+            '</tr></thead>'
+        )
+
+        def _topn_row_html(rank, r, total_active, gl_active):
+            _nm = str(r.get("Name", ""))
+            _link = (
+                f'<a class="nm-link" href="?athlete={_urlquote(_nm)}{_topn_link_suffix}" '
+                f'target="_self">{esc(_nm)}</a>'
+            )
+            _total_cls = "num mono-strong" + ("" if not total_active else " gold-strong")
+            _gl_cls    = "num"            + ("" if not gl_active    else " gold-strong")
+            _gl_cls += " mono"
+            _meet_name = esc(str(r.get("MeetName", "")))
+            _meet_date = fmt_date(r.get("Date", ""))
+            _meet_cell = (
+                f'<td class="l rec-meet" title="{_meet_name}">'
+                f'<span class="mname">{_meet_name}</span>'
+                + (f'<span class="mwhen">{_meet_date}</span>' if _meet_date else '')
+                + '</td>'
+            )
+            return (
+                f'<tr>'
+                f'<td class="num rank">{rank}</td>'
+                f'<td class="cell-name l">{_link}</td>'
+                f'<td><span class="sex-tag">{sex_display(r.get("Sex",""))}</span></td>'
+                f'<td class="num mono">{fmt_age(r.get("Age"))}</td>'
+                f'<td class="mono">{esc(str(r.get("AgeClass") or ""))}</td>'
+                f'<td class="mono">{wc_label(r.get("WeightClassKg"))}</td>'
+                f'<td class="num mono">{fmt_kg(r.get("BodyweightKg"), 2)}</td>'
+                f'<td class="num mono">{fmt_sbd(r.get("Best3SquatKg"), r.get("Best3BenchKg"), r.get("Best3DeadliftKg"))}</td>'
+                f'<td class="{_total_cls}">{fmt_kg(r.get("TotalKg"))}</td>'
+                f'<td class="{_gl_cls}">{fmt_kg(r.get("GL_Points"), 2)}</td>'
+                f'<td class="l">{esc(str(r.get("Team") or ""))}</td>'
+                f'{_meet_cell}'
+                f'</tr>'
+            )
+
+        _topn_rows: list = []
+        if _is_total_mode:
+            # Pro Gewichtsklasse Top-N — sortiert nach Sex (F→M), dann WC aufsteigend
+            _wc_order_combined = [("F", w) for w in FEM_ORDER] + [("M", w) for w in MAL_ORDER]
+            _d["_sex1"] = _d["Sex"].astype(str).str.upper().str[:1]
+            _d["_wc_disp"] = _d["WeightClassKg"].astype(str).map(wc_display)
+            for _sx_g, _wc_g in _wc_order_combined:
+                _grp = _d[(_d["_sex1"] == _sx_g) & (_d["_wc_disp"] == _wc_g)]
+                if _grp.empty:
+                    continue
+                _grp_top = _grp.sort_values("_tot", ascending=False).head(int(_topn_n))
+                # Sub-Header pro Klasse
+                _label = f"{'Frauen' if _sx_g == 'F' else 'Männer'} · {wc_label(_wc_g)} kg"
+                _topn_rows.append(
+                    f'<tr class="tbl-section"><td colspan="12">{esc(_label)}</td></tr>'
+                )
+                for i, r in enumerate(_grp_top.itertuples(index=False), start=1):
+                    _topn_rows.append(_topn_row_html(i, r._asdict(), True, False))
+        else:
+            # Flache Top-N nach GL
+            _d_top = _d.sort_values("_gl", ascending=False).head(int(_topn_n))
+            for i, r in enumerate(_d_top.itertuples(index=False), start=1):
+                _topn_rows.append(_topn_row_html(i, r._asdict(), False, True))
+
+        if not _topn_rows:
+            st.markdown('<div class="rec-empty">Keine Performances für diese Auswahl.</div>',
+                        unsafe_allow_html=True)
+        else:
+            st.markdown(
+                f'<div class="tablecard"><div class="tablescroll">'
+                f'<table class="tbl tbl-records">{_T_HEAD}<tbody>{"".join(_topn_rows)}</tbody></table>'
+                f'</div></div>',
+                unsafe_allow_html=True,
+            )
+
+        # CSV-Export
+        with _topn_hdr_right:
+            if not _d.empty:
+                try:
+                    _topn_export_cols = ["Name", "Sex", "Age", "AgeClass", "WeightClassKg",
+                                         "BodyweightKg", "Best3SquatKg", "Best3BenchKg",
+                                         "Best3DeadliftKg", "TotalKg", "GL_Points",
+                                         "Team", "MeetName", "Date"]
+                    _existing_cols = [c for c in _topn_export_cols if c in _d.columns]
+                    _topn_export_df = _d[_existing_cols].copy()
+                    _csv_bytes = _topn_export_df.to_csv(index=False, sep=";",
+                                                       encoding="utf-8-sig").encode("utf-8-sig")
+                    st.download_button(
+                        "⬇ CSV-Export",
+                        data=_csv_bytes,
+                        file_name="oevk_bestenliste.csv",
+                        mime="text/csv",
+                        key="dl_csv_topn",
+                        use_container_width=True,
+                    )
+                except Exception:
+                    pass
 
 # --- Credits / Datenquelle ---
 st.markdown(
