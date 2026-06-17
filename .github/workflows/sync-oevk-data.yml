@@ -1,4 +1,4 @@
-name: Sync OeVK data from OpenPowerlifting
+name: Sync OeVK + EM/WM data from OpenPowerlifting
 
 on:
   schedule:
@@ -16,18 +16,38 @@ jobs:
       - name: Checkout this repo
         uses: actions/checkout@v5
 
-      - name: Clone upstream OpenPowerlifting (sparse, only meet-data/oevk)
+      - name: Set up Python (for intl-CSV build)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # ------------------------------------------------------------
+      # Schritt A · OeVK-Domestikmeets aus dem Upstream übernehmen
+      # ------------------------------------------------------------
+      - name: Clone upstream OpenPowerlifting (sparse: oevk + ipf + epf)
         run: |
           git clone --depth=1 --filter=blob:none --sparse \
             https://gitlab.com/openpowerlifting/opl-data.git _upstream
           cd _upstream
-          git sparse-checkout set meet-data/oevk
+          git sparse-checkout set meet-data/oevk meet-data/ipf meet-data/epf
 
-      - name: Replace local meet-data/oevk with upstream version
+      - name: Stage upstream data locally (oevk + ipf + epf)
         run: |
-          rm -rf meet-data/oevk
+          rm -rf meet-data/oevk meet-data/ipf meet-data/epf
           mkdir -p meet-data
           cp -r _upstream/meet-data/oevk meet-data/oevk
+          cp -r _upstream/meet-data/ipf  meet-data/ipf
+          cp -r _upstream/meet-data/epf  meet-data/epf
+
+      # ------------------------------------------------------------
+      # Schritt B · EM/WM (ipf+epf) auf Österreicher:innen vorfiltern
+      # → kleine CSV (~50 KB) committen, full folders nicht
+      # ------------------------------------------------------------
+      - name: Build pre-filtered Austrian EM/WM CSV
+        run: |
+          python scripts/build_intl_csv.py
+          # Räumen: die großen Federation-Folder NICHT committen, nur die kleine CSV
+          rm -rf meet-data/ipf meet-data/epf
           rm -rf _upstream
 
       - name: Write check marker (.last_check)
@@ -38,15 +58,15 @@ jobs:
       - name: Detect data changes & write .last_data_update only if data really changed
         id: detect
         run: |
-          # Stage just the data so we can ask git whether anything in meet-data/oevk truly differs.
-          git add -f meet-data/oevk
-          if git diff --cached --quiet -- meet-data/oevk; then
+          # OeVK-Daten + pre-filtered intl-CSV beobachten
+          git add -f meet-data/oevk project-data/oevk_intl.csv
+          if git diff --cached --quiet -- meet-data/oevk project-data/oevk_intl.csv; then
             echo "data_changed=false" >> "$GITHUB_OUTPUT"
-            echo "No OeVK data changes detected."
+            echo "Keine Datenänderung."
           else
             echo "data_changed=true" >> "$GITHUB_OUTPUT"
             date -u +'%Y-%m-%dT%H:%M:%SZ' > .last_data_update
-            echo "OeVK data changed — wrote .last_data_update."
+            echo "Daten geändert — .last_data_update geschrieben."
           fi
 
       - name: Commit & push
@@ -56,13 +76,12 @@ jobs:
           git add -f .last_check
           if [ "${{ steps.detect.outputs.data_changed }}" = "true" ]; then
             git add -f .last_data_update
-            git commit -m "chore(data): sync OeVK meets ($(date -u +'%Y-%m-%d'))"
+            git commit -m "chore(data): sync OeVK + EM/WM ($(date -u +'%Y-%m-%d'))"
           else
-            # Only the check marker changed (or nothing). Empty commit keeps the run visible in git log.
             if git diff --cached --quiet; then
-              git commit --allow-empty -m "chore(data): sync check ($(date -u +'%Y-%m-%d %H:%M UTC')) — no new data"
+              git commit --allow-empty -m "chore(data): sync check ($(date -u +'%Y-%m-%d %H:%M UTC')) — keine neuen Daten"
             else
-              git commit -m "chore(data): sync check ($(date -u +'%Y-%m-%d %H:%M UTC')) — no new data"
+              git commit -m "chore(data): sync check ($(date -u +'%Y-%m-%d %H:%M UTC')) — keine neuen Daten"
             fi
           fi
           git push

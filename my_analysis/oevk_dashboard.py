@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import base64
 import html as _html
+import re
 from pathlib import Path
 from urllib.parse import quote as _urlquote
 from datetime import datetime, timedelta
@@ -516,6 +517,100 @@ button[data-testid="stExpandSidebarButton"] * {
   color:var(--gold-bright); font-variant-numeric:tabular-nums; }
 .disc-tile .foot { margin-top:8px; font-family:var(--font-mono); font-size:10px; letter-spacing:0.08em;
   text-transform:uppercase; color:var(--text-3); }
+
+/* === Top-Tabs (Qualifikation / Rekorde) — Gold-Theme, prominent === */
+[data-testid="stTabs"] [role="tablist"] {
+  border-bottom:1px solid var(--gold-dim); gap:6px; margin-bottom:20px;
+}
+[data-testid="stTabs"] [role="tab"] {
+  font-family:var(--font-mono) !important; font-size:16px !important;
+  font-weight:700 !important; letter-spacing:0.14em !important;
+  text-transform:uppercase !important;
+  color:var(--text-2) !important; border-bottom:3px solid transparent !important;
+  padding:14px 22px !important;
+  transition:color .12s ease, border-color .12s ease;
+}
+[data-testid="stTabs"] [role="tab"][aria-selected="true"] {
+  color:var(--gold-bright) !important;
+  border-bottom-color:var(--gold-bright) !important;
+  background:rgba(201,174,91,0.06);
+}
+[data-testid="stTabs"] [role="tab"]:hover {
+  color:var(--gold-bright) !important;
+  background:rgba(201,174,91,0.04);
+}
+/* Streamlits eigene Highlight-Leiste (default rot/orange) → Gold */
+[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
+  background-color:var(--gold-bright) !important;
+}
+
+/* === Rekorde-Tabelle === */
+.rec-help { display:flex; gap:10px; align-items:flex-start; padding:10px 14px;
+  background:var(--bg-elev); border:1px solid var(--gold-dim); border-radius:var(--r-md);
+  margin:4px 0 14px; font-size:12.5px; line-height:1.5; color:var(--text-2); }
+.rec-help .ico { font-size:14px; color:var(--gold-bright); flex-shrink:0; line-height:1.4; }
+.rec-help b { color:var(--text); }
+.rec-help .up { color:var(--amber); font-weight:700; }
+
+.rec-filterbar { display:flex; gap:10px; flex-wrap:wrap; margin:6px 0 14px; align-items:center; }
+
+.tbl td.kg-off { color:var(--gold-bright); font-weight:700;
+  font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+.tbl td.kg-opl { color:var(--text-2);
+  font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+.tbl td.kg-opl.is-higher { color:var(--amber); font-weight:600; }
+.tbl td.kg-opl .up { color:var(--amber); margin-left:4px; }
+.tbl td.rec-open { color:var(--text-3); font-style:italic; font-weight:400; }
+/* Wettkampf-Zelle: Name weiß (gleiche Textgröße wie Haupttabelle), Datum darunter gedämpft */
+.tbl td.rec-meet { max-width:260px; }
+.tbl td.rec-meet .mname { color:var(--text); font-size:13px; display:block;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tbl td.rec-meet .mwhen { color:var(--text); font-size:12px;
+  font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+
+/* Rekorde-Tab Selectbox: gleicher Look wie Sidebar, aber Label weiß statt gold */
+[data-testid="stTabs"] [data-testid="stSelectbox"] label,
+[data-testid="stTabs"] [data-testid="stSelectbox"] label > div,
+[data-testid="stTabs"] [data-testid="stSelectbox"] label p,
+[data-testid="stTabs"] [data-testid="stWidgetLabel"],
+[data-testid="stTabs"] [data-testid="stWidgetLabel"] > div,
+[data-testid="stTabs"] [data-testid="stWidgetLabel"] p {
+  font-family:var(--font-mono) !important; font-size:14px !important;
+  font-weight:600 !important; letter-spacing:0.10em !important;
+  text-transform:uppercase !important; color:var(--text) !important;
+}
+[data-testid="stTabs"] [data-baseweb="select"] > div,
+[data-testid="stTabs"] [data-testid="stSelectbox"] input {
+  background:var(--bg-elev) !important; border-color:var(--line) !important;
+}
+[data-testid="stTabs"] [data-baseweb="select"] > div:hover {
+  border-color:var(--gold-dim) !important;
+}
+/* Ausgewählter Wert + Placeholder innerhalb des Selectbox-Feldes — vollflächig weiß
+   (Streamlits Baseweb-Placeholder hat sonst opacity:0.6 → wirkt grau) */
+[data-testid="stTabs"] [data-baseweb="select"] > div div,
+[data-testid="stTabs"] [data-baseweb="select"] input {
+  color:#FFFFFF !important; opacity:1 !important;
+}
+/* "X" zum Zurücksetzen + Dropdown-Pfeil ebenfalls weiß (statt 60 % deckendem Grau) */
+[data-testid="stTabs"] [data-baseweb="select"] [data-baseweb="icon"],
+[data-testid="stTabs"] [data-baseweb="select"] [data-baseweb="icon"] svg,
+[data-testid="stTabs"] [data-baseweb="select"] [data-baseweb="icon"] path {
+  color:#FFFFFF !important; fill:#FFFFFF !important; opacity:1 !important;
+}
+[data-testid="stTabs"] [data-testid="stSelectbox"] { max-width:260px; margin:4px 6px 10px 0; }
+/* Trennlinie offiziell ↔ OPL */
+.tbl td.opl-sep, .tbl th.opl-sep { border-left:1px solid var(--gold-dim); }
+/* Rekorde-Tabellen: feste Spaltenausrichtung über alle 4 Disziplinen hinweg */
+.tbl-records { table-layout:fixed; min-width:1350px; }
+.tbl-records td, .tbl-records th { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+.rec-empty { padding:30px 14px; text-align:center; color:var(--text-3);
+  font-family:var(--font-mono); font-size:13px; font-style:italic; }
+.rec-disclaimer { font-family:var(--font-mono); font-size:11px; color:var(--text-3);
+  line-height:1.5; margin:10px 2px 0; }
+.rec-disclaimer b { color:var(--text-2); }
+
 /* Slim top bar shown in profile mode */
 .topbar--profile { padding:18px 22px; }
 .topbar--profile .brand a { text-decoration:none; color:inherit; display:flex; align-items:center; gap:18px; }
@@ -825,6 +920,17 @@ div[data-testid="stButton"] > button.filter-row,
   /* --- Tabelle bleibt wie Desktop, scrollt horizontal --- */
   .tablescroll { overflow-x:auto !important; -webkit-overflow-scrolling:touch !important; }
   table.tbl { min-width:100%; }
+
+  /* --- Athletenprofil "Qualifiziert"-Hero: rechte Spalte unter den Status-Block schieben --- */
+  .qual-hero { flex-direction:column !important; align-items:stretch !important; gap:10px !important;
+    padding:14px 14px !important; }
+  .qual-hero__l { width:100% !important; }
+  .qual-hero__r { width:100% !important; text-align:left !important; font-size:13px !important;
+    padding-top:10px !important; border-top:1px solid rgba(255,255,255,0.10) !important; }
+  .qual-hero__r b { font-size:18px !important; }
+  .qual-hero__title { font-size:16px !important; line-height:1.3 !important; }
+  .qual-hero__sub { font-size:10px !important; line-height:1.4 !important; word-break:break-word !important;
+    white-space:normal !important; }
 }
 </style>
 """
@@ -981,6 +1087,23 @@ def _process_entries(df: pd.DataFrame, m_name: str, m_date_raw) -> pd.DataFrame:
         age = pd.Series(age).fillna(approx)
     df["Age"] = age
 
+    # Altersklasse (IPF-Stil) für Rekorde-Tab.
+    def _ac(a):
+        try:
+            if a is None or pd.isna(a):
+                return None
+            v = float(a)
+        except (TypeError, ValueError):
+            return None
+        if v < 19: return "Jugend"
+        if v < 24: return "Junioren"
+        if v < 40: return "Open"
+        if v < 50: return "AK1"
+        if v < 60: return "AK2"
+        if v < 70: return "AK3"
+        return "AK4"
+    df["AgeClass"] = age.map(_ac) if hasattr(age, "map") else pd.Series([_ac(a) for a in age], index=df.index)
+
     df["MeetName"] = m_name
     df["Date"] = m_date_raw
     return df
@@ -1025,7 +1148,35 @@ def load_data() -> pd.DataFrame:
         except Exception as exc:
             st.warning(f"Fehler beim Laden von {folder.name}: {exc}")
 
-    return pd.concat(all_entries, ignore_index=True) if all_entries else pd.DataFrame()
+    # EM/WM-Ergebnisse österreichischer Athlet:innen ebenfalls im Qualifikationsfenster berücksichtigen.
+    try:
+        _intl = load_international_for_austrians()
+        if not _intl.empty:
+            _dt = pd.to_datetime(_intl.get("Date"), errors="coerce")
+            _intl_in_window = _intl[(_dt >= QUAL_WINDOW_START) & (_dt < QUAL_WINDOW_END)]
+            if not _intl_in_window.empty:
+                all_entries.append(_intl_in_window)
+    except Exception:
+        pass
+
+    if not all_entries:
+        return pd.DataFrame()
+    out = pd.concat(all_entries, ignore_index=True)
+    # _intl-Flag: True nur für EM/WM-Zeilen, sonst False (OeVK-Inlandsmeets)
+    if "_intl" not in out.columns:
+        out["_intl"] = False
+    else:
+        out["_intl"] = out["_intl"].fillna(False).astype(bool)
+    # Verein-Backfill: leere Team-Werte (typisch bei EM/WM-Zeilen) aus anderen Einträgen
+    # derselben Person übernehmen, damit Verein-Auswertungen konsistent bleiben.
+    def _pick_team(series: pd.Series):
+        s = series.dropna()
+        s = s[s.astype(str).str.strip().ne("") & s.astype(str).str.lower().ne("nan")]
+        return s.iloc[0] if not s.empty else None
+    _team_by_name = out.groupby("Name")["Team"].apply(_pick_team)
+    _empty_team = out["Team"].isna() | out["Team"].astype(str).str.strip().eq("") | out["Team"].astype(str).str.lower().eq("nan")
+    out.loc[_empty_team, "Team"] = out.loc[_empty_team, "Name"].map(_team_by_name)
+    return out
 
 
 @st.cache_data(show_spinner="Lade Athlet:innen-Historie …")
@@ -1055,7 +1206,302 @@ def load_full_history() -> pd.DataFrame:
         except Exception:
             # Ältere Meets können fehlende Spalten haben — still überspringen.
             continue
-    return pd.concat(all_entries, ignore_index=True) if all_entries else pd.DataFrame()
+
+    # EM/WM-Ergebnisse österreichischer Athlet:innen mit aufnehmen (ohne Zeitfenster-Filter).
+    try:
+        _intl = load_international_for_austrians()
+        if not _intl.empty:
+            all_entries.append(_intl)
+    except Exception:
+        pass
+
+    if not all_entries:
+        return pd.DataFrame()
+    out = pd.concat(all_entries, ignore_index=True)
+    if "_intl" not in out.columns:
+        out["_intl"] = False
+    else:
+        out["_intl"] = out["_intl"].fillna(False).astype(bool)
+    # Team-Backfill: leere Team-Werte aus anderen Einträgen der gleichen Person füllen,
+    # damit das Athlet:innen-Profil bei EM/WM-Zeilen den Verein anzeigt.
+    def _pick_team_h(series: pd.Series):
+        s = series.dropna()
+        s = s[s.astype(str).str.strip().ne("") & s.astype(str).str.lower().ne("nan")]
+        return s.iloc[0] if not s.empty else None
+    _team_by_name = out.groupby("Name")["Team"].apply(_pick_team_h)
+    _empty_team = out["Team"].isna() | out["Team"].astype(str).str.strip().eq("") | out["Team"].astype(str).str.lower().eq("nan")
+    out.loc[_empty_team, "Team"] = out.loc[_empty_team, "Name"].map(_team_by_name)
+    return out
+
+
+import unicodedata as _ud
+
+def _norm_name(s) -> str:
+    """Case-insensitive, diacritic-stripped match key."""
+    try:
+        s = str(s)
+    except Exception:
+        return ""
+    return _ud.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii").lower().strip()
+
+
+@st.cache_data(show_spinner="Lade EM/WM-Ergebnisse …")
+def load_international_for_austrians() -> pd.DataFrame:
+    """Liefert EM/WM-Ergebnisse österreichischer Athlet:innen.
+
+    Strategie:
+      1) Wenn `project-data/oevk_intl.csv` existiert (vorberechnet via
+         scripts/build_intl_csv.py — z. B. auf Streamlit Cloud, wo wir
+         meet-data/ipf+epf nicht ausliefern), → diese laden + _process_entries
+         pro Meet anwenden.
+      2) Sonst (lokale Entwicklung mit vollständigem opl-data-Fork) durch
+         meet-data/ipf und meet-data/epf laufen und live filtern.
+
+    Identität: (normalisierter Name, Sex, BirthYear).
+    """
+    # --- Pfad 1: vorberechnete CSV ---
+    intl_csv = PROJECT_DATA_DIR / "oevk_intl.csv"
+    if intl_csv.exists():
+        try:
+            raw = pd.read_csv(intl_csv, dtype={"WeightClassKg": str, "Team": str,
+                              "Equipment": str, "Event": str, "Place": str,
+                              "Name": str, "Sex": str, "BirthYear": str,
+                              "_meet_name": str, "_meet_date": str})
+        except Exception:
+            raw = pd.DataFrame()
+        if not raw.empty and "_meet_name" in raw.columns:
+            parts: list = []
+            for (mname, mdate), grp in raw.groupby(["_meet_name", "_meet_date"], dropna=False):
+                df = grp.drop(columns=[c for c in ("_meet_name", "_meet_date") if c in grp.columns]).copy()
+                try:
+                    _processed = _process_entries(df, str(mname), str(mdate))
+                    _processed["_intl"] = True
+                    parts.append(_processed)
+                except Exception:
+                    continue
+            if parts:
+                return pd.concat(parts, ignore_index=True)
+        # CSV vorhanden aber leer/unbrauchbar — kein Live-Fallback erzwingen
+        return pd.DataFrame()
+
+    # --- Pfad 2: Live-Scan über meet-data/ipf + meet-data/epf ---
+    if not BASE_PATH.exists():
+        return pd.DataFrame()
+
+    # Schritt 1: Austrian-Set aus OeVK-Historie aufbauen
+    austrians: set = set()
+    for folder in BASE_PATH.iterdir():
+        if not folder.is_dir():
+            continue
+        e_file = folder / "entries.csv"
+        if not e_file.exists():
+            continue
+        try:
+            d = pd.read_csv(e_file, usecols=lambda c: c in ("Name", "Sex", "BirthYear"),
+                            dtype={"Name": str, "Sex": str, "BirthYear": str})
+        except Exception:
+            continue
+        if "Name" not in d.columns:
+            continue
+        for _, r in d.iterrows():
+            nm = _norm_name(r.get("Name", ""))
+            sx = str(r.get("Sex", "")).strip().upper()
+            by = str(r.get("BirthYear", "")).strip()
+            if nm and sx and by and by.lower() != "nan":
+                austrians.add((nm, sx, by))
+
+    if not austrians:
+        return pd.DataFrame()
+
+    # Schritt 2: IPF + EPF durchsuchen
+    intl_root = BASE_PATH.parent  # …/meet-data
+    parts: list = []
+    for fed in ("ipf", "epf"):
+        fed_path = intl_root / fed
+        if not fed_path.exists():
+            continue
+        for folder in fed_path.iterdir():
+            if not folder.is_dir():
+                continue
+            e_file, m_file = folder / "entries.csv", folder / "meet.csv"
+            if not (e_file.exists() and m_file.exists()):
+                continue
+            try:
+                with open(m_file, "r", encoding="utf-8", errors="replace") as fh:
+                    fh.readline()
+                    fields = fh.readline().rstrip("\n").split(",")
+                m_date_raw = fields[1] if len(fields) > 1 else ""
+                m_name = fields[5] if len(fields) > 5 else f"{fed.upper()} {folder.name}"
+
+                df = pd.read_csv(
+                    e_file,
+                    usecols=lambda c: c in _USE_COLS,
+                    dtype={"WeightClassKg": str, "Team": str, "Equipment": str,
+                           "Event": str, "Place": str, "Name": str, "Sex": str, "BirthYear": str},
+                )
+                # Frühfilter: Equipment Raw, Identität in austrians
+                if "Equipment" in df.columns:
+                    df = df[df["Equipment"].astype(str) == "Raw"]
+                if df.empty:
+                    continue
+                df["_nm"] = df["Name"].map(_norm_name)
+                df["_sx"] = df["Sex"].astype(str).str.upper().str.strip()
+                df["_by"] = df["BirthYear"].astype(str).str.strip() if "BirthYear" in df.columns else ""
+                mask = [
+                    (n, s, b) in austrians
+                    for n, s, b in zip(df["_nm"], df["_sx"], df["_by"])
+                ]
+                df = df[mask].drop(columns=["_nm", "_sx", "_by"])
+                if df.empty:
+                    continue
+                _processed = _process_entries(df, m_name, m_date_raw)
+                _processed["_intl"] = True
+                parts.append(_processed)
+            except Exception:
+                continue
+    return pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
+
+
+# --- REKORDE: offizielle ÖVK-Rekordliste + OPL-Dataset-Bestleistungen ---
+_RECORDS_COLS = ["sex", "age_class", "equipment", "weight_class", "lift",
+                 "record_kg", "athlete", "meet", "date_iso", "notes"]
+
+# PDF-Namen wie "RUTHNER Cornelia" → OPL-Form "Cornelia Ruthner".
+# Honorifics/Suffixe (", Mag.", ", II") werden entfernt, damit der Profil-Link auf den OPL-Namen passt.
+_HONORIFIC_RE = re.compile(
+    r",?\s+(?:Mag\.?|Dr\.?|Ing\.?|Jr\.?|Sr\.?|MSc\.?|BSc\.?|MA\.?|PhD\.?|II|III|IV)$",
+    re.IGNORECASE,
+)
+
+def normalize_pdf_name(raw: str) -> str:
+    if raw is None:
+        return ""
+    s = str(raw).strip()
+    if not s:
+        return s
+    # Honorifics am Ende entfernen
+    while True:
+        s2 = _HONORIFIC_RE.sub("", s).strip()
+        if s2 == s:
+            break
+        s = s2
+    # Konsekutive führende ALL-CAPS-Tokens als Nachname identifizieren
+    tokens = s.split()
+    last_idx = 0
+    for i, p in enumerate(tokens):
+        letters = [c for c in p if c.isalpha()]
+        if letters and all(c.isupper() for c in letters):
+            last_idx = i + 1
+        else:
+            break
+    if last_idx == 0 or last_idx == len(tokens):
+        return s
+    last_name = " ".join(tokens[:last_idx]).title()  # titlecased – Bindestriche funktionieren
+    first_name = " ".join(tokens[last_idx:])
+    return f"{first_name} {last_name}"
+
+
+@st.cache_data(show_spinner="Lade offizielle Rekorde …")
+def load_records() -> pd.DataFrame:
+    """Lädt die manuell gepflegte ÖVK-Rekordliste (Quelle der Wahrheit)."""
+    p = PROJECT_DATA_DIR / "oevk_records.csv"
+    if not p.exists():
+        return pd.DataFrame(columns=_RECORDS_COLS)
+    try:
+        df = pd.read_csv(p, dtype=str).fillna("")
+        # record_kg als float
+        df["record_kg"] = pd.to_numeric(df["record_kg"].str.replace(",", ".", regex=False),
+                                       errors="coerce")
+        # Namensformat OPL-konform machen: "RUTHNER Cornelia" → "Cornelia Ruthner"
+        if "athlete" in df.columns:
+            df["athlete"] = df["athlete"].map(normalize_pdf_name)
+        return df
+    except Exception:
+        return pd.DataFrame(columns=_RECORDS_COLS)
+
+
+def records_last_updated() -> "datetime | None":
+    """Mtime der Rekorde-CSV — für den 'Stand:'-Hinweis."""
+    p = PROJECT_DATA_DIR / "oevk_records.csv"
+    if not p.exists():
+        return None
+    try:
+        return datetime.fromtimestamp(p.stat().st_mtime)
+    except Exception:
+        return None
+
+
+@st.cache_data(show_spinner="Berechne OPL-Bestleistungen …")
+def compute_dataset_bests(history: pd.DataFrame) -> pd.DataFrame:
+    """Pro (Geschlecht, Altersklasse, Equipment, Gewichtsklasse) die beste Leistung je Disziplin
+    aus dem OpenPowerlifting-Datensatz. Long-Form: eine Zeile pro Kombination + Lift.
+    Spalten: sex, age_class, equipment, weight_class, lift, kg, athlete, meet, date_iso."""
+    if history.empty:
+        return pd.DataFrame(columns=["sex", "age_class", "equipment", "weight_class",
+                                     "lift", "kg", "athlete", "meet", "date_iso"])
+    df = history.copy()
+    df = df[df["Equipment"].astype(str).isin(["Raw", "Single-ply"])]
+    df = df[df["BodyweightKg"] > 0]
+    df["_sex"] = df["Sex"].astype(str).str.upper().str[:1]
+    df = df[df["_sex"].isin(["F", "M"])]
+    df["_wc"] = df["WeightClassKg"].astype(str).map(wc_display)
+    # Total: nur KDK-Wettkämpfe (3-Lift-Meets)
+    rows = []
+    # Alle Disziplinen NUR aus 3-Lift-Wettkämpfen (KDK) — sonst mischen sich
+    # Bankdrücken-only-Meets ein (z. B. Wackernell statt Renner beim KDK-Bankdrücken).
+    LIFTS = [
+        ("Total",   "TotalKg",         True),
+        ("Squat",   "Best3SquatKg",    True),
+        ("Bench",   "Best3BenchKg",    True),
+        ("Deadlift","Best3DeadliftKg", True),
+    ]
+    # ÖVK-Cross-Class-Logik (abgeleitet aus dem offiziellen Datenabgleich):
+    #   Open      = Maximum über ALLE Altersklassen (Junior, Jugend UND Masters AK1-4
+    #               können den Open-Rekord halten, wenn der Lift höher ist)
+    #   Junioren  = Maximum über Jugend + Junioren (jüngere "Nachwuchs"-Lifter dürfen
+    #               einen Junioren-Rekord setzen)
+    #   Jugend, AK1, AK2, AK3, AK4 = jeweils nur innerhalb der eigenen Klasse
+    ROLLUP_AGE = {
+        "Jugend":   ["Jugend"],
+        "Junioren": ["Jugend", "Junioren"],
+        "Open":     ["Jugend", "Junioren", "Open", "AK1", "AK2", "AK3", "AK4"],
+        "AK1":      ["AK1"],
+        "AK2":      ["AK2"],
+        "AK3":      ["AK3"],
+        "AK4":      ["AK4"],
+    }
+    grouped_cols = ["_sex", "Equipment", "_wc"]
+    for lift_label, col, kdk_only in LIFTS:
+        if col not in df.columns:
+            continue
+        d = df.copy()
+        if kdk_only:
+            d = d[d["Event_Display"] == "KDK"]
+        d["_val"] = pd.to_numeric(d[col], errors="coerce")
+        d = d[d["_val"] > 0]
+        if d.empty:
+            continue
+        # Pro Ziel-Altersklasse die Lift-Untermenge der zulässigen Quell-AgeClasses bilden
+        # und darüber den Bestwert pro (sex, equip, wc) ermitteln.
+        for target_ac, source_acs in ROLLUP_AGE.items():
+            d_target = d[d["AgeClass"].isin(source_acs)]
+            if d_target.empty:
+                continue
+            idx = d_target.groupby(grouped_cols, dropna=False)["_val"].idxmax()
+            best = d_target.loc[idx, grouped_cols + ["_val", "Name", "MeetName", "Date"]]
+            for _, r in best.iterrows():
+                rows.append({
+                    "sex":          r["_sex"],
+                    "age_class":    target_ac,
+                    "equipment":    r["Equipment"],
+                    "weight_class": r["_wc"],
+                    "lift":         lift_label,
+                    "kg":           float(r["_val"]),
+                    "athlete":      str(r["Name"]),
+                    "meet":         str(r["MeetName"]),
+                    "date_iso":     str(r["Date"]),
+                })
+    return pd.DataFrame(rows)
 
 
 # --- HTML/FORMAT-HELFER (Design-Komponenten) ---
@@ -1358,6 +1804,7 @@ def render_athlete_profile(name: str, hist: pd.DataFrame) -> None:
     # Vollständige Wettkampftabelle
     head = (
         '<th>Datum</th><th class="l">Wettkampf</th><th>Equip</th><th>Event</th>'
+        '<th class="num">Alter</th>'
         '<th>Klasse</th><th class="num">BW</th>'
         '<th class="num">SBD</th>'
         '<th class="num">Total</th>'
@@ -1371,6 +1818,7 @@ def render_athlete_profile(name: str, hist: pd.DataFrame) -> None:
             f'<td class="l">{esc(r.MeetName)}</td>'
             f'<td class="mono">{esc(getattr(r, "Equipment", ""))}</td>'
             f'<td class="mono">{esc(getattr(r, "Event_Display", getattr(r, "Event", "")))}</td>'
+            f'<td class="num mono">{fmt_age(getattr(r, "Age", None))}</td>'
             f'<td class="mono">{wc_label(r.WeightClassKg)}</td>'
             f'<td class="num mono">{fmt_kg(r.BodyweightKg, 2)}</td>'
             f'<td class="num mono">{fmt_sbd(getattr(r, "Best3SquatKg", None), getattr(r, "Best3BenchKg", None), getattr(r, "Best3DeadliftKg", None))}</td>'
@@ -1513,6 +1961,9 @@ if st.query_params.get("reset") or st.session_state.get("_reset_requested"):
                                           "wc_select_v", "meet_select_v", "only_qualified_v")):
             del st.session_state[_k]
     st.session_state["_widget_gen"] = st.session_state.get("_widget_gen", 0) + 1
+    # Beim Reset auch den Sort-State im sessionStorage löschen — das nächste Rendering
+    # zeigt dann wieder den Default (IPF GL Punkte ↓).
+    st.session_state["_clear_sort_storage"] = True
     st.query_params.clear()
     st.rerun()
 
@@ -1551,7 +2002,21 @@ if PROFILE_MODE:
         unsafe_allow_html=True,
     )
     # Slim Top-Bar: Logo + Back-Button — bewahren die aktuellen Filter via Querystring.
+    # Wenn aus Rekorde-Tab kommend (?from=records), den Tab + rec_wc/rec_ac-Filter zurückgeben.
     _back_qs = _filter_qs()
+    _from_param = st.query_params.get("from")
+    _rec_wc_back = st.query_params.get("rec_wc")
+    _rec_ac_back = st.query_params.get("rec_ac")
+    _rec_sex_back = st.query_params.get("rec_sex")
+    if _from_param == "records":
+        _extra = "tab=records"
+        if _rec_wc_back:
+            _extra += "&rec_wc=" + _urlquote(str(_rec_wc_back))
+        if _rec_ac_back:
+            _extra += "&rec_ac=" + _urlquote(str(_rec_ac_back))
+        if _rec_sex_back:
+            _extra += "&rec_sex=" + _urlquote(str(_rec_sex_back))
+        _back_qs = (_extra + "&" + _back_qs) if _back_qs else _extra
     _back_href = "?" + _back_qs if _back_qs else "?"
     st.markdown(
         f'''
@@ -1602,7 +2067,7 @@ st.markdown(
       <a class="brand brand--link" href="?reset=1" target="_self">
         <div>
           <div class="brand__title"><span class="accent">ÖSTERREICHISCHE STAATSMEISTERSCHAFT!</span> Wer ist qualifiziert?<span class="beta">BETA</span></div>
-          <div class="brand__date">5.–6. September 2026</div>
+          <div class="brand__date">5. – 6. September 2026</div>
           <div class="brand__sub">Alle Athlet:innen, die das Limit erreicht haben — hier zusammengefasst.</div>
         </div>
       </a>
@@ -1739,7 +2204,7 @@ WC_OPTIONS = [("F", w) for w in FEM_ORDER] + [("M", w) for w in MAL_ORDER]
 def _fmt_wc_option(opt) -> str:
     sex, wc = opt
     sex_label = "Frauen" if sex == "F" else "Männer"
-    return f"{sex_label} · {wc} kg"
+    return f"{sex_label} · {wc_label(wc)} kg"
 
 
 _PERSIST_PAIRS = (
@@ -1944,6 +2409,20 @@ qual_foot = (
     f'<span style="color:var(--gold);font-weight:600">Männer · {n_qual_m} / {n_m} ({_qm_rate}%)</span>'
 )
 
+# Wettkämpfe-Aufschlüsselung: national (OeVK) vs. EM/WM (intl)
+if "_intl" in df_filtered.columns:
+    _meet_intl_map = df_filtered.groupby("MeetName")["_intl"].any()
+    n_meets_intl = int(_meet_intl_map.sum())
+    n_meets_nat  = int((~_meet_intl_map).sum())
+else:
+    n_meets_intl = 0
+    n_meets_nat = n_meets
+meets_foot = (
+    f'<span style="color:var(--gold);font-weight:600">National · {n_meets_nat}</span>'
+    f'<span style="opacity:0.4;margin:0 8px">|</span>'
+    f'<span style="color:var(--gold);font-weight:600">EM/WM · {n_meets_intl}</span>'
+)
+
 # Geschlechterverteilung (alle Athlet:innen im Filterscope) — als Fuß in der Athlet:innen-Karte
 _ath_total = max(n_f + n_m, 1)
 _ath_pct_f = round(n_f / _ath_total * 100)
@@ -1954,362 +2433,763 @@ athlete_foot = (
     f'<span style="color:var(--gold);font-weight:600">Männer · {n_m} ({_ath_pct_m}%)</span>'
 )
 
-st.markdown(
-    '<div class="kpis kpis--3">'
-    + kpi_card("Qualifiziert", n_qual, accent=True, foot=qual_foot)
-    + kpi_card("Athlet:innen", n_athletes, foot=athlete_foot)
-    + kpi_card("Wettkämpfe", n_meets)
-    + "</div>",
-    unsafe_allow_html=True,
-)
+# --- Rekorde-Tab Rückkehr-Zustand aus URL ---
+# Wenn der Benutzer vom Athleten-Profil aus dem Rekorde-Tab zurückkommt (?tab=records&rec_wc=F-47),
+# (a) Filter wiederherstellen, (b) JS-Snippet klickt nach dem Rendern den zweiten Tab.
+_url_tab = st.query_params.get("tab")
+_url_rec_wc = st.query_params.get("rec_wc")
+_url_rec_ac = st.query_params.get("rec_ac")
+_url_rec_sex = st.query_params.get("rec_sex")
+if _url_rec_wc and f"rec_wc_v{_GEN}" not in st.session_state:
+    try:
+        _rsex, _rwc = str(_url_rec_wc).split("-", 1)
+        if (_rsex, _rwc) in WC_OPTIONS:
+            st.session_state[f"rec_wc_v{_GEN}"] = (_rsex, _rwc)
+    except Exception:
+        pass
+if _url_rec_ac and f"rec_age_v{_GEN}" not in st.session_state:
+    if _url_rec_ac in ("Jugend", "Junioren", "Open", "AK1", "AK2", "AK3", "AK4"):
+        st.session_state[f"rec_age_v{_GEN}"] = _url_rec_ac
+if _url_rec_sex and f"rec_sex_v{_GEN}" not in st.session_state:
+    if _url_rec_sex in ("F", "M"):
+        st.session_state[f"rec_sex_v{_GEN}"] = (_url_rec_sex, "Frauen" if _url_rec_sex == "F" else "Männer")
 
-# --- ATHLET:INNEN-TABELLE (Bestleistung je Person) ---
-qual_df = df_filtered[df_filtered["Qualifiziert"] == True]
+_tab_quali, _tab_records = st.tabs(["Qualifikation", "Rekorde"])
 
-if show_only_qualified:
-    table_df = qual_df
-    section_title = "Qualifizierte Athlet:innen"
-else:
-    table_df = df_filtered
-    section_title = "Athlet:innen"
-
-# Bestleistung pro Person (höchstes Total). Default-Sortierung: Qualifizierte zuerst,
-# dann IPF GL Punkte absteigend. (Wird auch für den CSV-Export verwendet.)
-if not table_df.empty:
-    best_per_athlete = (
-        table_df.sort_values("TotalKg", ascending=False).drop_duplicates("Name")
-    )
-    best_per_athlete = best_per_athlete.sort_values(
-        by=["Qualifiziert", "GL_Points"],
-        ascending=[False, False],
-        na_position="last",
-    )
-else:
-    best_per_athlete = table_df
-
-# Export-Frame (exakt die angezeigte Tabelle) → CSV (Deutsch-Excel-freundlich).
-def _build_export_df(df: pd.DataFrame) -> pd.DataFrame:
-    rows = []
-    for i, r in enumerate(df.itertuples(), start=1):
-        rows.append({
-            "#": i,
-            "Name": r.Name,
-            "Geschlecht": sex_display(r.Sex),
-            "Alter": fmt_age(r.Age),
-            "Körpergewicht (kg)": fmt_kg(r.BodyweightKg, 2),
-            "Gewichtsklasse (kg)": wc_label(r.WeightClassKg),
-            "Total (kg)": fmt_kg(r.TotalKg),
-            "SBD (kg)": fmt_sbd(getattr(r, "Best3SquatKg", None), getattr(r, "Best3BenchKg", None), getattr(r, "Best3DeadliftKg", None)),
-            "SM Limit (kg)": fmt_kg(r.smLimit),
-            "Differenz (kg)": fmt_diff(r.Differenz),
-            "IPF GL Punkte": fmt_kg(r.GL_Points, 2),
-            "Verein": r.Team,
-            "Wettkampf": r.MeetName,
-            "Wettkampfdatum": fmt_date(r.Date),
-        })
-    return pd.DataFrame(rows)
-
-# CSV-Export-Button rechts neben der Section-Headline (vertikal mittig).
-_hdr_left, _hdr_right = st.columns([4, 1], vertical_alignment="center")
-with _hdr_left:
-    st.markdown(
-        f'<div class="section-head"><div>'
-        f'<h2>{section_title}</h2></div></div>',
-        unsafe_allow_html=True,
-    )
-with _hdr_right:
-    if not table_df.empty:
-        _export_df = _build_export_df(best_per_athlete)
-        _csv_bytes = _export_df.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
-        st.download_button(
-            "⬇ CSV-Export",
-            data=_csv_bytes,
-            file_name="oevk_qualifikation.csv",
-            mime="text/csv",
-            key="dl_csv",
-            use_container_width=True,
-        )
-
-if not table_df.empty:
-    def _sh(label: str, sort_type: str = "text", cls: str = "") -> str:
-        """Sortierbares Header-Cell — Click wird client-seitig via JS verarbeitet."""
-        cls_attr = f' class="{cls} sortable" data-sort-type="{sort_type}"' if cls else f' class="sortable" data-sort-type="{sort_type}"'
-        return f'<th{cls_attr}>{label}<span class="sort-arrow">↕</span></th>'
-
-    _q_head = (
-        '<th class="num nosort">#</th>'
-        + _sh("Name", "text")
-        + _sh("Geschlecht", "text")
-        + _sh("Alter", "num", "num")
-        + _sh("Körpergewicht", "num", "num")
-        + '<th class="nosort">Gewichtsklasse</th>'
-        + _sh("Total", "num", "num")
-        + '<th class="num nosort">SBD</th>'
-        + _sh("SM Limit", "num", "num")
-        + _sh("Differenz", "diff")
-        + _sh("IPF GL Punkte", "num", "num")
-        + _sh("Verein", "text")
-        + _sh("Wettkampf", "text")
-        + _sh("Wettkampfdatum", "date")
-    )
-    _q_rows = []
-    for i, r in enumerate(best_per_athlete.itertuples(), start=1):
-        q = bool(r.Qualifiziert)
-        row_cls = "row--q" if q else "row--w"
-        _fqs = _filter_qs()
-        _athlete_href = f"?athlete={_urlquote(str(r.Name))}" + (f"&{_fqs}" if _fqs else "")
-        _name_link = f'<a class="nm nm-link" href="{_athlete_href}" target="_self">{esc(r.Name)}</a>'
-        _q_rows.append(
-            f'<tr class="{row_cls}">'
-            f'<td class="num rank" data-label="">{i}</td>'
-            f'<td class="cell-name l" data-label="Name">{_name_link}</td>'
-            f'<td data-label="Geschlecht"><span class="sex-tag">{sex_display(r.Sex)}</span></td>'
-            f'<td class="num mono" data-label="Alter">{fmt_age(r.Age)}</td>'
-            f'<td class="num mono" data-label="Körpergewicht">{fmt_kg(r.BodyweightKg, 2)}</td>'
-            f'<td class="mono" data-label="Gewichtsklasse">{wc_label(r.WeightClassKg)}</td>'
-            f'<td class="num mono-strong" data-label="Total">{fmt_kg(r.TotalKg)}</td>'
-            f'<td class="num mono" data-label="SBD">{fmt_sbd(getattr(r, "Best3SquatKg", None), getattr(r, "Best3BenchKg", None), getattr(r, "Best3DeadliftKg", None))}</td>'
-            f'<td class="num mono" data-label="SM Limit">{fmt_kg(r.smLimit)}</td>'
-            f'<td data-label="Differenz"><span class="diff {diff_class(r.Differenz)}">{fmt_diff(r.Differenz)}</span></td>'
-            f'<td class="num gold-strong" data-label="IPF GL Punkte">{fmt_kg(r.GL_Points, 2)}</td>'
-            f'<td class="l" data-label="Verein">{esc(r.Team)}</td>'
-            f'<td class="l" data-label="Wettkampf">{esc(r.MeetName)}</td>'
-            f'<td class="mono" data-label="Wettkampfdatum">{fmt_date(r.Date)}</td></tr>'
-        )
-    st.markdown(
-        f'<div class="tablecard" id="qual-tablecard"><div class="tablescroll"><table class="tbl" id="qual-table">'
-        f'<thead><tr>{_q_head}</tr></thead><tbody>{"".join(_q_rows)}</tbody></table></div></div>',
-        unsafe_allow_html=True,
-    )
-    # Client-seitiger Sort — kein Streamlit-Rerun, kein Flash.
+# Wenn URL tab=records: nach dem Rendern programmatisch den Rekorde-Tab klicken.
+if _url_tab == "records":
     _components.html(
         """
 <script>
 (function () {
   const doc = window.parent.document;
-  function attach() {
-    const table = doc.getElementById('qual-table');
-    if (!table) return false;
-    const ths = table.querySelectorAll('thead tr:last-child th');
-    const tbody = table.tBodies[0];
-    if (!tbody) return false;
-    let state = { col: null, dir: 'desc' };
-
-    function parseNum(s) {
-      if (!s) return NaN;
-      s = s.replace(/\\s/g, '').replace(/[^\\-+\\d.,]/g, '').replace(',', '.');
-      const f = parseFloat(s);
-      return isNaN(f) ? NaN : f;
-    }
-    function parseDate(s) {
-      const m = (s || '').trim().match(/^(\\d{1,2})[.\\/](\\d{1,2})[.\\/](\\d{2,4})$/);
-      if (!m) return NaN;
-      const d = parseInt(m[1], 10), mo = parseInt(m[2], 10) - 1;
-      let y = parseInt(m[3], 10); if (y < 100) y += 2000;
-      return new Date(y, mo, d).getTime();
-    }
-    function valueOf(row, idx, type) {
-      const cell = row.children[idx];
-      if (!cell) return null;
-      const text = (cell.textContent || '').trim();
-      if (type === 'num' || type === 'diff') {
-        const v = parseNum(text);
-        return isNaN(v) ? null : v;
-      }
-      if (type === 'date') {
-        const v = parseDate(text);
-        return isNaN(v) ? null : v;
-      }
-      if (type === 'wc') {
-        const plus = text.endsWith('+') ? 0.5 : 0;
-        const v = parseNum(text.replace('+', ''));
-        return isNaN(v) ? null : v + plus;
-      }
-      return text.toLowerCase();
-    }
-    function sortBy(idx, type) {
-      const rows = Array.from(tbody.querySelectorAll('tr'));
-      const dir = state.dir === 'desc' ? -1 : 1;
-      rows.sort(function (a, b) {
-        const qa = a.classList.contains('row--q') ? 1 : 0;
-        const qb = b.classList.contains('row--q') ? 1 : 0;
-        if (qa !== qb) return qb - qa;
-        const va = valueOf(a, idx, type);
-        const vb = valueOf(b, idx, type);
-        if (va === null && vb === null) return 0;
-        if (va === null) return 1;
-        if (vb === null) return -1;
-        if (va < vb) return -1 * dir;
-        if (va > vb) return 1 * dir;
-        return 0;
-      });
-      rows.forEach(function (r) { tbody.appendChild(r); });
-      // Renumber rank cells (1..N)
-      let n = 1;
-      tbody.querySelectorAll('tr').forEach(function (r) {
-        const rc = r.querySelector('td.rank');
-        if (rc) rc.textContent = String(n++);
-      });
-      ths.forEach(function (h) {
-        const a = h.querySelector('.sort-arrow');
-        if (a) a.textContent = '↕';
-        h.classList.remove('sort-active');
-      });
-      const active = ths[idx];
-      if (active) {
-        active.classList.add('sort-active');
-        const a = active.querySelector('.sort-arrow');
-        if (a) a.textContent = state.dir === 'asc' ? '↑' : '↓';
-      }
-    }
-    ths.forEach(function (th, idx) {
-      if (th.classList.contains('nosort')) return;
-      th.style.cursor = 'pointer';
-      th.addEventListener('click', function () {
-        const type = th.dataset.sortType || 'text';
-        if (state.col === idx) {
-          state.dir = state.dir === 'asc' ? 'desc' : 'asc';
-        } else {
-          state.col = idx;
-          state.dir = (type === 'text') ? 'asc' : 'desc';
-        }
-        sortBy(idx, type);
-      });
-    });
+  function trySwitch() {
+    const tabs = doc.querySelectorAll('[data-testid="stTabs"] [role="tab"]');
+    if (tabs.length < 2) return false;
+    if (tabs[1].getAttribute('aria-selected') !== 'true') tabs[1].click();
     return true;
   }
-  // Versuche sofort, dann mit kurzem Retry falls Markdown noch nicht im DOM ist.
-  if (!attach()) {
-    let tries = 0;
+  if (!trySwitch()) {
+    let n = 0;
     const id = setInterval(function () {
-      if (attach() || ++tries > 30) clearInterval(id);
-    }, 100);
+      if (trySwitch() || ++n > 30) clearInterval(id);
+    }, 120);
   }
 })();
 </script>
         """,
         height=0,
     )
-else:
-    st.info("Keine Athlet:innen im gewählten Filter gefunden.")
+    # URL-Parameter aufräumen, damit ein normales Sidebar-Rerun nicht erneut auf Rekorde springt
+    try:
+        del st.query_params["tab"]
+        if "rec_wc" in st.query_params:
+            del st.query_params["rec_wc"]
+        if "rec_ac" in st.query_params:
+            del st.query_params["rec_ac"]
+        if "rec_sex" in st.query_params:
+            del st.query_params["rec_sex"]
+        if "from" in st.query_params:
+            del st.query_params["from"]
+    except Exception:
+        pass
 
-# --- ZUSAMMENFASSUNGEN: Chart (Gewichtsklassen) + klickbare Vereine-Liste ---
-# Basis = alle Qualifizierten (Datum+Equipment+Event), unabhängig von Team/WC-Filter,
-# damit man die Verteilung sieht und per Klick filtern kann.
-if not selected_name and not best_baseline.empty:
-    # Counts pro (Geschlecht, Gewichtsklasse)
-    bl = best_baseline.assign(
-        _wc=best_baseline["WeightClassKg"].apply(wc_display),
-        _sx=best_baseline["Sex"].astype(str).str.upper(),
-    )
-    fem_counts = {wc: int(((bl["_sx"] == "F") & (bl["_wc"] == wc)).sum()) for wc in FEM_ORDER}
-    mal_counts = {wc: int(((bl["_sx"] == "M") & (bl["_wc"] == wc)).sum()) for wc in MAL_ORDER}
-
-    count_team = (
-        best_baseline.groupby("Team").size().reset_index(name="n").sort_values("n", ascending=False)
-    )
-
-    # Chart "Qualifizierte pro Gewichtsklasse" nur zeigen, wenn keine Klassen gefiltert sind.
-    show_wc_chart = not selected_wc
-    if show_wc_chart:
-        st.markdown(
-            '<div class="section-head" style="margin-top:18px"><div>'
-            '<div class="kicker kicker--gold">Verteilung</div>'
-            '<h2>Qualifizierte pro Gewichtsklasse</h2></div>'
-            f'<div class="meta">{int(best_baseline["Name"].nunique())} Athlet:innen gesamt</div></div>',
-            unsafe_allow_html=True,
-        )
-
-    # --- Plotly-Chart (Frauen + Männer als Subplots, horizontale Balken) ---
-    GOLD_W = "#E2C977"
-    GOLD_M = "#E2C977"  # gleiche Farbe wie Frauen für visuelle Konsistenz
-    max_count = max(list(fem_counts.values()) + list(mal_counts.values()) + [1])
-
-    fig = make_subplots(
-        rows=1, cols=2,
-        subplot_titles=("FRAUEN", "MÄNNER"),
-        horizontal_spacing=0.12,
-        shared_xaxes=False,
-    )
-    # Damit "47" oben steht: y-Achse umkehren via autorange="reversed"
-    FEM_LABELS = [wc_label(w) for w in FEM_ORDER]
-    MAL_LABELS = [wc_label(w) for w in MAL_ORDER]
-    fig.add_trace(
-        go.Bar(
-            y=FEM_LABELS,
-            x=[fem_counts[w] for w in FEM_ORDER],
-            orientation="h",
-            marker=dict(color=GOLD_W, line=dict(color="#1F1F23", width=1)),
-            text=[fem_counts[w] if fem_counts[w] else "" for w in FEM_ORDER],
-            textposition="outside",
-            textfont=dict(family="IBM Plex Mono", color=GOLD_W, size=13),
-            hovertemplate="<b>%{y} kg</b><br>%{x} Athletinnen<extra></extra>",
-            showlegend=False,
-        ),
-        row=1, col=1,
-    )
-    fig.add_trace(
-        go.Bar(
-            y=MAL_LABELS,
-            x=[mal_counts[w] for w in MAL_ORDER],
-            orientation="h",
-            marker=dict(color=GOLD_M, line=dict(color="#1F1F23", width=1)),
-            text=[mal_counts[w] if mal_counts[w] else "" for w in MAL_ORDER],
-            textposition="outside",
-            textfont=dict(family="IBM Plex Mono", color=GOLD_W, size=13),
-            hovertemplate="<b>%{y} kg</b><br>%{x} Athleten<extra></extra>",
-            showlegend=False,
-        ),
-        row=1, col=2,
-    )
-    # Wichtig: type="category" damit Plotly die Klassen als Strings rendert,
-    # statt sie numerisch zu binnen ("45 kg, 50 kg, ...").
-    fig.update_yaxes(
-        type="category",
-        autorange="reversed",
-        categoryorder="array",
-        categoryarray=FEM_LABELS + MAL_LABELS,
-        tickfont=dict(family="IBM Plex Mono", size=12, color="#B6B6BB"),
-        showgrid=False,
-        ticksuffix=" kg",
-    )
-    fig.update_xaxes(showgrid=True, gridcolor="#2A2A30", zeroline=False,
-                     tickfont=dict(family="IBM Plex Mono", size=11, color="#76767D"),
-                     range=[0, max_count + max(1, max_count * 0.25)])
-    fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="Archivo, sans-serif", color="#F5F5F4"),
-        height=420,
-        margin=dict(l=10, r=10, t=50, b=20),
-        bargap=0.35,
-    )
-    for ann in fig["layout"]["annotations"]:
-        ann["font"] = dict(family="IBM Plex Mono", size=11, color="#C9AE5B")
-        ann["text"] = f"<b>{ann['text']}</b>"
-
-    if show_wc_chart:
-        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-
-    # --- Vereine (Goldbalken-Liste, reine Visualisierung) ---
+with _tab_quali:
     st.markdown(
-        '<div class="section-head" style="margin-top:24px"><div>'
-        '<div class="kicker kicker--gold">Vereine</div>'
-        '<h2>Qualifizierte pro Verein</h2></div>'
-        f'<div class="meta">{len(count_team)} Vereine vertreten</div></div>',
+        '<div class="kpis kpis--3">'
+        + kpi_card("Qualifiziert", n_qual, accent=True, foot=qual_foot)
+        + kpi_card("Athlet:innen", n_athletes, foot=athlete_foot)
+        + kpi_card("Wettkämpfe", n_meets, foot=meets_foot)
+        + "</div>",
         unsafe_allow_html=True,
     )
 
-    max_team = int(count_team["n"].max()) if not count_team.empty else 1
-    team_rows_html = "".join(
-        f'<a class="sumrow sumrow--link" href="?team={_urlquote(str(r.Team))}" target="_self">'
-        f'<div class="sumrow__label">{esc(r.Team)}</div>'
-        f'<div class="sumrow__bar"><i style="width:{r.n / max_team * 100:.0f}%"></i></div>'
-        f'<div class="sumrow__num">{r.n}</div></a>'
-        for r in count_team.itertuples()
-    )
+    # --- ATHLET:INNEN-TABELLE (Bestleistung je Person) ---
+    qual_df = df_filtered[df_filtered["Qualifiziert"] == True]
+
+    if show_only_qualified:
+        table_df = qual_df
+        section_title = "Qualifizierte Athlet:innen"
+    else:
+        table_df = df_filtered
+        section_title = "Athlet:innen"
+
+    # Bestleistung pro Person (höchstes Total). Default-Sortierung: Qualifizierte zuerst,
+    # dann IPF GL Punkte absteigend. (Wird auch für den CSV-Export verwendet.)
+    if not table_df.empty:
+        best_per_athlete = (
+            table_df.sort_values("TotalKg", ascending=False).drop_duplicates("Name")
+        )
+        best_per_athlete = best_per_athlete.sort_values(
+            by=["Qualifiziert", "GL_Points"],
+            ascending=[False, False],
+            na_position="last",
+        )
+    else:
+        best_per_athlete = table_df
+
+    # Export-Frame (exakt die angezeigte Tabelle) → CSV (Deutsch-Excel-freundlich).
+    def _build_export_df(df: pd.DataFrame) -> pd.DataFrame:
+        rows = []
+        for i, r in enumerate(df.itertuples(), start=1):
+            rows.append({
+                "#": i,
+                "Name": r.Name,
+                "Geschlecht": sex_display(r.Sex),
+                "Alter": fmt_age(r.Age),
+                "Körpergewicht (kg)": fmt_kg(r.BodyweightKg, 2),
+                "Gewichtsklasse (kg)": wc_label(r.WeightClassKg),
+                "Total (kg)": fmt_kg(r.TotalKg),
+                "SBD (kg)": fmt_sbd(getattr(r, "Best3SquatKg", None), getattr(r, "Best3BenchKg", None), getattr(r, "Best3DeadliftKg", None)),
+                "SM Limit (kg)": fmt_kg(r.smLimit),
+                "Differenz (kg)": fmt_diff(r.Differenz),
+                "IPF GL Punkte": fmt_kg(r.GL_Points, 2),
+                "Verein": r.Team,
+                "Wettkampf": r.MeetName,
+                "Wettkampfdatum": fmt_date(r.Date),
+            })
+        return pd.DataFrame(rows)
+
+    # CSV-Export-Button rechts neben der Section-Headline (vertikal mittig).
+    _hdr_left, _hdr_right = st.columns([4, 1], vertical_alignment="center")
+    with _hdr_left:
+        st.markdown(
+            f'<div class="section-head"><div>'
+            f'<h2>{section_title}</h2></div></div>',
+            unsafe_allow_html=True,
+        )
+    with _hdr_right:
+        if not table_df.empty:
+            _export_df = _build_export_df(best_per_athlete)
+            _csv_bytes = _export_df.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+            st.download_button(
+                "⬇ CSV-Export",
+                data=_csv_bytes,
+                file_name="oevk_qualifikation.csv",
+                mime="text/csv",
+                key="dl_csv",
+                use_container_width=True,
+            )
+
+    if not table_df.empty:
+        def _sh(label: str, sort_type: str = "text", cls: str = "") -> str:
+            """Sortierbares Header-Cell — Click wird client-seitig via JS verarbeitet."""
+            cls_attr = f' class="{cls} sortable" data-sort-type="{sort_type}"' if cls else f' class="sortable" data-sort-type="{sort_type}"'
+            return f'<th{cls_attr}>{label}<span class="sort-arrow">↕</span></th>'
+
+        _q_head = (
+            '<th class="num nosort">#</th>'
+            + _sh("Name", "text")
+            + _sh("Geschlecht", "text")
+            + _sh("Alter", "num", "num")
+            + _sh("Körpergewicht", "num", "num")
+            + '<th class="nosort">Gewichtsklasse</th>'
+            + _sh("Total", "num", "num")
+            + '<th class="num nosort">SBD</th>'
+            + _sh("SM Limit", "num", "num")
+            + _sh("Differenz", "diff")
+            + _sh("IPF GL Punkte", "num", "num")
+            + _sh("Verein", "text")
+            + _sh("Wettkampf", "text")
+            + _sh("Wettkampfdatum", "date")
+        )
+        _q_rows = []
+        for i, r in enumerate(best_per_athlete.itertuples(), start=1):
+            q = bool(r.Qualifiziert)
+            row_cls = "row--q" if q else "row--w"
+            _fqs = _filter_qs()
+            _athlete_href = f"?athlete={_urlquote(str(r.Name))}" + (f"&{_fqs}" if _fqs else "")
+            _name_link = f'<a class="nm nm-link" href="{_athlete_href}" target="_self">{esc(r.Name)}</a>'
+            _q_rows.append(
+                f'<tr class="{row_cls}">'
+                f'<td class="num rank" data-label="">{i}</td>'
+                f'<td class="cell-name l" data-label="Name">{_name_link}</td>'
+                f'<td data-label="Geschlecht"><span class="sex-tag">{sex_display(r.Sex)}</span></td>'
+                f'<td class="num mono" data-label="Alter">{fmt_age(r.Age)}</td>'
+                f'<td class="num mono" data-label="Körpergewicht">{fmt_kg(r.BodyweightKg, 2)}</td>'
+                f'<td class="mono" data-label="Gewichtsklasse">{wc_label(r.WeightClassKg)}</td>'
+                f'<td class="num mono-strong" data-label="Total">{fmt_kg(r.TotalKg)}</td>'
+                f'<td class="num mono" data-label="SBD">{fmt_sbd(getattr(r, "Best3SquatKg", None), getattr(r, "Best3BenchKg", None), getattr(r, "Best3DeadliftKg", None))}</td>'
+                f'<td class="num mono" data-label="SM Limit">{fmt_kg(r.smLimit)}</td>'
+                f'<td data-label="Differenz"><span class="diff {diff_class(r.Differenz)}">{fmt_diff(r.Differenz)}</span></td>'
+                f'<td class="num gold-strong" data-label="IPF GL Punkte">{fmt_kg(r.GL_Points, 2)}</td>'
+                f'<td class="l" data-label="Verein">{esc(r.Team)}</td>'
+                f'<td class="l" data-label="Wettkampf">{esc(r.MeetName)}</td>'
+                f'<td class="mono" data-label="Wettkampfdatum">{fmt_date(r.Date)}</td></tr>'
+            )
+        st.markdown(
+            f'<div class="tablecard" id="qual-tablecard"><div class="tablescroll"><table class="tbl" id="qual-table">'
+            f'<thead><tr>{_q_head}</tr></thead><tbody>{"".join(_q_rows)}</tbody></table></div></div>',
+            unsafe_allow_html=True,
+        )
+        # Wenn ein Reset stattgefunden hat, vorab den persistierten Sort-State löschen.
+        if st.session_state.pop("_clear_sort_storage", False):
+            _components.html(
+                """
+    <script>
+    (function(){ try { window.parent.sessionStorage.removeItem('oevk_sort_state_v1'); } catch(e){} })();
+    </script>
+                """,
+                height=0,
+            )
+
+        # Client-seitiger Sort — kein Streamlit-Rerun, kein Flash.
+        _components.html(
+            """
+    <script>
+    (function () {
+      const doc = window.parent.document;
+      const SS = window.parent.sessionStorage;
+      const SORT_KEY = 'oevk_sort_state_v1';
+      function loadState() {
+        try { const raw = SS.getItem(SORT_KEY); if (!raw) return null; const o = JSON.parse(raw);
+              if (typeof o.col === 'number' && (o.dir === 'asc' || o.dir === 'desc')) return o; }
+        catch (e) {}
+        return null;
+      }
+      function saveState(s) { try { SS.setItem(SORT_KEY, JSON.stringify(s)); } catch (e) {} }
+
+      function parseNum(s) {
+        if (!s) return NaN;
+        s = s.replace(/\\s/g, '').replace(/[^\\-+\\d.,]/g, '').replace(',', '.');
+        const f = parseFloat(s);
+        return isNaN(f) ? NaN : f;
+      }
+      function parseDate(s) {
+        const m = (s || '').trim().match(/^(\\d{1,2})[.\\/](\\d{1,2})[.\\/](\\d{2,4})$/);
+        if (!m) return NaN;
+        const d = parseInt(m[1], 10), mo = parseInt(m[2], 10) - 1;
+        let y = parseInt(m[3], 10); if (y < 100) y += 2000;
+        return new Date(y, mo, d).getTime();
+      }
+      function valueOf(row, idx, type) {
+        const cell = row.children[idx];
+        if (!cell) return null;
+        const text = (cell.textContent || '').trim();
+        if (type === 'num' || type === 'diff') { const v = parseNum(text); return isNaN(v) ? null : v; }
+        if (type === 'date') { const v = parseDate(text); return isNaN(v) ? null : v; }
+        if (type === 'wc') {
+          const plus = text.endsWith('+') ? 0.5 : 0;
+          const v = parseNum(text.replace('+', ''));
+          return isNaN(v) ? null : v + plus;
+        }
+        return text.toLowerCase();
+      }
+
+      // Default sort: IPF GL Punkte (column index 10), descending.
+      const DEFAULT_STATE = { col: 10, dir: 'desc' };
+
+      // Track per-table state so we know when to re-apply (tbody-content fingerprint).
+      let wiredTable = null;
+      let tbodyObserver = null;
+      let lastTbodySignature = null;
+      let sorting = false;          // re-entry guard (synchronous)
+
+      function getCurrentState() {
+        const s = loadState();
+        return s ? s : Object.assign({}, DEFAULT_STATE);
+      }
+
+      // Cheap signature of tbody content — set of (first-cell-text, name) pairs.
+      function tbodySig(tbody) {
+        if (!tbody) return null;
+        const rows = tbody.querySelectorAll('tr');
+        let sig = String(rows.length) + '|';
+        // Use only a few rows + their name cell text — enough to detect filter changes.
+        rows.forEach(function (r, i) { if (i < 8) sig += (r.children[1]?.textContent || '').slice(0,20) + ';'; });
+        return sig;
+      }
+
+      function applySort(table, state) {
+        if (sorting) return;
+        const ths = table.querySelectorAll('thead tr:last-child th');
+        const tbody = table.tBodies[0];
+        if (!tbody || !ths[state.col]) return;
+        const type = ths[state.col].dataset.sortType || 'text';
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        if (rows.length === 0) return;
+        const dir = state.dir === 'desc' ? -1 : 1;
+        rows.sort(function (a, b) {
+          const qa = a.classList.contains('row--q') ? 1 : 0;
+          const qb = b.classList.contains('row--q') ? 1 : 0;
+          if (qa !== qb) return qb - qa;
+          const va = valueOf(a, state.col, type);
+          const vb = valueOf(b, state.col, type);
+          if (va === null && vb === null) return 0;
+          if (va === null) return 1;
+          if (vb === null) return -1;
+          if (va < vb) return -1 * dir;
+          if (va > vb) return 1 * dir;
+          return 0;
+        });
+        sorting = true;
+        rows.forEach(function (r) { tbody.appendChild(r); });
+        let n = 1;
+        tbody.querySelectorAll('tr').forEach(function (r) {
+          const rc = r.querySelector('td.rank');
+          if (rc) rc.textContent = String(n++);
+        });
+        sorting = false;
+        ths.forEach(function (h) {
+          const a = h.querySelector('.sort-arrow');
+          if (a) a.textContent = '↕';
+          h.classList.remove('sort-active');
+        });
+        const active = ths[state.col];
+        active.classList.add('sort-active');
+        const arrow = active.querySelector('.sort-arrow');
+        if (arrow) arrow.textContent = state.dir === 'asc' ? '↑' : '↓';
+        lastTbodySignature = tbodySig(tbody);
+      }
+
+      function wireClickHandlers(table) {
+        if (wiredTable === table) return;
+        wiredTable = table;
+        const ths = table.querySelectorAll('thead tr:last-child th');
+        ths.forEach(function (th, idx) {
+          if (th.classList.contains('nosort')) return;
+          th.style.cursor = 'pointer';
+          th.addEventListener('click', function () {
+            const state = getCurrentState();
+            const type = th.dataset.sortType || 'text';
+            if (state.col === idx) {
+              state.dir = state.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+              state.col = idx;
+              state.dir = (type === 'text') ? 'asc' : 'desc';
+            }
+            applySort(table, state);
+            saveState(state);
+          });
+        });
+      }
+
+      function bindTbodyObserver(tbody) {
+        if (tbodyObserver) tbodyObserver.disconnect();
+        tbodyObserver = new MutationObserver(function () {
+          if (sorting) return;
+          const t = doc.getElementById('qual-table');
+          if (!t) return;
+          const sig = tbodySig(t.tBodies[0]);
+          if (sig === lastTbodySignature) return;        // no real content change
+          applySort(t, getCurrentState());
+        });
+        tbodyObserver.observe(tbody, { childList: true });
+      }
+
+      function syncSort() {
+        const t = doc.getElementById('qual-table');
+        if (!t) return false;
+        wireClickHandlers(t);
+        applySort(t, getCurrentState());
+        const tb = t.tBodies[0];
+        if (tb) bindTbodyObserver(tb);
+        return true;
+      }
+
+      // Initial: keep polling lightly until the table exists, then stop polling.
+      if (!syncSort()) {
+        let tries = 0;
+        const initId = setInterval(function () {
+          if (syncSort() || ++tries > 30) clearInterval(initId);
+        }, 150);
+      }
+
+      // Outer observer: only triggers when the table ELEMENT itself is replaced by a rerun.
+      // Cheap: ignores nested DOM mutations entirely.
+      const bodyObserver = new MutationObserver(function () {
+        const t = doc.getElementById('qual-table');
+        if (t && t !== wiredTable) {
+          // New table instance — re-wire + re-sort.
+          lastTbodySignature = null;
+          syncSort();
+        }
+      });
+      bodyObserver.observe(doc.body, { childList: true, subtree: true });
+    })();
+    </script>
+            """,
+            height=0,
+        )
+    else:
+        st.info("Keine Athlet:innen im gewählten Filter gefunden.")
+
+    # --- ZUSAMMENFASSUNGEN: Chart (Gewichtsklassen) + klickbare Vereine-Liste ---
+    # Basis = alle Qualifizierten (Datum+Equipment+Event), unabhängig von Team/WC-Filter,
+    # damit man die Verteilung sieht und per Klick filtern kann.
+    if not selected_name and not best_baseline.empty:
+        # Counts pro (Geschlecht, Gewichtsklasse)
+        bl = best_baseline.assign(
+            _wc=best_baseline["WeightClassKg"].apply(wc_display),
+            _sx=best_baseline["Sex"].astype(str).str.upper(),
+        )
+        fem_counts = {wc: int(((bl["_sx"] == "F") & (bl["_wc"] == wc)).sum()) for wc in FEM_ORDER}
+        mal_counts = {wc: int(((bl["_sx"] == "M") & (bl["_wc"] == wc)).sum()) for wc in MAL_ORDER}
+
+        count_team = (
+            best_baseline.groupby("Team").size().reset_index(name="n").sort_values("n", ascending=False)
+        )
+
+        # Chart "Qualifizierte pro Gewichtsklasse" nur zeigen, wenn keine Klassen gefiltert sind.
+        show_wc_chart = not selected_wc
+        if show_wc_chart:
+            st.markdown(
+                '<div class="section-head" style="margin-top:18px"><div>'
+                '<div class="kicker kicker--gold">Verteilung</div>'
+                '<h2>Qualifizierte pro Gewichtsklasse</h2></div>'
+                f'<div class="meta">{int(best_baseline["Name"].nunique())} Athlet:innen gesamt</div></div>',
+                unsafe_allow_html=True,
+            )
+
+        # --- Plotly-Chart (Frauen + Männer als Subplots, horizontale Balken) ---
+        GOLD_W = "#E2C977"
+        GOLD_M = "#E2C977"  # gleiche Farbe wie Frauen für visuelle Konsistenz
+        max_count = max(list(fem_counts.values()) + list(mal_counts.values()) + [1])
+
+        fig = make_subplots(
+            rows=1, cols=2,
+            subplot_titles=("FRAUEN", "MÄNNER"),
+            horizontal_spacing=0.12,
+            shared_xaxes=False,
+        )
+        # Damit "47" oben steht: y-Achse umkehren via autorange="reversed"
+        FEM_LABELS = [wc_label(w) for w in FEM_ORDER]
+        MAL_LABELS = [wc_label(w) for w in MAL_ORDER]
+        fig.add_trace(
+            go.Bar(
+                y=FEM_LABELS,
+                x=[fem_counts[w] for w in FEM_ORDER],
+                orientation="h",
+                marker=dict(color=GOLD_W, line=dict(color="#1F1F23", width=1)),
+                text=[fem_counts[w] if fem_counts[w] else "" for w in FEM_ORDER],
+                textposition="outside",
+                textfont=dict(family="IBM Plex Mono", color=GOLD_W, size=13),
+                hovertemplate="<b>%{y} kg</b><br>%{x} Athletinnen<extra></extra>",
+                showlegend=False,
+            ),
+            row=1, col=1,
+        )
+        fig.add_trace(
+            go.Bar(
+                y=MAL_LABELS,
+                x=[mal_counts[w] for w in MAL_ORDER],
+                orientation="h",
+                marker=dict(color=GOLD_M, line=dict(color="#1F1F23", width=1)),
+                text=[mal_counts[w] if mal_counts[w] else "" for w in MAL_ORDER],
+                textposition="outside",
+                textfont=dict(family="IBM Plex Mono", color=GOLD_W, size=13),
+                hovertemplate="<b>%{y} kg</b><br>%{x} Athleten<extra></extra>",
+                showlegend=False,
+            ),
+            row=1, col=2,
+        )
+        # Wichtig: type="category" damit Plotly die Klassen als Strings rendert,
+        # statt sie numerisch zu binnen ("45 kg, 50 kg, ...").
+        fig.update_yaxes(
+            type="category",
+            autorange="reversed",
+            categoryorder="array",
+            categoryarray=FEM_LABELS + MAL_LABELS,
+            tickfont=dict(family="IBM Plex Mono", size=12, color="#B6B6BB"),
+            showgrid=False,
+            ticksuffix=" kg",
+        )
+        fig.update_xaxes(showgrid=True, gridcolor="#2A2A30", zeroline=False,
+                         tickfont=dict(family="IBM Plex Mono", size=11, color="#76767D"),
+                         range=[0, max_count + max(1, max_count * 0.25)])
+        fig.update_layout(
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(family="Archivo, sans-serif", color="#F5F5F4"),
+            height=420,
+            margin=dict(l=10, r=10, t=50, b=20),
+            bargap=0.35,
+        )
+        for ann in fig["layout"]["annotations"]:
+            ann["font"] = dict(family="IBM Plex Mono", size=11, color="#C9AE5B")
+            ann["text"] = f"<b>{ann['text']}</b>"
+
+        if show_wc_chart:
+            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+
+        # --- Vereine (Goldbalken-Liste, reine Visualisierung) ---
+        st.markdown(
+            '<div class="section-head" style="margin-top:24px"><div>'
+            '<div class="kicker kicker--gold">Vereine</div>'
+            '<h2>Qualifizierte pro Verein</h2></div>'
+            f'<div class="meta">{len(count_team)} Vereine vertreten</div></div>',
+            unsafe_allow_html=True,
+        )
+
+        max_team = int(count_team["n"].max()) if not count_team.empty else 1
+        team_rows_html = "".join(
+            f'<a class="sumrow sumrow--link" href="?team={_urlquote(str(r.Team))}" target="_self">'
+            f'<div class="sumrow__label">{esc(r.Team)}</div>'
+            f'<div class="sumrow__bar"><i style="width:{r.n / max_team * 100:.0f}%"></i></div>'
+            f'<div class="sumrow__num">{r.n}</div></a>'
+            for r in count_team.itertuples()
+        )
+        st.markdown(
+            f'<div class="sumcard">{team_rows_html}</div>',
+            unsafe_allow_html=True,
+        )
+
+
+with _tab_records:
+    _records_df = load_records()
+    # OeVK-Historie + EM/WM-Daten für österreichische Athlet:innen mergen
+    _hist_full = load_full_history()
+    _hist_intl = load_international_for_austrians()
+    if not _hist_intl.empty and not _hist_full.empty:
+        _hist_combined = pd.concat([_hist_full, _hist_intl], ignore_index=True)
+    elif not _hist_intl.empty:
+        _hist_combined = _hist_intl
+    else:
+        _hist_combined = _hist_full
+    _bests_df = compute_dataset_bests(_hist_combined)
+
+    # --- Section-Headline + CSV-Export (gleiche Optik wie im Qualifikation-Tab) ---
+    _rec_hdr_left, _rec_hdr_right = st.columns([4, 1], vertical_alignment="center")
+    with _rec_hdr_left:
+        st.markdown(
+            '<div class="section-head"><div>'
+            '<h2>Österreichische Rekorde (Classic / Raw)</h2></div></div>',
+            unsafe_allow_html=True,
+        )
+    with _rec_hdr_right:
+        try:
+            _rec_export_df = _records_df.copy()
+            _rec_export_df.insert(0, "lift_de",
+                _rec_export_df["lift"].map({"Total": "Total", "Squat": "Kniebeugen",
+                                            "Bench": "Bankdrücken", "Deadlift": "Kreuzheben"}))
+            _rec_csv_bytes = _rec_export_df.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+            st.download_button(
+                "⬇ CSV-Export",
+                data=_rec_csv_bytes,
+                file_name="oevk_rekorde.csv",
+                mime="text/csv",
+                key="dl_csv_rekorde",
+                use_container_width=True,
+            )
+        except Exception:
+            pass
+
+    # --- Hilfe-Banner ---
     st.markdown(
-        f'<div class="sumcard">{team_rows_html}</div>',
+        '<div class="rec-help">'
+        '<span class="ico">ℹ</span>'
+        '<div>Die Spalte <b>„OPL-Datensatz"</b> zeigt die höchste in '
+        '<a href="https://www.openpowerlifting.org" target="_blank" rel="noopener" '
+        'style="color:var(--gold-bright);text-decoration:none">OpenPowerlifting</a> '
+        'verzeichnete Leistung in dieser Kategorie (inkl. EM/WM-Wettkämpfen für '
+        'österreichische Athlet:innen) – als Vergleichswert, kein offizieller Rekord. '
+        'Ein <span class="up">↑</span> markiert Fälle, in denen der OPL-Wert über dem '
+        'offiziellen Rekord liegt – möglicher Hinweis auf eine veraltete Rekordliste.</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    # --- Filter: Gewichtsklasse + Altersklasse + Geschlecht direkt nebeneinander, gleichmäßig kompakt ---
+    _flt_a, _flt_b, _flt_c, _flt_spacer = st.columns([1, 1, 1, 3])
+    with _flt_a:
+        _rc_wc_pair = st.selectbox(
+            "Gewichtsklasse",
+            WC_OPTIONS,
+            index=None,
+            format_func=_fmt_wc_option,
+            placeholder="Alle Gewichtsklassen",
+            key=f"rec_wc_v{_GEN}",
+        )
+    with _flt_b:
+        _rc_age = st.selectbox(
+            "Altersklasse",
+            ["Jugend", "Junioren", "Open", "AK1", "AK2", "AK3", "AK4"],
+            index=None,
+            placeholder="Alle Altersklassen",
+            key=f"rec_age_v{_GEN}",
+        )
+    with _flt_c:
+        _rc_sex_pair = st.selectbox(
+            "Geschlecht",
+            [("F", "Frauen"), ("M", "Männer")],
+            index=None,
+            format_func=lambda o: o[1],
+            placeholder="Alle Geschlechter",
+            key=f"rec_sex_v{_GEN}",
+        )
+
+    _LIFT_EN2DE = {"Total": "Total", "Squat": "Kniebeugen",
+                   "Bench": "Bankdrücken", "Deadlift": "Kreuzheben"}
+
+    # Filter offizielle Rekorde (nur Raw — PDF enthält keine Single-ply-Daten)
+    _off = _records_df[_records_df["equipment"] == "Raw"].copy()
+    if _rc_wc_pair is not None:
+        _sex_sel, _wc_sel = _rc_wc_pair
+        _off = _off[(_off["sex"] == _sex_sel) & (_off["weight_class"] == _wc_sel)]
+    if _rc_age:
+        _off = _off[_off["age_class"] == _rc_age]
+    if _rc_sex_pair is not None:
+        _off = _off[_off["sex"] == _rc_sex_pair[0]]
+
+    # Querystring-Suffix für Athleten-Profil-Links aus diesem Tab:
+    # markiert "kam aus Rekorde-Tab" + aktuell gesetzten Filter — Profile-Back-Button kehrt damit hierher zurück.
+    _rec_link_suffix = "&from=records"
+    if _rc_wc_pair is not None:
+        _rec_link_suffix += f"&rec_wc={_urlquote(_rc_wc_pair[0] + '-' + _rc_wc_pair[1])}"
+    if _rc_age:
+        _rec_link_suffix += f"&rec_ac={_urlquote(_rc_age)}"
+    if _rc_sex_pair is not None:
+        _rec_link_suffix += f"&rec_sex={_rc_sex_pair[0]}"
+    _fqs_main = _filter_qs()
+    if _fqs_main:
+        _rec_link_suffix += "&" + _fqs_main
+
+    # Sortier-Hilfen (feste, lesbare Reihenfolge — kein Klick-Sort mehr)
+    _AGE_ORDER = {"Jugend": 0, "Junioren": 1, "Open": 2, "AK1": 3, "AK2": 4, "AK3": 5, "AK4": 6}
+    _LIFT_ORDER = ["Total", "Squat", "Bench", "Deadlift"]   # Render-Reihenfolge der 4 Tabellen
+
+    def _wc_key(s):
+        s = str(s)
+        return (1, 0.0) if s.endswith("+") else (0, float(s.replace("+", "") or 0))
+
+    # OPL-Bestleistungen indexieren
+    _bests_idx = (
+        _bests_df.set_index(["sex", "age_class", "equipment", "weight_class", "lift"])
+        if not _bests_df.empty else None
+    )
+
+    def _meet_cell(name, date_iso, cls_extra=""):
+        if not name and not date_iso:
+            return f'<td class="rec-meet rec-open{(" " + cls_extra) if cls_extra else ""}">–</td>'
+        _nm = esc(str(name)) if name else "–"
+        _wn = fmt_date(date_iso) if date_iso else ""
+        _cls = ("rec-meet " + cls_extra).strip()
+        return (f'<td class="{_cls}" title="{esc(str(name))}">'
+                f'<span class="mname">{_nm}</span>'
+                + (f'<span class="mwhen">{_wn}</span>' if _wn else '')
+                + '</td>')
+
+    def _opl_cells(sx, ac, wc, lift, has_official, off_kg):
+        """Liefert (kg-Zelle, Athlet-Zelle, Wettkampf-Zelle) für die OPL-Spalten."""
+        if _bests_idx is None:
+            return ('<td class="num kg-opl rec-open opl-sep" data-label="OPL">–</td>',
+                    '<td class="l rec-open" data-label="Athlet:in (OPL)">–</td>',
+                    _meet_cell("", ""))
+        _key = (sx, ac, "Raw", wc, lift)
+        if _key not in _bests_idx.index:
+            return ('<td class="num kg-opl rec-open opl-sep" data-label="OPL">–</td>',
+                    '<td class="l rec-open" data-label="Athlet:in (OPL)">–</td>',
+                    _meet_cell("", ""))
+        _br = _bests_idx.loc[_key]
+        if isinstance(_br, pd.DataFrame):
+            _br = _br.iloc[0]
+        _opl_kg = float(_br["kg"])
+        _is_higher = has_official and off_kg is not None and _opl_kg > off_kg + 0.01
+        _arrow = ' <span class="up">↑</span>' if _is_higher else ''
+        _kg_cls = "num kg-opl opl-sep" + (" is-higher" if _is_higher else "")
+        _kg = f'<td class="{_kg_cls}" data-label="OPL">{fmt_kg(_opl_kg)}{_arrow}</td>'
+        _nm = str(_br["athlete"])
+        _link = (f'<a class="nm-link" href="?athlete={_urlquote(_nm)}{_rec_link_suffix}" target="_self">{esc(_nm)}</a>')
+        _name = f'<td class="l" data-label="Athlet:in (OPL)">{_link}</td>'
+        return (_kg, _name, _meet_cell(_br["meet"], _br["date_iso"]))
+
+    # Feste Spaltenbreiten — sorgen dafür, dass alle 4 Disziplin-Tabellen identisch ausgerichtet sind.
+    _R_COLGROUP = (
+        '<colgroup>'
+        '<col style="width:78px">'    # Geschl.
+        '<col style="width:118px">'   # Altersklasse
+        '<col style="width:80px">'    # Gew.kl.
+        '<col style="width:128px">'   # Offiz. Rekord
+        '<col style="width:180px">'   # Athlet:in (offiziell)
+        '<col style="width:240px">'   # Wettkampf (offiziell)
+        '<col style="width:108px">'   # OPL
+        '<col style="width:180px">'   # Athlet:in (OPL)
+        '<col style="width:240px">'   # Wettkampf (OPL)
+        '</colgroup>'
+    )
+    _R_HEAD = (
+        _R_COLGROUP
+        + '<thead><tr>'
+        '<th>Geschl.</th><th>Altersklasse</th><th class="num">Gew.kl.</th>'
+        '<th class="num">Offiz. Rekord</th><th class="l">Athlet:in (offiziell)</th>'
+        '<th class="l">Wettkampf (offiziell)</th>'
+        '<th class="num opl-sep">OPL</th><th class="l">Athlet:in (OPL)</th>'
+        '<th class="l">Wettkampf (OPL)</th>'
+        '</tr></thead>'
+    )
+
+    _any_rendered = False
+    for _lift_en in _LIFT_ORDER:
+        _lift_de = _LIFT_EN2DE[_lift_en]
+        _sub = _off[_off["lift"] == _lift_en].copy()
+        if _sub.empty:
+            continue
+        _sub = _sub.assign(
+            _o_sex=_sub["sex"].map({"F": 0, "M": 1}).fillna(9),
+            _o_age=_sub["age_class"].map(_AGE_ORDER).fillna(99),
+            _o_wc=_sub["weight_class"].map(_wc_key),
+        ).sort_values(["_o_sex", "_o_age", "_o_wc"])
+
+        _rows = []
+        for _, r in _sub.iterrows():
+            _sx, _ac, _wc = r["sex"], r["age_class"], r["weight_class"]
+            _tr_cls = ''
+            _has_off = pd.notna(r["record_kg"])
+            _off_kg = float(r["record_kg"]) if _has_off else None
+
+            if _has_off:
+                _kg_off = f'<td class="num kg-off" data-label="Offiz. Rekord">{fmt_kg(_off_kg)}</td>'
+                _ath = str(r["athlete"])
+                _ath_cell = (
+                    f'<td class="l" data-label="Athlet:in (offiziell)">'
+                    f'<a class="nm-link" href="?athlete={_urlquote(_ath)}{_rec_link_suffix}" target="_self">{esc(_ath)}</a></td>'
+                    if _ath else '<td class="l rec-open" data-label="Athlet:in (offiziell)">–</td>'
+                )
+                _meet_off = _meet_cell(r["meet"], r["date_iso"])
+            else:
+                _kg_off = '<td class="num rec-open" data-label="Offiz. Rekord">Rekord offen</td>'
+                _ath_cell = '<td class="l rec-open" data-label="Athlet:in (offiziell)">–</td>'
+                _meet_off = _meet_cell("", "")
+
+            _opl_kg, _opl_ath, _opl_meet = _opl_cells(_sx, _ac, _wc, _lift_en, _has_off, _off_kg)
+
+            _rows.append(
+                f'<tr{_tr_cls}>'
+                f'<td data-label="Geschl."><span class="sex-tag">{sex_display(_sx)}</span></td>'
+                f'<td class="mono" data-label="Altersklasse">{_ac}</td>'
+                f'<td class="mono" data-label="Gew.kl.">{wc_label(_wc)}</td>'
+                f'{_kg_off}{_ath_cell}{_meet_off}{_opl_kg}{_opl_ath}{_opl_meet}'
+                f'</tr>'
+            )
+
+        st.markdown(
+            f'<div class="section-head"><div><h2>{_lift_de}</h2></div></div>'
+            f'<div class="tablecard"><div class="tablescroll">'
+            f'<table class="tbl tbl-records">{_R_HEAD}<tbody>{"".join(_rows)}</tbody></table>'
+            f'</div></div>',
+            unsafe_allow_html=True,
+        )
+        _any_rendered = True
+
+    if not _any_rendered:
+        st.markdown('<div class="rec-empty">Keine Rekorde für diese Auswahl.</div>',
+                    unsafe_allow_html=True)
+
+    _stand = records_last_updated()
+    _stand_str = _stand.strftime("%d.%m.%Y") if _stand else "—"
+    st.markdown(
+        f'<div class="rec-disclaimer">'
+        f'<em><b>Quelle „Offiziell":</b> ÖVK-Rekordliste, Stand <b>{_stand_str}</b>, '
+        f'veröffentlicht auf <a href="https://www.kraftdreikampf.at" target="_blank" rel="noopener" '
+        f'style="color:var(--text-2)">www.kraftdreikampf.at</a>. '
+        f'<b>Quelle „OPL":</b> berechnet aus dem '
+        f'<a href="https://www.openpowerlifting.org" target="_blank" rel="noopener" '
+        f'style="color:var(--text-2)">openpowerlifting.org</a>-Datensatz '
+        f'(ausschließlich KDK-/3-Kampf-Wettkämpfe, inkl. EM/WM für österreichische Athlet:innen). '
+        f'Die OPL-Werte können fehlerhaft oder unvollständig sein '
+        f'(z.&nbsp;B. fehlende Meets, Tippfehler in Namen, falsche Klassen) – Abweichungen zur '
+        f'offiziellen Liste dienen aktuell dem Abgleich, nicht der Übernahme.'
+        f'</em></div>',
         unsafe_allow_html=True,
     )
 
