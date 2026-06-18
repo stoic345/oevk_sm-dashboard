@@ -113,9 +113,9 @@ header[data-testid="stHeader"] [data-testid="stToolbarActions"] { display:none !
 .data-status { display:grid; grid-template-columns:repeat(4, 1fr); gap:16px;
   margin:0; align-items:stretch; }
 @media (max-width:900px) { .data-status { grid-template-columns:1fr 1fr; } }
-.status-pill { display:flex; align-items:center; justify-content:center; gap:10px;
+.status-pill { display:flex; align-items:center; justify-content:center; gap:8px;
   background:var(--bg-elev); border:1px solid var(--gold-dim); border-radius:var(--r-sm);
-  padding:10px 14px; font-family:var(--font-mono); font-size:12px; line-height:1.2;
+  padding:6px 12px; font-family:var(--font-mono); font-size:11.5px; line-height:1.15;
   min-width:0; text-align:center; }
 .status-pill .lab, .status-pill .val { text-align:center; }
 .status-pill .lab { color:var(--gold); letter-spacing:0.14em; text-transform:uppercase;
@@ -183,7 +183,7 @@ a.brand.brand--link:hover { opacity:0.85; }
 .target--solo .target__count { padding-left:0; border-left:none; }
 
 /* KPI cards */
-.kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin:0; }
+.kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin:0 0 18px; }
 .kpis--3 { grid-template-columns:repeat(3,1fr); }
 @media (max-width:760px) { .kpis--3 { grid-template-columns:1fr; } }
 
@@ -213,7 +213,7 @@ a.brand.brand--link:hover { opacity:0.85; }
 
 /* Section heading */
 .section-head { display:flex; align-items:center; justify-content:space-between; gap:16px; margin:0; }
-.section-head h2 { font-family:var(--font-body); font-size:26px; font-weight:700; letter-spacing:-0.01em; margin:0; }
+.section-head h2 { font-family:var(--font-body); font-size:21px; font-weight:700; letter-spacing:-0.01em; margin:0; }
 .section-head .meta { font-family:var(--font-mono); font-size:12px; color:var(--gold); font-weight:600; }
 /* CSV-Export-Button (Hauptbereich, neben dem Tabellen-Header) */
 [data-testid="stDownloadButton"] > button {
@@ -311,10 +311,10 @@ footer { display: none !important; visibility: hidden !important; }
 [data-testid="stMain"] .block-container,
 .block-container,
 [data-testid="stAppViewBlockContainer"] {
-  padding-top: 1rem !important;
+  padding-top: 0.6rem !important;
 }
 [data-testid="stMain"] [data-testid="stVerticalBlock"] {
-  gap: 28px !important;
+  gap: 12px !important;
 }
 /* st.markdown-Wrapper um eingebettete Style-Tags visuell unsichtbar machen
    (verhindert Vertical Jump bei conditional CSS-Injection). */
@@ -518,36 +518,38 @@ button[data-testid="stExpandSidebarButton"] * {
 .disc-tile .foot { margin-top:8px; font-family:var(--font-mono); font-size:10px; letter-spacing:0.08em;
   text-transform:uppercase; color:var(--text-3); }
 
-/* === Top-Tabs (Qualifikation / Rekorde) — Gold-Theme, prominent === */
-[data-testid="stTabs"] [role="tablist"] {
-  border-bottom:1px solid var(--gold-dim); gap:6px; margin-bottom:20px;
-}
-[data-testid="stTabs"] [role="tab"] {
+/* === Seiten-Navigation (Segmented-Control = stButtonGroup) — Gold-Theme === */
+[data-testid="stButtonGroup"] { gap:6px !important; margin:40px 0 6px;
+  border-bottom:1px solid var(--gold-dim); }
+[data-testid="stButtonGroup"] button {
+  background:transparent !important; border:none !important;
+  border-bottom:3px solid transparent !important; border-radius:0 !important;
+  box-shadow:none !important;
   font-family:var(--font-mono) !important; font-size:16px !important;
   font-weight:700 !important; letter-spacing:0.14em !important;
   text-transform:uppercase !important;
-  color:var(--text-2) !important; border-bottom:3px solid transparent !important;
-  padding:14px 22px !important;
-  transition:color .12s ease, border-color .12s ease;
+  color:var(--text-2) !important; padding:12px 22px !important;
+  transition:color .12s ease, border-color .12s ease, background .12s ease;
 }
-[data-testid="stTabs"] [role="tab"][aria-selected="true"] {
+[data-testid="stButtonGroup"] button:hover {
+  color:var(--gold-bright) !important; background:rgba(201,174,91,0.04) !important;
+  border-bottom-color:transparent !important;
+}
+/* Aktives Segment */
+[data-testid="stButtonGroup"] button[kind="segmented_controlActive"] {
   color:var(--gold-bright) !important;
   border-bottom-color:var(--gold-bright) !important;
-  background:rgba(201,174,91,0.06);
+  background:rgba(201,174,91,0.06) !important;
 }
-[data-testid="stTabs"] [role="tab"]:hover {
-  color:var(--gold-bright) !important;
-  background:rgba(201,174,91,0.04);
-}
-/* Streamlits eigene Highlight-Leiste (default rot/orange) → Gold */
-[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
-  background-color:var(--gold-bright) !important;
+[data-testid="stButtonGroup"] button p,
+[data-testid="stButtonGroup"] button div {
+  font-weight:700 !important; font-size:16px !important; color:inherit !important;
 }
 
 /* === Rekorde-Tabelle === */
-.rec-help { display:flex; gap:10px; align-items:flex-start; padding:10px 14px;
+.rec-help { display:flex; gap:8px; align-items:center; padding:6px 12px;
   background:var(--bg-elev); border:1px solid var(--gold-dim); border-radius:var(--r-md);
-  margin:4px 0 14px; font-size:12.5px; line-height:1.5; color:var(--text-2); }
+  margin:0 0 6px; font-size:12px; line-height:1.35; color:var(--text-2); }
 .rec-help .ico { font-size:14px; color:var(--gold-bright); flex-shrink:0; line-height:1.4; }
 .rec-help b { color:var(--text); }
 .rec-help .up { color:var(--amber); font-weight:700; }
@@ -2057,8 +2059,20 @@ if st.query_params.get("reset") or st.session_state.get("_reset_requested"):
     st.query_params.clear()
     st.rerun()
 
-# Suffix für Widget-Keys — wird beim Reset hochgezählt, damit Widgets als neu gelten.
+# Widget-Generation-Suffixe — PRO SEITE getrennt, damit ein Reset NUR die Widgets seiner
+# eigenen Seite zurücksetzt. Beim Reset wird der jeweilige Zähler erhöht → Streamlit behandelt
+# die Widgets als neue Instanzen (umgeht den Frontend-Cache, der sonst die alte Anzeige behält).
+# Qualifikation: _GEN (_widget_gen) · Rekorde: _GEN_R · Bestenliste: _GEN_T.
 _GEN = st.session_state.get("_widget_gen", 0)
+_GEN_R = st.session_state.get("_gen_rec", 0)
+_GEN_T = st.session_state.get("_gen_topn", 0)
+
+def _bump_gen(state_key: str, clear_sort: bool = False):
+    """Erhöht einen Seiten-Generation-Zähler (Reset) + rerun."""
+    st.session_state[state_key] = st.session_state.get(state_key, 0) + 1
+    if clear_sort:
+        st.session_state["_clear_sort_storage"] = True
+    st.rerun()
 
 # --- PROFILE-MODE (early branch — wenn ?athlete=…, NUR Profil zeigen) ---
 _profile_param = st.query_params.get("athlete")
@@ -2179,19 +2193,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.markdown(
-    '<div class="dev-banner">'
-    '<span class="ic">⚠</span>'
-    '<span><b>Diese Seite befindet sich in Entwicklung.</b> '
-    'Daten und Berechnungen können fehlerhaft sein. '
-    'Bitte mit Vorsicht verwenden und im Zweifel auf '
-    '<a href="https://www.openpowerlifting.org" target="_blank" '
-    'rel="noopener" style="color:var(--gold-bright);text-decoration:none">openpowerlifting.org</a> '
-    'gegenprüfen.</span>'
-    '</div>',
-    unsafe_allow_html=True,
-)
-
 data = load_data()
 
 if data.empty:
@@ -2293,6 +2294,20 @@ data = data.copy()
 data["Qualifiziert"] = (data["TotalKg"] >= limit_num) & in_window
 data["_wc_disp"] = data["WeightClassKg"].apply(wc_display)
 
+# --- NAVIGATION: Seitenauswahl (ersetzt st.tabs) ---
+# Segmented-Control oben im Hauptbereich; die Sidebar zeigt anschließend nur die Filter
+# der aktiven Seite. ?tab=records|topn (vom Athleten-Profil-Back-Button) erzwingt die Seite.
+_PAGES = ["Qualifikation", "Rekorde", "Bestenliste"]
+_url_tab = st.query_params.get("tab")
+if _url_tab in ("records", "topn"):
+    st.session_state["_active_page"] = {"records": "Rekorde", "topn": "Bestenliste"}[_url_tab]
+elif "_active_page" not in st.session_state:
+    st.session_state["_active_page"] = "Qualifikation"
+_page = st.segmented_control("Ansicht", _PAGES, key="_active_page",
+                             label_visibility="collapsed")
+if _page is None:
+    _page = st.session_state.get("_active_page") or "Qualifikation"
+
 # --- SIDEBAR: Filter ---
 # Kombinierte Gewichtsklassen-Optionen (Frauen zuerst, dann Männer).
 WC_OPTIONS = [("F", w) for w in FEM_ORDER] + [("M", w) for w in MAL_ORDER]
@@ -2340,102 +2355,109 @@ def _idx_of(options, value):
         return None
 
 
-selected_team = st.sidebar.selectbox(
-    "Verein",
-    team_options,
-    index=None,
-    placeholder="Verein wählen",
-    key=f"team_select_v{_GEN}",
-)
+if _page == "Qualifikation":
+    selected_team = st.sidebar.selectbox(
+        "Verein",
+        team_options,
+        index=None,
+        placeholder="Verein wählen",
+        key=f"team_select_v{_GEN}",
+    )
 
-# Wenn kein Verein gewählt ist, alle Athlet:innen anzeigen.
-if selected_team:
-    available_names = sorted(data.loc[data["Team"] == selected_team, "Name"].dropna().unique())
+    # Wenn kein Verein gewählt ist, alle Athlet:innen anzeigen.
+    if selected_team:
+        available_names = sorted(data.loc[data["Team"] == selected_team, "Name"].dropna().unique())
+    else:
+        available_names = sorted(data["Name"].dropna().unique())
+    selected_name = st.sidebar.selectbox(
+        "Athlet:in",
+        available_names,
+        index=None,
+        placeholder="Athlet:in wählen",
+        key=f"name_select_v{_GEN}",
+    )
+
+    # Geschlechts-Filter
+    _SEX_OPTIONS = [("F", "Frauen"), ("M", "Männer")]
+    selected_sex = st.sidebar.selectbox(
+        "Geschlecht",
+        _SEX_OPTIONS,
+        index=None,
+        format_func=lambda opt: opt[1],
+        placeholder="Geschlecht wählen",
+        key=f"sex_select_v{_GEN}",
+    )
+
+    selected_wc = st.sidebar.selectbox(
+        "Gewichtsklasse",
+        WC_OPTIONS,
+        index=None,
+        format_func=_fmt_wc_option,
+        placeholder="Gewichtsklasse wählen",
+        key=f"wc_select_v{_GEN}",
+    )
+
+    # Wettkampf-Filter — Optionen orientieren sich am bereits aktiven Zeitraum (Raw + KDK).
+    _meet_pool = data[in_window & (data["Equipment"] == "Raw") & (data["Event_Display"] == "KDK")]
+    meet_options = sorted(_meet_pool["MeetName"].dropna().unique())
+    selected_meet = st.sidebar.selectbox(
+        "Wettkampf",
+        meet_options,
+        index=None,
+        placeholder="Wettkampf wählen",
+        key=f"meet_select_v{_GEN}",
+    )
+
+    # Filter-Reset-Button (nur Qualifikations-Filter) — Generation-Bump + Sort-Reset.
+    if st.sidebar.button("↺ Filter zurücksetzen", key="reset_filters_btn"):
+        for _pk in ("_persist_team", "_persist_name", "_persist_sex", "_persist_wc",
+                    "_persist_meet", "_persist_only_qual"):
+            st.session_state.pop(_pk, None)
+        _bump_gen("_widget_gen", clear_sort=True)
+
+    # Checkbox am Ende — getrennt durch Goldlinie
+    st.sidebar.markdown('<div class="sb-divider"></div>', unsafe_allow_html=True)
+    _persist_only_qual = st.session_state.get("_persist_only_qual")
+    show_only_qualified = st.sidebar.checkbox(
+        "Nur Qualifizierte anzeigen",
+        value=True if _persist_only_qual is None else bool(_persist_only_qual),
+        key=f"only_qualified_v{_GEN}",
+    )
+
+    # Aktuelle Widget-Werte in die _persist_*-Keys spiegeln, damit sie nach PROFILE_MODE bestehen.
+    for _wkey, _pkey in _PERSIST_PAIRS:
+        if _wkey in st.session_state:
+            st.session_state[_pkey] = st.session_state[_wkey]
+
+    # --- SM-Limits (offizielle Qualifikationsgrenzen je Klasse) ---
+    _lim_rows_f = "".join(
+        f'<tr><td class="lim-wc">{("-" + wc) if not wc.endswith("+") else wc}</td>'
+        f'<td class="lim-val">{fmt_kg(QUAL_LIMITS["F"][wc])}</td></tr>'
+        for wc in FEM_ORDER
+    )
+    _lim_rows_m = "".join(
+        f'<tr><td class="lim-wc">{("-" + wc) if not wc.endswith("+") else wc}</td>'
+        f'<td class="lim-val">{fmt_kg(QUAL_LIMITS["M"][wc])}</td></tr>'
+        for wc in MAL_ORDER
+    )
+    st.sidebar.markdown(
+        '<div class="sb-divider"></div>'
+        '<div class="lim-card">'
+        '<div class="lim-head">Qualifikationslimits</div>'
+        '<div class="lim-cap">Frauen</div>'
+        f'<table class="lim-tbl">{_lim_rows_f}</table>'
+        '<div class="lim-cap">Männer</div>'
+        f'<table class="lim-tbl">{_lim_rows_m}</table>'
+        '<div class="lim-foot">Werte in kg · KDK Raw</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
 else:
-    available_names = sorted(data["Name"].dropna().unique())
-selected_name = st.sidebar.selectbox(
-    "Athlet:in",
-    available_names,
-    index=None,
-    placeholder="Athlet:in wählen",
-    key=f"name_select_v{_GEN}",
-)
-
-# Geschlechts-Filter
-_SEX_OPTIONS = [("F", "Frauen"), ("M", "Männer")]
-selected_sex = st.sidebar.selectbox(
-    "Geschlecht",
-    _SEX_OPTIONS,
-    index=None,
-    format_func=lambda opt: opt[1],
-    placeholder="Geschlecht wählen",
-    key=f"sex_select_v{_GEN}",
-)
-
-selected_wc = st.sidebar.selectbox(
-    "Gewichtsklasse",
-    WC_OPTIONS,
-    index=None,
-    format_func=_fmt_wc_option,
-    placeholder="Gewichtsklasse wählen",
-    key=f"wc_select_v{_GEN}",
-)
-
-# Wettkampf-Filter — Optionen orientieren sich am bereits aktiven Zeitraum (Raw + KDK).
-_meet_pool = data[in_window & (data["Equipment"] == "Raw") & (data["Event_Display"] == "KDK")]
-meet_options = sorted(_meet_pool["MeetName"].dropna().unique())
-selected_meet = st.sidebar.selectbox(
-    "Wettkampf",
-    meet_options,
-    index=None,
-    placeholder="Wettkampf wählen",
-    key=f"meet_select_v{_GEN}",
-)
-
-# Filter-Reset-Button — setzt ein Flag und lässt den Top-of-Script-Handler aufräumen,
-# bevor die Widgets neu rendern. Vermeidet Probleme mit Streamlits Widget-Cache.
-if st.sidebar.button("↺ Filter zurücksetzen", key="reset_filters_btn"):
-    st.session_state["_reset_requested"] = True
-    st.rerun()
-
-# Checkbox am Ende — getrennt durch Goldlinie
-st.sidebar.markdown('<div class="sb-divider"></div>', unsafe_allow_html=True)
-_persist_only_qual = st.session_state.get("_persist_only_qual")
-show_only_qualified = st.sidebar.checkbox(
-    "Nur Qualifizierte anzeigen",
-    value=True if _persist_only_qual is None else bool(_persist_only_qual),
-    key=f"only_qualified_v{_GEN}",
-)
-
-# Aktuelle Widget-Werte in die _persist_*-Keys spiegeln, damit sie nach PROFILE_MODE bestehen.
-for _wkey, _pkey in _PERSIST_PAIRS:
-    if _wkey in st.session_state:
-        st.session_state[_pkey] = st.session_state[_wkey]
-
-# --- SM-Limits (offizielle Qualifikationsgrenzen je Klasse) ---
-_lim_rows_f = "".join(
-    f'<tr><td class="lim-wc">{("-" + wc) if not wc.endswith("+") else wc}</td>'
-    f'<td class="lim-val">{fmt_kg(QUAL_LIMITS["F"][wc])}</td></tr>'
-    for wc in FEM_ORDER
-)
-_lim_rows_m = "".join(
-    f'<tr><td class="lim-wc">{("-" + wc) if not wc.endswith("+") else wc}</td>'
-    f'<td class="lim-val">{fmt_kg(QUAL_LIMITS["M"][wc])}</td></tr>'
-    for wc in MAL_ORDER
-)
-st.sidebar.markdown(
-    '<div class="sb-divider"></div>'
-    '<div class="lim-card">'
-    '<div class="lim-head">Qualifikationslimits</div>'
-    '<div class="lim-cap">Frauen</div>'
-    f'<table class="lim-tbl">{_lim_rows_f}</table>'
-    '<div class="lim-cap">Männer</div>'
-    f'<table class="lim-tbl">{_lim_rows_m}</table>'
-    '<div class="lim-foot">Werte in kg · KDK Raw</div>'
-    '</div>',
-    unsafe_allow_html=True,
-)
-
+    # Auf anderen Seiten existieren die Qualifikations-Filter nicht — Defaults setzen,
+    # damit die (global laufende) Pipeline keine NameErrors wirft.
+    selected_team = selected_name = selected_sex = selected_wc = selected_meet = None
+    show_only_qualified = True
 # --- DATEN-BASIS: nur Raw + KDK gelten als Qualifikation, alles andere ignorieren ---
 df_scope = data[(data["Equipment"] == "Raw") & (data["Event_Display"] == "KDK") & in_window]
 
@@ -2537,19 +2559,19 @@ _url_tab = st.query_params.get("tab")
 _url_rec_wc = st.query_params.get("rec_wc")
 _url_rec_ac = st.query_params.get("rec_ac")
 _url_rec_sex = st.query_params.get("rec_sex")
-if _url_rec_wc and f"rec_wc_v{_GEN}" not in st.session_state:
+if _url_rec_wc and f"rec_wc_v{_GEN_R}" not in st.session_state:
     try:
         _rsex, _rwc = str(_url_rec_wc).split("-", 1)
         if (_rsex, _rwc) in WC_OPTIONS:
-            st.session_state[f"rec_wc_v{_GEN}"] = (_rsex, _rwc)
+            st.session_state[f"rec_wc_v{_GEN_R}"] = (_rsex, _rwc)
     except Exception:
         pass
-if _url_rec_ac and f"rec_age_v{_GEN}" not in st.session_state:
+if _url_rec_ac and f"rec_age_v{_GEN_R}" not in st.session_state:
     if _url_rec_ac in ("Jugend", "Junioren", "Open", "AK1", "AK2", "AK3", "AK4"):
-        st.session_state[f"rec_age_v{_GEN}"] = _url_rec_ac
-if _url_rec_sex and f"rec_sex_v{_GEN}" not in st.session_state:
+        st.session_state[f"rec_age_v{_GEN_R}"] = _url_rec_ac
+if _url_rec_sex and f"rec_sex_v{_GEN_R}" not in st.session_state:
     if _url_rec_sex in ("F", "M"):
-        st.session_state[f"rec_sex_v{_GEN}"] = (_url_rec_sex, "Frauen" if _url_rec_sex == "F" else "Männer")
+        st.session_state[f"rec_sex_v{_GEN_R}"] = (_url_rec_sex, "Frauen" if _url_rec_sex == "F" else "Männer")
 
 # Bestenliste-Tab Rückkehr-Zustand aus URL
 _url_topn_metric = st.query_params.get("topn_metric")
@@ -2558,61 +2580,35 @@ _url_topn_ac = st.query_params.get("topn_ac")
 _url_topn_wc = st.query_params.get("topn_wc")
 _url_topn_n = st.query_params.get("topn_n")
 _METRIC_OPTS = ["IPF GL Punkte", "Total kg pro Gew.kl."]
-if _url_topn_metric and f"topn_metric_v{_GEN}" not in st.session_state:
+if _url_topn_metric and f"topn_metric_v{_GEN_T}" not in st.session_state:
     if _url_topn_metric == "gl":
-        st.session_state[f"topn_metric_v{_GEN}"] = _METRIC_OPTS[0]
+        st.session_state[f"topn_metric_v{_GEN_T}"] = _METRIC_OPTS[0]
     elif _url_topn_metric == "total":
-        st.session_state[f"topn_metric_v{_GEN}"] = _METRIC_OPTS[1]
-if _url_topn_sex and f"topn_sex_v{_GEN}" not in st.session_state:
+        st.session_state[f"topn_metric_v{_GEN_T}"] = _METRIC_OPTS[1]
+if _url_topn_sex and f"topn_sex_v{_GEN_T}" not in st.session_state:
     if _url_topn_sex in ("F", "M"):
-        st.session_state[f"topn_sex_v{_GEN}"] = (_url_topn_sex, "Frauen" if _url_topn_sex == "F" else "Männer")
-if _url_topn_ac and f"topn_age_v{_GEN}" not in st.session_state:
+        st.session_state[f"topn_sex_v{_GEN_T}"] = (_url_topn_sex, "Frauen" if _url_topn_sex == "F" else "Männer")
+if _url_topn_ac and f"topn_age_v{_GEN_T}" not in st.session_state:
     if _url_topn_ac in ("Jugend", "Junioren", "Open", "AK1", "AK2", "AK3", "AK4"):
-        st.session_state[f"topn_age_v{_GEN}"] = _url_topn_ac
-if _url_topn_wc and f"topn_wc_v{_GEN}" not in st.session_state:
+        st.session_state[f"topn_age_v{_GEN_T}"] = _url_topn_ac
+if _url_topn_wc and f"topn_wc_v{_GEN_T}" not in st.session_state:
     try:
         _tsex, _twc = str(_url_topn_wc).split("-", 1)
         if (_tsex, _twc) in WC_OPTIONS:
-            st.session_state[f"topn_wc_v{_GEN}"] = (_tsex, _twc)
+            st.session_state[f"topn_wc_v{_GEN_T}"] = (_tsex, _twc)
     except Exception:
         pass
-if _url_topn_n and f"topn_n_v{_GEN}" not in st.session_state:
+if _url_topn_n and f"topn_n_v{_GEN_T}" not in st.session_state:
     try:
         _n_val = int(_url_topn_n)
         if 1 <= _n_val <= 5000:
-            st.session_state[f"topn_n_v{_GEN}"] = _n_val
+            st.session_state[f"topn_n_v{_GEN_T}"] = _n_val
     except Exception:
         pass
 
-_tab_quali, _tab_records, _tab_topn = st.tabs(["Qualifikation", "Rekorde", "Bestenliste"])
-
-# Wenn URL tab=records oder tab=topn: nach dem Rendern programmatisch den jeweiligen Tab klicken.
+# Filter-/Seiten-Zustand wurde aus der URL in session_state übernommen — URL aufräumen,
+# damit ein späterer Sidebar-Rerun nicht erneut auf alte Werte springt.
 if _url_tab in ("records", "topn"):
-    _tab_idx = 1 if _url_tab == "records" else 2
-    _components.html(
-        f"""
-<script>
-(function () {{
-  const TARGET = {_tab_idx};
-  const doc = window.parent.document;
-  function trySwitch() {{
-    const tabs = doc.querySelectorAll('[data-testid="stTabs"] [role="tab"]');
-    if (tabs.length <= TARGET) return false;
-    if (tabs[TARGET].getAttribute('aria-selected') !== 'true') tabs[TARGET].click();
-    return true;
-  }}
-  if (!trySwitch()) {{
-    let n = 0;
-    const id = setInterval(function () {{
-      if (trySwitch() || ++n > 30) clearInterval(id);
-    }}, 120);
-  }}
-}})();
-</script>
-        """,
-        height=0,
-    )
-    # URL-Parameter aufräumen, damit normales Sidebar-Rerun nicht erneut springt
     try:
         for _p in ("tab", "from",
                    "rec_wc", "rec_ac", "rec_sex",
@@ -2622,7 +2618,7 @@ if _url_tab in ("records", "topn"):
     except Exception:
         pass
 
-with _tab_quali:
+if _page == "Qualifikation":
     st.markdown(
         '<div class="kpis kpis--3">'
         + kpi_card("Qualifiziert", n_qual, accent=True, foot=qual_foot)
@@ -3063,7 +3059,7 @@ with _tab_quali:
         )
 
 
-with _tab_records:
+elif _page == "Rekorde":
     _records_df = load_records()
     # OeVK-Historie + EM/WM-Daten für österreichische Athlet:innen mergen
     _hist_full = load_full_history()
@@ -3102,49 +3098,43 @@ with _tab_records:
         except Exception:
             pass
 
-    # --- Hilfe-Banner ---
+    # --- Hilfe-Banner (kompakt) ---
     st.markdown(
         '<div class="rec-help">'
         '<span class="ico">ℹ</span>'
-        '<div>Die Spalte <b>„OPL-Datensatz"</b> zeigt die höchste in '
-        '<a href="https://www.openpowerlifting.org" target="_blank" rel="noopener" '
-        'style="color:var(--gold-bright);text-decoration:none">OpenPowerlifting</a> '
-        'verzeichnete Leistung in dieser Kategorie (inkl. EM/WM-Wettkämpfen für '
-        'österreichische Athlet:innen) – als Vergleichswert, kein offizieller Rekord. '
-        'Ein <span class="up">↑</span> markiert Fälle, in denen der OPL-Wert über dem '
-        'offiziellen Rekord liegt – möglicher Hinweis auf eine veraltete Rekordliste.</div>'
+        '<div><b>OPL-Datensatz</b> = Vergleichswert aus OpenPowerlifting, kein offizieller '
+        'Rekord. <span class="up">↑</span> = OPL-Wert über offiziellem Rekord.</div>'
         '</div>',
         unsafe_allow_html=True,
     )
 
-    # --- Filter: Gewichtsklasse + Altersklasse + Geschlecht direkt nebeneinander, gleichmäßig kompakt ---
-    _flt_a, _flt_b, _flt_c, _flt_spacer = st.columns([1.4, 1.4, 1.4, 6], gap="small")
-    with _flt_a:
-        _rc_sex_pair = st.selectbox(
-            "Geschlecht",
-            [("F", "Frauen"), ("M", "Männer")],
-            index=None,
-            format_func=lambda o: o[1],
-            placeholder="Alle Geschlechter",
-            key=f"rec_sex_v{_GEN}",
-        )
-    with _flt_b:
-        _rc_wc_pair = st.selectbox(
-            "Gewichtsklasse",
-            WC_OPTIONS,
-            index=None,
-            format_func=_fmt_wc_option,
-            placeholder="Alle Gewichtsklassen",
-            key=f"rec_wc_v{_GEN}",
-        )
-    with _flt_c:
-        _rc_age = st.selectbox(
-            "Altersklasse",
-            ["Jugend", "Junioren", "Open", "AK1", "AK2", "AK3", "AK4"],
-            index=None,
-            placeholder="Alle Altersklassen",
-            key=f"rec_age_v{_GEN}",
-        )
+    # --- Filter: in der Sidebar (nur diese Seite) — Geschlecht / Gewichtsklasse / Altersklasse ---
+    _rc_sex_pair = st.sidebar.selectbox(
+        "Geschlecht",
+        [("F", "Frauen"), ("M", "Männer")],
+        index=None,
+        format_func=lambda o: o[1],
+        placeholder="Alle Geschlechter",
+        key=f"rec_sex_v{_GEN_R}",
+    )
+    _rc_wc_pair = st.sidebar.selectbox(
+        "Gewichtsklasse",
+        WC_OPTIONS,
+        index=None,
+        format_func=_fmt_wc_option,
+        placeholder="Alle Gewichtsklassen",
+        key=f"rec_wc_v{_GEN_R}",
+    )
+    _rc_age = st.sidebar.selectbox(
+        "Altersklasse",
+        ["Jugend", "Junioren", "Open", "AK1", "AK2", "AK3", "AK4"],
+        index=None,
+        placeholder="Alle Altersklassen",
+        key=f"rec_age_v{_GEN_R}",
+    )
+    st.sidebar.markdown('<div class="sb-divider"></div>', unsafe_allow_html=True)
+    if st.sidebar.button("↺ Filter zurücksetzen", key="reset_rec_btn"):
+        _bump_gen("_gen_rec")
 
     _LIFT_EN2DE = {"Total": "Total", "Squat": "Kniebeugen",
                    "Bench": "Bankdrücken", "Deadlift": "Kreuzheben"}
@@ -3324,7 +3314,7 @@ with _tab_records:
 # ============================================================
 # === Bestenliste — Top-N nach IPF GL Points / Total kg ======
 # ============================================================
-with _tab_topn:
+elif _page == "Bestenliste":
     _hist_topn = load_full_history()
 
     # --- Header + CSV-Export ---
@@ -3336,61 +3326,53 @@ with _tab_topn:
             unsafe_allow_html=True,
         )
 
-    # Hilfetext
+    # Hilfetext (kompakt)
     st.markdown(
         '<div class="rec-help">'
         '<span class="ico">ℹ</span>'
-        '<div>Pro Athlet:in nur die <b>beste Performance</b> aus allen verzeichneten '
-        'KDK-Wettkämpfen (OeVK domestik + EM/WM Raw). Sortierung nach '
-        '<b>IPF GL Punkten</b> (universeller, klassen- und geschlechtsübergreifender '
-        'Vergleich). Daten aus '
-        '<a href="https://www.openpowerlifting.org" target="_blank" rel="noopener" '
-        'style="color:var(--gold-bright);text-decoration:none">OpenPowerlifting</a> – '
-        'können fehlerhaft oder unvollständig sein.</div>'
+        '<div>Beste KDK-Performance je Athlet:in (inkl. EM/WM), sortiert nach '
+        '<b>IPF GL Punkten</b>. Quelle: OpenPowerlifting.</div>'
         '</div>',
         unsafe_allow_html=True,
     )
 
-    # --- Filter-Strip ---
-    _tflt_b, _tflt_c, _tflt_d, _tflt_e, _tflt_sp = st.columns([1.4, 1.4, 1.4, 1, 6], gap="small")
-    with _tflt_b:
-        _topn_sex_pair = st.selectbox(
-            "Geschlecht",
-            [("F", "Frauen"), ("M", "Männer")],
-            index=None,
-            format_func=lambda o: o[1],
-            placeholder="Alle Geschlechter",
-            key=f"topn_sex_v{_GEN}",
-        )
-    with _tflt_c:
-        _topn_wc_pair = st.selectbox(
-            "Gewichtsklasse",
-            WC_OPTIONS,
-            index=None,
-            format_func=_fmt_wc_option,
-            placeholder="Alle Gewichtsklassen",
-            key=f"topn_wc_v{_GEN}",
-        )
-    with _tflt_d:
-        _topn_age = st.selectbox(
-            "Altersklasse",
-            ["Jugend", "Junioren", "Open", "AK1", "AK2", "AK3", "AK4"],
-            index=None,
-            placeholder="Alle Altersklassen",
-            key=f"topn_age_v{_GEN}",
-        )
-    with _tflt_e:
-        # Default 25, falls weder URL noch State etwas mitgegeben hat — vor dem Widget setzen,
-        # damit Streamlit nicht warnt (Widget-Default + session_state-Default kollidieren sonst).
-        if f"topn_n_v{_GEN}" not in st.session_state:
-            st.session_state[f"topn_n_v{_GEN}"] = 25
-        _topn_n = st.number_input(
-            "Anzahl",
-            min_value=1,
-            max_value=5000,
-            step=5,
-            key=f"topn_n_v{_GEN}",
-        )
+    # --- Filter: in der Sidebar (nur diese Seite) ---
+    _topn_sex_pair = st.sidebar.selectbox(
+        "Geschlecht",
+        [("F", "Frauen"), ("M", "Männer")],
+        index=None,
+        format_func=lambda o: o[1],
+        placeholder="Alle Geschlechter",
+        key=f"topn_sex_v{_GEN_T}",
+    )
+    _topn_wc_pair = st.sidebar.selectbox(
+        "Gewichtsklasse",
+        WC_OPTIONS,
+        index=None,
+        format_func=_fmt_wc_option,
+        placeholder="Alle Gewichtsklassen",
+        key=f"topn_wc_v{_GEN_T}",
+    )
+    _topn_age = st.sidebar.selectbox(
+        "Altersklasse",
+        ["Jugend", "Junioren", "Open", "AK1", "AK2", "AK3", "AK4"],
+        index=None,
+        placeholder="Alle Altersklassen",
+        key=f"topn_age_v{_GEN_T}",
+    )
+    # Default 25 vor dem Widget setzen, damit kein Default+SessionState-Warning entsteht.
+    if f"topn_n_v{_GEN_T}" not in st.session_state:
+        st.session_state[f"topn_n_v{_GEN_T}"] = 25
+    _topn_n = st.sidebar.number_input(
+        "Anzahl",
+        min_value=1,
+        max_value=5000,
+        step=5,
+        key=f"topn_n_v{_GEN_T}",
+    )
+    st.sidebar.markdown('<div class="sb-divider"></div>', unsafe_allow_html=True)
+    if st.sidebar.button("↺ Filter zurücksetzen", key="reset_topn_btn"):
+        _bump_gen("_gen_topn")
 
     _is_total_mode = False
 
