@@ -89,8 +89,22 @@ header[data-testid="stHeader"] [data-testid="stToolbarActions"] { display:none !
 [data-baseweb="tag"] { background:rgba(201,174,91,0.16) !important; color:var(--gold-bright) !important;
   border:1px solid var(--gold-dim) !important; }
 [data-baseweb="tag"] span { color:var(--gold-bright) !important; }
-[data-testid="stSidebar"] [data-baseweb="select"] > div, [data-testid="stSidebar"] input {
-  background:var(--bg-elev) !important; border-color:var(--line) !important; }
+[data-testid="stSidebar"] [data-baseweb="select"] > div {
+  background:var(--bg-elev) !important;
+  border:1px solid var(--gold-dim) !important; border-radius:8px !important; }
+[data-testid="stSidebar"] [data-baseweb="select"] > div:hover { border-color:var(--gold) !important; }
+[data-testid="stSidebar"] [data-baseweb="select"] input {
+  background:transparent !important; border:none !important;
+  box-shadow:none !important; color:#FFFFFF !important; }
+/* Selected value + placeholder fully white (Baseweb default 60 % opacity = grau) */
+[data-testid="stSidebar"] [data-baseweb="select"] > div div,
+[data-testid="stSidebar"] [data-baseweb="select"] input {
+  color:#FFFFFF !important; opacity:1 !important; }
+/* "X" + Dropdown-Pfeil weiß */
+[data-testid="stSidebar"] [data-baseweb="select"] [data-baseweb="icon"],
+[data-testid="stSidebar"] [data-baseweb="select"] [data-baseweb="icon"] svg,
+[data-testid="stSidebar"] [data-baseweb="select"] [data-baseweb="icon"] path {
+  color:#FFFFFF !important; fill:#FFFFFF !important; opacity:1 !important; }
 
 /* Kicker / eyebrow */
 .kicker { font-family:var(--font-mono); font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--text-3); font-weight:500; }
@@ -584,63 +598,31 @@ button[data-testid="stExpandSidebarButton"] * {
 /* Selectboxes: einfacher gold-dim Rahmen NUR am äußeren Wrapper.
    Das innere versteckte combobox-<input> darf KEINEN border haben — wäre sonst
    als 2 px breiter goldener Streifen am linken Rand sichtbar. */
-[data-testid="stTabs"] [data-baseweb="select"] > div {
-  background:var(--bg-elev) !important;
-  border:1px solid var(--gold-dim) !important;
-  color:#FFFFFF !important;
-}
-[data-testid="stTabs"] [data-testid="stSelectbox"] input {
-  background:transparent !important; background-color:transparent !important;
-  border:none !important; box-shadow:none !important;
-  color:#FFFFFF !important;
-}
-[data-testid="stTabs"] [data-baseweb="select"] > div:hover {
-  border-color:var(--gold) !important;
-}
-/* NumberInput: Streamlit packt Input + +/- Buttons in einen Wrapper DIV (direkter
-   Child von [data-testid="stNumberInput"], geschwister zum LABEL). Den gold-dim
-   Rahmen auf DEN Wrapper setzen → Outline wickelt sich wie bei den Selectboxen
-   um den gesamten Filter inkl. Buttons, mit gleichem border-radius. */
-[data-testid="stTabs"] [data-testid="stNumberInput"] > div:not([class*="stWidgetLabel"]):not(label) {
+/* Sidebar-Filter (Selectbox + NumberInput): einheitlicher gold-dim Rahmen NUR am
+   äußeren Wrapper, innere Elemente transparent. Vom alten Tab-Filter-Styling übernommen. */
+[data-testid="stSidebar"] [data-testid="stNumberInput"] > div:not([class*="stWidgetLabel"]):not(label) {
   background:var(--bg-elev) !important;
   border:1px solid var(--gold-dim) !important;
   border-radius:8px !important;
   color:#FFFFFF !important;
 }
-[data-testid="stTabs"] [data-testid="stNumberInput"] > div:not([class*="stWidgetLabel"]):not(label):hover,
-[data-testid="stTabs"] [data-testid="stNumberInput"] > div:not([class*="stWidgetLabel"]):not(label):focus-within {
+[data-testid="stSidebar"] [data-testid="stNumberInput"] > div:not([class*="stWidgetLabel"]):not(label):hover,
+[data-testid="stSidebar"] [data-testid="stNumberInput"] > div:not([class*="stWidgetLabel"]):not(label):focus-within {
   border-color:var(--gold) !important;
 }
-/* Innere Container, base-input, input, Buttons → keine eigenen Borders / Backgrounds,
-   damit nur der einzige gold-dim-Rahmen außen sichtbar bleibt. */
-[data-testid="stTabs"] [data-testid="stNumberInput"] [data-baseweb="input"],
-[data-testid="stTabs"] [data-testid="stNumberInput"] [data-baseweb="base-input"],
-[data-testid="stTabs"] [data-testid="stNumberInput"] input,
-[data-testid="stTabs"] [data-testid="stNumberInput"] button {
+/* Innere Container, base-input, input, Buttons → keine eigenen Borders / Backgrounds. */
+[data-testid="stSidebar"] [data-testid="stNumberInput"] [data-baseweb="input"],
+[data-testid="stSidebar"] [data-testid="stNumberInput"] [data-baseweb="base-input"],
+[data-testid="stSidebar"] [data-testid="stNumberInput"] input,
+[data-testid="stSidebar"] [data-testid="stNumberInput"] button {
   background:transparent !important; background-color:transparent !important;
   border:none !important; box-shadow:none !important;
   color:#FFFFFF !important;
 }
-[data-testid="stTabs"] [data-testid="stNumberInput"] button svg,
-[data-testid="stTabs"] [data-testid="stNumberInput"] button path {
+[data-testid="stSidebar"] [data-testid="stNumberInput"] button svg,
+[data-testid="stSidebar"] [data-testid="stNumberInput"] button path {
   fill:#FFFFFF !important; color:#FFFFFF !important;
 }
-/* Ausgewählter Wert + Placeholder innerhalb des Selectbox-Feldes — vollflächig weiß
-   (Streamlits Baseweb-Placeholder hat sonst opacity:0.6 → wirkt grau) */
-[data-testid="stTabs"] [data-baseweb="select"] > div div,
-[data-testid="stTabs"] [data-baseweb="select"] input {
-  color:#FFFFFF !important; opacity:1 !important;
-}
-/* "X" zum Zurücksetzen + Dropdown-Pfeil ebenfalls weiß (statt 60 % deckendem Grau) */
-[data-testid="stTabs"] [data-baseweb="select"] [data-baseweb="icon"],
-[data-testid="stTabs"] [data-baseweb="select"] [data-baseweb="icon"] svg,
-[data-testid="stTabs"] [data-baseweb="select"] [data-baseweb="icon"] path {
-  color:#FFFFFF !important; fill:#FFFFFF !important; opacity:1 !important;
-}
-[data-testid="stTabs"] [data-testid="stSelectbox"] { max-width:260px; margin:4px 6px 10px 0; }
-/* Filter-Spalten im Bestenliste/Rekorde-Tab kompakt nebeneinander: schmaler Gap */
-[data-testid="stTabs"] [data-testid="stHorizontalBlock"] { gap:10px !important; }
-[data-testid="stTabs"] [data-testid="stColumn"] { padding-left:0 !important; padding-right:0 !important; }
 /* Trennlinie offiziell ↔ OPL */
 .tbl td.opl-sep, .tbl th.opl-sep { border-left:1px solid var(--gold-dim); }
 /* Rekorde-Tabellen: feste Spaltenausrichtung über alle 4 Disziplinen hinweg */
@@ -832,14 +814,10 @@ div[data-testid="stButton"] > button.filter-row,
   color:var(--gold) !important; font-weight:600 !important;
 }
 
-/* Multiselect / Selectbox controls */
+/* Multiselect / Selectbox controls — Standard-Rahmen ist gold-dim (siehe Top-Block,
+   Zeile ~92). Hier nur die Größe + Fokus-Animation. */
 [data-testid="stSidebar"] [data-baseweb="select"] > div {
-  background:var(--bg-elev) !important; border:1px solid var(--line) !important;
-  border-radius:var(--r-sm) !important; min-height:42px;
-  transition:border-color .12s ease;
-}
-[data-testid="stSidebar"] [data-baseweb="select"] > div:hover {
-  border-color:var(--gold-dim) !important;
+  min-height:42px; transition:border-color .12s ease;
 }
 [data-testid="stSidebar"] [data-baseweb="select"] > div:focus-within {
   border-color:var(--gold) !important;
