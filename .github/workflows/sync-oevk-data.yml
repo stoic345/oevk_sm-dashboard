@@ -24,7 +24,7 @@ jobs:
       # ------------------------------------------------------------
       # Schritt A · OeVK-Domestikmeets aus dem Upstream übernehmen
       # ------------------------------------------------------------
-      - name: Clone upstream OpenPowerlifting (sparse: oevk + ipf + epf)
+      - name: "Clone upstream OpenPowerlifting (sparse oevk + ipf + epf)"
         run: |
           git clone --depth=1 --filter=blob:none --sparse \
             https://gitlab.com/openpowerlifting/opl-data.git _upstream

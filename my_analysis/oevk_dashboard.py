@@ -3306,10 +3306,10 @@ elif _page == "Bestenliste":
 
     # Hilfetext (kompakt)
     st.markdown(
-        '<div class="rec-help">'
+        '<div class="rec-help" style="margin-bottom:16px">'
         '<span class="ico">ℹ</span>'
         '<div>Beste KDK-Performance je Athlet:in (inkl. EM/WM), sortiert nach '
-        '<b>IPF GL Punkten</b>. Quelle: OpenPowerlifting.</div>'
+        '<b>IPF GL Punkten</b>.</div>'
         '</div>',
         unsafe_allow_html=True,
     )
