@@ -2393,12 +2393,17 @@ if _page == "Qualifikation":
             st.session_state.pop(_pk, None)
         _bump_gen("_widget_gen", clear_sort=True)
 
-    # Checkbox am Ende — getrennt durch Goldlinie
+    # Checkbox am Ende — getrennt durch Goldlinie.
+    # Default vor dem Widget setzen (statt value=…), damit Streamlit nicht warnt, wenn
+    # der Key bereits aus _persist_only_qual oder einem früheren Run im Session-State steht.
     st.sidebar.markdown('<div class="sb-divider"></div>', unsafe_allow_html=True)
-    _persist_only_qual = st.session_state.get("_persist_only_qual")
+    if f"only_qualified_v{_GEN}" not in st.session_state:
+        _persist_only_qual = st.session_state.get("_persist_only_qual")
+        st.session_state[f"only_qualified_v{_GEN}"] = (
+            True if _persist_only_qual is None else bool(_persist_only_qual)
+        )
     show_only_qualified = st.sidebar.checkbox(
         "Nur Qualifizierte anzeigen",
-        value=True if _persist_only_qual is None else bool(_persist_only_qual),
         key=f"only_qualified_v{_GEN}",
     )
 
