@@ -1,0 +1,37 @@
+name: "Keep Streamlit app awake"
+
+# Wakes the public Streamlit Cloud app by loading it in headless Chromium and
+# clicking the sleep-interstitial's "Yes, get this app back up!" button. Plain
+# HTTP GETs are not enough — Streamlit's sleep page returns HTTP 200 but the
+# wake-up requires JS-driven interaction.
+
+on:
+  schedule:
+    # Alle 6 Stunden — deutlich häufiger als der Daten-Sync, weil die Inactivity-
+    # Erkennung von Streamlit Cloud "echten Traffic" sehen will, nicht bloß einen
+    # CI-Hit am Tagesanfang. 04:15 / 10:15 / 16:15 / 22:15 UTC.
+    - cron: "15 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wake:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Playwright + Chromium
+        run: |
+          pip install --quiet playwright==1.48.0
+          python -m playwright install --with-deps chromium
+
+      - name: Wake the Streamlit app
+        run: python scripts/wake_streamlit.py https://sm-dashboard.streamlit.app/

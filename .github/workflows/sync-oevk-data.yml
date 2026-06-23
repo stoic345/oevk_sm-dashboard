@@ -13,13 +13,9 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: "Keep-alive ping (wake Streamlit Cloud app)"
-        # Streamlit Community Cloud parkt public Apps nach ~7 Tagen ohne Traffic. Ein
-        # einfacher HTTP-Request setzt den Idle-Timer zurück. Failures werden ignoriert,
-        # damit der Sync-Job trotzdem läuft, falls die App temporär nicht erreichbar ist.
-        run: |
-          curl --max-time 60 --retry 3 --retry-delay 5 -sSfL \
-            https://sm-dashboard.streamlit.app/ -o /dev/null || true
+      # Keep-alive lebt in einer separaten Workflow-Datei (.github/workflows/keep-alive.yml).
+      # Ein simpler curl-Ping reicht NICHT — Streamlit Cloud zeigt asleep-Seiten mit HTTP 200
+      # und erfordert echte JS-Interaktion zum Wecken.
 
       - name: Checkout this repo
         uses: actions/checkout@v5
