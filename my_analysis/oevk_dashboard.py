@@ -511,26 +511,50 @@ button[data-testid="stExpandSidebarButton"] * {
 [data-testid="stSidebar"] details summary span {
   color: var(--text) !important; opacity: 1 !important;
 }
-.profile-meta { display:flex; gap:24px; color:var(--text-2); font-family:var(--font-mono); font-size:12px;
+.profile-meta { display:flex; gap:24px; color:var(--text); font-family:var(--font-mono); font-size:12px;
   letter-spacing:0.08em; text-transform:uppercase; margin:2px 0 18px; flex-wrap:wrap; }
 .profile-meta .v { color:var(--text); margin-left:6px; }
 .disc-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:14px; margin-bottom:18px; }
 @media (max-width: 900px) { .disc-grid { grid-template-columns:1fr; } }
-.disc-tile { background:var(--bg-elev); border:1px solid var(--line); border-radius:var(--r-md);
+/* Persönliche Bestleistungen — 3-up Karten oben im Profil */
+.pb-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:6px 0 18px; }
+@media (max-width:760px) { .pb-grid { grid-template-columns:1fr; } }
+.pb-card { background:linear-gradient(180deg,var(--surface),var(--bg-elev));
+  border:1px solid var(--gold-dim); border-radius:var(--r-md); padding:14px 18px;
+  display:flex; flex-direction:column; gap:4px; min-width:0; }
+.pb-card__lab { font-family:var(--font-mono); font-size:11px; letter-spacing:0.14em;
+  text-transform:uppercase; color:var(--gold-bright); font-weight:700; }
+.pb-card__val { font-family:var(--font-mono); font-size:30px; font-weight:700;
+  color:var(--text); line-height:1.05; }
+.pb-card__unit { font-size:14px; color:var(--text-2); font-weight:500; margin-left:2px; }
+.pb-card__sub { font-family:var(--font-mono); font-size:11.5px; color:var(--text);
+  margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* disc-tile: gleiche Optik wie pb-card (Gradient + Gold-Dim-Rahmen) */
+.disc-tile { background:linear-gradient(180deg,var(--surface),var(--bg-elev));
+  border:1px solid var(--gold-dim); border-radius:var(--r-md);
   padding:14px 16px; transition:border-color .14s ease, opacity .14s ease; }
-.disc-tile:hover { border-color:var(--gold-dim); }
-.disc-tile.empty { opacity:0.45; }
+.disc-tile:hover { border-color:var(--gold); }
+.disc-tile.empty { opacity:0.55; }
 .disc-tile .kicker { font-family:var(--font-mono); font-size:11px; letter-spacing:0.18em;
-  text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:10px; }
+  text-transform:uppercase; color:var(--gold-bright); font-weight:700; margin-bottom:10px; }
 .disc-tile .row { display:flex; justify-content:space-between; align-items:baseline; gap:10px;
   padding:4px 0; border-bottom:1px solid var(--line-soft); }
 .disc-tile .row:last-of-type { border-bottom:none; }
 .disc-tile .lab { font-family:var(--font-mono); font-size:11px; letter-spacing:0.10em;
-  text-transform:uppercase; color:var(--text-3); }
+  text-transform:uppercase; color:var(--text); }
 .disc-tile .val { font-family:var(--font-mono); font-weight:600; font-size:17px;
   color:var(--gold-bright); font-variant-numeric:tabular-nums; }
 .disc-tile .foot { margin-top:8px; font-family:var(--font-mono); font-size:10px; letter-spacing:0.08em;
-  text-transform:uppercase; color:var(--text-3); }
+  text-transform:uppercase; color:var(--text-2); }
+/* Athleten-Profil-Tabelle: einheitliche Schrift in allen Zellen (IBM Plex Mono),
+   damit "Single-ply" nicht visuell aus dem Raster fällt. tabular-nums bleibt für Zahlen. */
+.tbl-profile td, .tbl-profile th {
+  font-family:var(--font-mono) !important;
+}
+.tbl-profile td.num, .tbl-profile td.mono, .tbl-profile td.mono-strong,
+.tbl-profile td.gold-strong, .tbl-profile th.num {
+  font-variant-numeric:tabular-nums;
+}
 
 /* === Seiten-Navigation (Segmented-Control = stButtonGroup) — Gold-Theme === */
 [data-testid="stButtonGroup"] { gap:6px !important; margin:40px 0 6px;
@@ -693,6 +717,11 @@ tr.row--n { color:var(--text-2); }
 .mono-strong { font-family:var(--font-mono); font-weight:600; font-variant-numeric:tabular-nums; }
 .gold-strong { font-family:var(--font-mono); font-weight:600; color:var(--gold); font-variant-numeric:tabular-nums; }
 .sex-tag { font-family:var(--font-mono); font-size:14px; font-weight:600; color:var(--text); border:1px solid var(--line); border-radius:4px; padding:3px 9px; }
+/* Wettkampftyp-Badge in der Bankdrück-Bestenliste */
+.typ-tag { font-family:var(--font-mono); font-size:11px; font-weight:700; letter-spacing:0.06em;
+  border-radius:4px; padding:2px 7px; white-space:nowrap; }
+.typ-tag.kdk { color:var(--text-2); border:1px solid var(--line); }
+.typ-tag.bd  { color:var(--amber); border:1px solid var(--gold-dim); background:rgba(201,174,91,0.10); }
 .rank { font-family:var(--font-mono); font-weight:600; color:var(--gold); }
 
 /* Summary cards */
@@ -1771,6 +1800,38 @@ def render_athlete_profile(name: str, hist: pd.DataFrame) -> None:
         unsafe_allow_html=True,
     )
 
+    # --- Persönliche Bestleistungen (beste Einzeldisziplin über alle Raw-Wettkämpfe) ---
+    _raw_h = h[h["Equipment"].astype(str) == "Raw"]
+
+    def _best_lift_card(label: str, col: str) -> str:
+        if col not in _raw_h.columns or _raw_h.empty:
+            return (f'<div class="pb-card"><div class="pb-card__lab">{label}</div>'
+                    f'<div class="pb-card__val">–</div></div>')
+        s = pd.to_numeric(_raw_h[col], errors="coerce")
+        if s.dropna().empty or s.max() <= 0:
+            return (f'<div class="pb-card"><div class="pb-card__lab">{label}</div>'
+                    f'<div class="pb-card__val">–</div></div>')
+        idx = s.idxmax()
+        row = _raw_h.loc[idx]
+        return (
+            f'<div class="pb-card">'
+            f'<div class="pb-card__lab">{label}</div>'
+            f'<div class="pb-card__val">{fmt_kg(s.loc[idx])}<span class="pb-card__unit"> kg</span></div>'
+            f'<div class="pb-card__sub">{esc(str(row.get("MeetName") or ""))}'
+            f' · {fmt_date(row.get("Date"))}</div>'
+            f'</div>'
+        )
+
+    st.markdown(
+        '<div class="section-head" style="margin-top:6px"><h2>Persönliche Bestleistungen</h2></div>'
+        '<div class="pb-grid">'
+        + _best_lift_card("Kniebeugen", "Best3SquatKg")
+        + _best_lift_card("Bankdrücken", "Best3BenchKg")
+        + _best_lift_card("Kreuzheben", "Best3DeadliftKg")
+        + '</div>',
+        unsafe_allow_html=True,
+    )
+
     # Disziplin-Kacheln (2x2)
     tiles_html = ['<div class="disc-grid">']
     for label, ev, eq in DISCIPLINES:
@@ -1898,7 +1959,7 @@ def render_athlete_profile(name: str, hist: pd.DataFrame) -> None:
             '</tr>'
         )
     st.markdown(
-        '<div class="tablecard" style="margin-top:14px"><div class="tablescroll"><table class="tbl">'
+        '<div class="tablecard" style="margin-top:14px"><div class="tablescroll"><table class="tbl tbl-profile">'
         f'<thead><tr>{head}</tr></thead><tbody>{"".join(rows)}</tbody></table></div></div>',
         unsafe_allow_html=True,
     )
@@ -2101,7 +2162,7 @@ if PROFILE_MODE:
         _back_qs = (_extra + "&" + _back_qs) if _back_qs else _extra
     elif _from_param == "topn":
         _extra = "tab=topn"
-        for _k in ("topn_metric", "topn_sex", "topn_ac", "topn_wc", "topn_n"):
+        for _k in ("topn_disc", "topn_sex", "topn_ac", "topn_wc", "topn_n"):
             _v = st.query_params.get(_k)
             if _v:
                 _extra += f"&{_k}=" + _urlquote(str(_v))
@@ -2557,17 +2618,15 @@ if _url_rec_sex and f"rec_sex_v{_GEN_R}" not in st.session_state:
         st.session_state[f"rec_sex_v{_GEN_R}"] = (_url_rec_sex, "Frauen" if _url_rec_sex == "F" else "Männer")
 
 # Bestenliste-Tab Rückkehr-Zustand aus URL
-_url_topn_metric = st.query_params.get("topn_metric")
+_DISC_OPTS = ["KDK (Total)", "Bankdrücken (alle)", "Bankdrücken (nur BD-Wettkämpfe)"]
+_url_topn_disc = st.query_params.get("topn_disc")
 _url_topn_sex = st.query_params.get("topn_sex")
 _url_topn_ac = st.query_params.get("topn_ac")
 _url_topn_wc = st.query_params.get("topn_wc")
 _url_topn_n = st.query_params.get("topn_n")
-_METRIC_OPTS = ["IPF GL Punkte", "Total kg pro Gew.kl."]
-if _url_topn_metric and f"topn_metric_v{_GEN_T}" not in st.session_state:
-    if _url_topn_metric == "gl":
-        st.session_state[f"topn_metric_v{_GEN_T}"] = _METRIC_OPTS[0]
-    elif _url_topn_metric == "total":
-        st.session_state[f"topn_metric_v{_GEN_T}"] = _METRIC_OPTS[1]
+if _url_topn_disc and f"topn_disc_v{_GEN_T}" not in st.session_state:
+    if _url_topn_disc in _DISC_OPTS:
+        st.session_state[f"topn_disc_v{_GEN_T}"] = _url_topn_disc
 if _url_topn_sex and f"topn_sex_v{_GEN_T}" not in st.session_state:
     if _url_topn_sex in ("F", "M"):
         st.session_state[f"topn_sex_v{_GEN_T}"] = (_url_topn_sex, "Frauen" if _url_topn_sex == "F" else "Männer")
@@ -2595,7 +2654,7 @@ if _url_tab in ("records", "topn"):
     try:
         for _p in ("tab", "from",
                    "rec_wc", "rec_ac", "rec_sex",
-                   "topn_metric", "topn_sex", "topn_ac", "topn_wc", "topn_n"):
+                   "topn_disc", "topn_sex", "topn_ac", "topn_wc", "topn_n"):
             if _p in st.query_params:
                 del st.query_params[_p]
     except Exception:
@@ -3300,26 +3359,16 @@ elif _page == "Rekorde":
 elif _page == "Bestenliste":
     _hist_topn = load_full_history()
 
-    # --- Header + CSV-Export ---
-    _topn_hdr_left, _topn_hdr_right = st.columns([4, 1], vertical_alignment="center")
-    with _topn_hdr_left:
-        st.markdown(
-            '<div class="section-head"><div>'
-            '<h2>Bestenliste · Österreichische Lifetime-Best-Performances</h2></div></div>',
-            unsafe_allow_html=True,
-        )
-
-    # Hilfetext (kompakt)
-    st.markdown(
-        '<div class="rec-help" style="margin-bottom:16px">'
-        '<span class="ico">ℹ</span>'
-        '<div>Beste KDK-Performance je Athlet:in (inkl. EM/WM), sortiert nach '
-        '<b>IPF GL Punkten</b>.</div>'
-        '</div>',
-        unsafe_allow_html=True,
-    )
-
     # --- Filter: in der Sidebar (nur diese Seite) ---
+    _topn_disc = st.sidebar.selectbox(
+        "Disziplin",
+        _DISC_OPTS,
+        index=0,
+        key=f"topn_disc_v{_GEN_T}",
+    )
+    _is_bench = _topn_disc.startswith("Bankdrücken")
+    _bench_only_meets = (_topn_disc == "Bankdrücken (nur BD-Wettkämpfe)")
+
     _topn_sex_pair = st.sidebar.selectbox(
         "Geschlecht",
         [("F", "Frauen"), ("M", "Männer")],
@@ -3357,7 +3406,34 @@ elif _page == "Bestenliste":
     if st.sidebar.button("↺ Filter zurücksetzen", key="reset_topn_btn"):
         _bump_gen("_gen_topn")
 
-    _is_total_mode = False
+    # --- Header + CSV-Export ---
+    _disc_title = "KDK · Total" if not _is_bench else (
+        "Bankdrücken · nur BD-Wettkämpfe" if _bench_only_meets else "Bankdrücken · alle"
+    )
+    _topn_hdr_left, _topn_hdr_right = st.columns([4, 1], vertical_alignment="center")
+    with _topn_hdr_left:
+        st.markdown(
+            f'<div class="section-head"><div>'
+            f'<h2>Bestenliste · {_disc_title}</h2></div></div>',
+            unsafe_allow_html=True,
+        )
+
+    # Hilfetext (kompakt, je Disziplin)
+    if not _is_bench:
+        _help = ('Beste KDK-Performance je Athlet:in (inkl. EM/WM), sortiert nach '
+                 '<b>IPF GL Punkten</b>.')
+    elif _bench_only_meets:
+        _help = ('Bestes Bankdrücken aus <b>reinen Bankdrück-Wettkämpfen</b>, sortiert nach '
+                 '<b>IPF GL Punkten</b> (Bankdrück-Variante).')
+    else:
+        _help = ('Bestes Bankdrücken je Athlet:in — aus KDK-Wettkämpfen UND reinen '
+                 'Bankdrück-Wettkämpfen, sortiert nach <b>IPF GL Punkten</b> '
+                 '(Bankdrück-Variante). Badge zeigt die Wettkampfart.')
+    st.markdown(
+        f'<div class="rec-help" style="margin-bottom:16px">'
+        f'<span class="ico">ℹ</span><div>{_help}</div></div>',
+        unsafe_allow_html=True,
+    )
 
     # --- Datenaufbereitung ---
     if _hist_topn.empty:
@@ -3365,13 +3441,28 @@ elif _page == "Bestenliste":
                     unsafe_allow_html=True)
     else:
         _d = _hist_topn.copy()
-        # Pflichtfilter
-        _d = _d[(_d.get("Equipment", "").astype(str) == "Raw")
-                & (_d.get("Event_Display", "").astype(str) == "KDK")]
-        _d["_bw"] = pd.to_numeric(_d.get("BodyweightKg"), errors="coerce")
-        _d["_tot"] = pd.to_numeric(_d.get("TotalKg"), errors="coerce")
-        _d["_gl"] = pd.to_numeric(_d.get("GL_Points"), errors="coerce")
-        _d = _d[(_d["_bw"] > 0) & (_d["_tot"] > 0)]
+        _d = _d[_d.get("Equipment", "").astype(str) == "Raw"]
+        _d["bwkg"] = pd.to_numeric(_d.get("BodyweightKg"), errors="coerce")
+
+        if not _is_bench:
+            # KDK Total — nur 3-Kampf-Meets, Metrik = bestehende Total-GL
+            _d = _d[_d.get("Event_Display", "").astype(str) == "KDK"]
+            _d["perfkg"] = pd.to_numeric(_d.get("TotalKg"), errors="coerce")
+            _d["glmetric"] = pd.to_numeric(_d.get("GL_Points"), errors="coerce")
+        else:
+            # Bankdrücken — Bank ist 2. Zahl in SBD; reine BD-Meets haben Event "Bankdrücken"
+            if _bench_only_meets:
+                _d = _d[_d.get("Event_Display", "").astype(str) == "Bankdrücken"]
+            # sonst: alle Events (KDK + Bankdrücken) behalten
+            _d["perfkg"] = pd.to_numeric(_d.get("Best3BenchKg"), errors="coerce")
+            # Bench-GL via _gl_points_vec: Kopie mit Event=Bankdrücken & TotalKg=Bench
+            _bcopy = _d.copy()
+            _bcopy["Event_Display"] = "Bankdrücken"
+            _bcopy["TotalKg"] = _d["perfkg"]
+            _d["glmetric"] = pd.to_numeric(_gl_points_vec(_bcopy), errors="coerce")
+
+        _d = _d[(_d["bwkg"] > 0) & (_d["perfkg"] > 0) & (_d["glmetric"] > 0)]
+
         # Cross-class Rollup für Altersklasse-Filter
         _AGE_ROLLUP_TOPN = {
             "Jugend":   ["Jugend"],
@@ -3387,18 +3478,18 @@ elif _page == "Bestenliste":
             _d = _d[_d.get("AgeClass").astype(str).isin(_allowed)]
         if _topn_sex_pair is not None:
             _d = _d[_d.get("Sex").astype(str).str.upper().str[:1] == _topn_sex_pair[0]]
-        # Gewichtsklasse: nur im Total-Modus wirklich sinnvoll, aber wir respektieren ihn überall
         if _topn_wc_pair is not None:
             _sx_f, _wc_f = _topn_wc_pair
             _d = _d[(_d.get("Sex").astype(str).str.upper().str[:1] == _sx_f)
                     & (_d["WeightClassKg"].astype(str).map(wc_display) == _wc_f)]
 
-        # Lifetime-Best pro Athlet:in nach gewählter Metrik
-        _metric_col = "_tot" if _is_total_mode else "_gl"
-        _d = _d.sort_values(_metric_col, ascending=False).drop_duplicates("Name", keep="first")
+        # Lifetime-Best pro Athlet:in nach der gewählten Metrik (GL)
+        _d = _d.sort_values("glmetric", ascending=False).drop_duplicates("Name", keep="first")
 
         # --- Querystring-Suffix für Profil-Links ---
         _topn_link_suffix = "&from=topn"
+        if _topn_disc and _topn_disc != _DISC_OPTS[0]:
+            _topn_link_suffix += f"&topn_disc={_urlquote(_topn_disc)}"
         if _topn_sex_pair is not None:
             _topn_link_suffix += f"&topn_sex={_topn_sex_pair[0]}"
         if _topn_age:
@@ -3411,60 +3502,62 @@ elif _page == "Bestenliste":
         if _fqs_topn:
             _topn_link_suffix += "&" + _fqs_topn
 
-        # --- Tabelle aufbauen ---
-        _T_COLGROUP = (
-            '<colgroup>'
-            '<col style="width:50px">'    # #
-            '<col style="width:220px">'   # Name
-            '<col style="width:70px">'    # Geschl.
-            '<col style="width:60px">'    # Alter
-            '<col style="width:100px">'   # Altersklasse
-            '<col style="width:80px">'    # Gew.kl.
-            '<col style="width:78px">'    # BW
-            '<col style="width:160px">'   # SBD
-            '<col style="width:90px">'    # Total
-            '<col style="width:108px">'   # GL Points
-            '<col style="width:200px">'   # Verein
-            '<col style="width:260px">'   # Wettkampf
-            '</colgroup>'
-        )
-        _T_HEAD = (
-            _T_COLGROUP
-            + '<thead><tr>'
-            '<th class="num">#</th>'
-            '<th class="l">Athlet:in</th>'
-            '<th>Geschl.</th>'
-            '<th class="num">Alter</th>'
-            '<th>Altersklasse</th>'
-            '<th>Gew.kl.</th>'
-            '<th class="num">BW</th>'
-            '<th class="num">SBD</th>'
-            '<th class="num">Total</th>'
-            '<th class="num">IPF GL</th>'
-            '<th class="l">Verein</th>'
-            '<th class="l">Wettkampf</th>'
-            '</tr></thead>'
-        )
-
-        def _topn_row_html(rank, r, total_active, gl_active):
-            _nm = str(r.get("Name", ""))
-            _link = (
-                f'<a class="nm-link" href="?athlete={_urlquote(_nm)}{_topn_link_suffix}" '
-                f'target="_self">{esc(_nm)}</a>'
+        # --- Tabelle: Spalten je Disziplin ---
+        if not _is_bench:
+            _T_COLGROUP = (
+                '<colgroup>'
+                '<col style="width:50px"><col style="width:220px"><col style="width:70px">'
+                '<col style="width:60px"><col style="width:100px"><col style="width:80px">'
+                '<col style="width:78px"><col style="width:160px"><col style="width:90px">'
+                '<col style="width:108px"><col style="width:84px">'
+                '<col style="width:200px"><col style="width:260px">'
+                '</colgroup>'
             )
-            _total_cls = "num mono-strong" + ("" if not total_active else " gold-strong")
-            _gl_cls    = "num"            + ("" if not gl_active    else " gold-strong")
-            _gl_cls += " mono"
+            _T_HEAD = (
+                _T_COLGROUP + '<thead><tr>'
+                '<th class="num">#</th><th class="l">Athlet:in</th><th>Geschl.</th>'
+                '<th class="num">Alter</th><th>Altersklasse</th><th>Gew.kl.</th>'
+                '<th class="num">BW</th><th class="num">SBD</th><th class="num">Total</th>'
+                '<th class="num">IPF GL</th><th>Typ</th>'
+                '<th class="l">Verein</th><th class="l">Wettkampf</th>'
+                '</tr></thead>'
+            )
+        else:
+            _T_COLGROUP = (
+                '<colgroup>'
+                '<col style="width:50px"><col style="width:220px"><col style="width:70px">'
+                '<col style="width:60px"><col style="width:100px"><col style="width:80px">'
+                '<col style="width:78px"><col style="width:110px"><col style="width:108px">'
+                '<col style="width:84px"><col style="width:200px"><col style="width:260px">'
+                '</colgroup>'
+            )
+            _T_HEAD = (
+                _T_COLGROUP + '<thead><tr>'
+                '<th class="num">#</th><th class="l">Athlet:in</th><th>Geschl.</th>'
+                '<th class="num">Alter</th><th>Altersklasse</th><th>Gew.kl.</th>'
+                '<th class="num">BW</th><th class="num">Bankdrücken</th>'
+                '<th class="num">IPF GL</th><th>Typ</th>'
+                '<th class="l">Verein</th><th class="l">Wettkampf</th>'
+                '</tr></thead>'
+            )
+
+        def _meet_cell_html(r):
             _meet_name = esc(str(r.get("MeetName", "")))
             _meet_date = fmt_date(r.get("Date", ""))
-            _meet_cell = (
+            return (
                 f'<td class="l rec-meet" title="{_meet_name}">'
                 f'<span class="mname">{_meet_name}</span>'
                 + (f'<span class="mwhen">{_meet_date}</span>' if _meet_date else '')
                 + '</td>'
             )
-            return (
-                f'<tr>'
+
+        def _topn_row_html(rank, r):
+            _nm = str(r.get("Name", ""))
+            _link = (
+                f'<a class="nm-link" href="?athlete={_urlquote(_nm)}{_topn_link_suffix}" '
+                f'target="_self">{esc(_nm)}</a>'
+            )
+            _common = (
                 f'<td class="num rank">{rank}</td>'
                 f'<td class="cell-name l">{_link}</td>'
                 f'<td><span class="sex-tag">{sex_display(r.get("Sex",""))}</span></td>'
@@ -3472,37 +3565,34 @@ elif _page == "Bestenliste":
                 f'<td class="mono">{esc(str(r.get("AgeClass") or ""))}</td>'
                 f'<td class="mono">{wc_label(r.get("WeightClassKg"))}</td>'
                 f'<td class="num mono">{fmt_kg(r.get("BodyweightKg"), 2)}</td>'
-                f'<td class="num mono">{fmt_sbd(r.get("Best3SquatKg"), r.get("Best3BenchKg"), r.get("Best3DeadliftKg"))}</td>'
-                f'<td class="{_total_cls}">{fmt_kg(r.get("TotalKg"))}</td>'
-                f'<td class="{_gl_cls}">{fmt_kg(r.get("GL_Points"), 2)}</td>'
-                f'<td class="l">{esc(str(r.get("Team") or ""))}</td>'
-                f'{_meet_cell}'
-                f'</tr>'
+            )
+            if not _is_bench:
+                _mid = (
+                    f'<td class="num mono">{fmt_sbd(r.get("Best3SquatKg"), r.get("Best3BenchKg"), r.get("Best3DeadliftKg"))}</td>'
+                    f'<td class="num mono-strong gold-strong">{fmt_kg(r.get("TotalKg"))}</td>'
+                    f'<td class="num mono">{fmt_kg(r.get("glmetric"), 2)}</td>'
+                    f'<td><span class="typ-tag kdk">KDK</span></td>'
+                )
+            else:
+                _is_bd_meet = str(r.get("Event_Display", "")) == "Bankdrücken"
+                _badge = ('<span class="typ-tag bd">BD-WK</span>' if _is_bd_meet
+                          else '<span class="typ-tag kdk">KDK</span>')
+                _mid = (
+                    f'<td class="num mono-strong gold-strong">{fmt_kg(r.get("perfkg"))}</td>'
+                    f'<td class="num mono">{fmt_kg(r.get("glmetric"), 2)}</td>'
+                    f'<td>{_badge}</td>'
+                )
+            return (
+                '<tr>' + _common + _mid
+                + f'<td class="l">{esc(str(r.get("Team") or ""))}</td>'
+                + _meet_cell_html(r) + '</tr>'
             )
 
-        _topn_rows: list = []
-        if _is_total_mode:
-            # Pro Gewichtsklasse Top-N — sortiert nach Sex (F→M), dann WC aufsteigend
-            _wc_order_combined = [("F", w) for w in FEM_ORDER] + [("M", w) for w in MAL_ORDER]
-            _d["_sex1"] = _d["Sex"].astype(str).str.upper().str[:1]
-            _d["_wc_disp"] = _d["WeightClassKg"].astype(str).map(wc_display)
-            for _sx_g, _wc_g in _wc_order_combined:
-                _grp = _d[(_d["_sex1"] == _sx_g) & (_d["_wc_disp"] == _wc_g)]
-                if _grp.empty:
-                    continue
-                _grp_top = _grp.sort_values("_tot", ascending=False).head(int(_topn_n))
-                # Sub-Header pro Klasse
-                _label = f"{'Frauen' if _sx_g == 'F' else 'Männer'} · {wc_label(_wc_g)} kg"
-                _topn_rows.append(
-                    f'<tr class="tbl-section"><td colspan="12">{esc(_label)}</td></tr>'
-                )
-                for i, r in enumerate(_grp_top.itertuples(index=False), start=1):
-                    _topn_rows.append(_topn_row_html(i, r._asdict(), True, False))
-        else:
-            # Flache Top-N nach GL
-            _d_top = _d.sort_values("_gl", ascending=False).head(int(_topn_n))
-            for i, r in enumerate(_d_top.itertuples(index=False), start=1):
-                _topn_rows.append(_topn_row_html(i, r._asdict(), False, True))
+        _d_top = _d.sort_values("glmetric", ascending=False).head(int(_topn_n))
+        _topn_rows = [
+            _topn_row_html(i, r._asdict())
+            for i, r in enumerate(_d_top.itertuples(index=False), start=1)
+        ]
 
         if not _topn_rows:
             st.markdown('<div class="rec-empty">Keine Performances für diese Auswahl.</div>',
@@ -3519,10 +3609,23 @@ elif _page == "Bestenliste":
         with _topn_hdr_right:
             if not _d.empty:
                 try:
-                    _topn_export_cols = ["Name", "Sex", "Age", "AgeClass", "WeightClassKg",
-                                         "BodyweightKg", "Best3SquatKg", "Best3BenchKg",
-                                         "Best3DeadliftKg", "TotalKg", "GL_Points",
-                                         "Team", "MeetName", "Date"]
+                    if not _is_bench:
+                        _topn_export_cols = ["Name", "Sex", "Age", "AgeClass", "WeightClassKg",
+                                             "BodyweightKg", "Best3SquatKg", "Best3BenchKg",
+                                             "Best3DeadliftKg", "TotalKg", "GL_Points",
+                                             "Team", "MeetName", "Date"]
+                        _fname = "oevk_bestenliste_kdk.csv"
+                    else:
+                        _exp = _d.copy()
+                        _exp["Bankdruecken_kg"] = _exp["perfkg"]
+                        _exp["IPF_GL_Bench"] = _exp["glmetric"]
+                        _exp["Wettkampftyp"] = _exp["Event_Display"].map(
+                            lambda e: "BD-Wettkampf" if str(e) == "Bankdrücken" else "KDK")
+                        _d = _exp
+                        _topn_export_cols = ["Name", "Sex", "Age", "AgeClass", "WeightClassKg",
+                                             "BodyweightKg", "Bankdruecken_kg", "IPF_GL_Bench",
+                                             "Wettkampftyp", "Team", "MeetName", "Date"]
+                        _fname = "oevk_bestenliste_bankdruecken.csv"
                     _existing_cols = [c for c in _topn_export_cols if c in _d.columns]
                     _topn_export_df = _d[_existing_cols].copy()
                     _csv_bytes = _topn_export_df.to_csv(index=False, sep=";",
@@ -3530,7 +3633,7 @@ elif _page == "Bestenliste":
                     st.download_button(
                         "⬇ CSV-Export",
                         data=_csv_bytes,
-                        file_name="oevk_bestenliste.csv",
+                        file_name=_fname,
                         mime="text/csv",
                         key="dl_csv_topn",
                         use_container_width=True,
