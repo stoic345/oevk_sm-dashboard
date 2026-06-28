@@ -1897,13 +1897,18 @@ def render_athlete_profile(name: str, hist: pd.DataFrame) -> None:
     wc_df = wc_df[wc_df["_wc_disp"].notna() & (wc_df["_wc_disp"] != "")]
     if len(wc_df) >= 2:
         wc_df = wc_df.sort_values("_dt")
-        # Sex-Reihenfolge bestimmen: häufigstes Geschlecht
-        sex_counts = wc_df["Sex"].astype(str).str.upper().value_counts()
-        primary_sex = sex_counts.index[0] if not sex_counts.empty else "M"
-        if primary_sex == "F":
-            order = [wc_label(w) for w in FEM_ORDER + MAL_ORDER]
-        else:
-            order = [wc_label(w) for w in MAL_ORDER + FEM_ORDER]
+        # Achsen-Kategorien NUR aus den tatsächlich besuchten Klassen dieser/dieses
+        # Athlet:in — sonst zeigt die plotly-Kategorieachse leere Klassen des anderen
+        # Geschlechts (z. B. Herren-Klassen bei einer Frau). Numerisch sortiert, damit
+        # auch alte Klassen wie -72 korrekt einsortiert werden ('+'-Klasse nach ihrer Zahl).
+        def _wc_sort_key(label: str) -> float:
+            base = label.lstrip("-").rstrip("+")
+            try:
+                v = float(base)
+            except ValueError:
+                return 9999.0
+            return v + (0.5 if label.endswith("+") else 0.0)
+        order = sorted(dict.fromkeys(wc_df["_wc_disp"]), key=_wc_sort_key)
         hover_wc = [
             f"{esc(str(mn))}<br>BW: {fmt_kg(bw, 2)} kg · Klasse: {esc(str(wc))}"
             for mn, bw, wc in zip(wc_df["MeetName"], wc_df["BodyweightKg"], wc_df["_wc_disp"])
@@ -3420,7 +3425,7 @@ elif _page == "Bestenliste":
 
     # Hilfetext (kompakt, je Disziplin)
     if not _is_bench:
-        _help = ('Beste KDK-Performance je Athlet:in (inkl. EM/WM), sortiert nach '
+        _help = ('Beste Performance je Athlet:in (inkl. EM/WM), sortiert nach '
                  '<b>IPF GL Punkten</b>.')
     elif _bench_only_meets:
         _help = ('Bestes Bankdrücken aus <b>reinen Bankdrück-Wettkämpfen</b>, sortiert nach '
