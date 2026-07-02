@@ -744,7 +744,7 @@ a.sumrow.sumrow--link:hover { background:var(--surface-3); }
 a.sumrow.sumrow--link:hover .sumrow__label { color:var(--gold-bright); }
 
 @media (max-width:760px) { .kpis { grid-template-columns:1fr 1fr; } .summaries { grid-template-columns:1fr; }
-  .target { display:none; } .kpi__value { font-size:30px; } }
+  .kpi__value { font-size:30px; } }
 
 /* --- Kombinierter Stichtag-Block (Container mit Marker) ---
    Wir markieren den Inhalt mit .__date-card-marker und stylen den umschließenden
@@ -948,7 +948,12 @@ div[data-testid="stButton"] > button.filter-row,
   .brand__title .beta { font-size:9px !important; padding:1px 5px !important; margin-left:6px !important; }
   .brand__date { font-size:12px !important; }
   .brand__sub { font-size:12px !important; }
-  .target { display:none !important; }
+  /* Countdown bleibt sichtbar — kompakte einzeilige Variante unter dem Brand */
+  .target--solo { padding:8px 14px !important; }
+  .target--solo .target__count { flex-direction:row !important;
+    align-items:baseline !important; gap:8px !important; }
+  .target--solo .target__count .num { font-size:32px !important; }
+  .target--solo .target__count .unit { margin-top:0 !important; }
 
   /* Disclaimer kompakter, linksbündig */
   .dev-banner { font-size:11px !important; padding:8px 10px !important; text-align:left !important;
