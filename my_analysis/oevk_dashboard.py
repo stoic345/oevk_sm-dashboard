@@ -3878,34 +3878,7 @@ elif _page == "Statistik":
         _fig_gl.update_xaxes(title_text="Norm in IPF-GL-Punkten")
         st.plotly_chart(_fig_gl, use_container_width=True, config={"displayModeBar": False})
 
-        # Norm-Tabellen je Geschlecht getrennt
-        for _sx in _SEXES:
-            d = _norm_df[_norm_df["sex"] == _sx]
-            if d.empty:
-                continue
-            _nrow = []
-            for r in d.itertuples():
-                _refbw = "–" if pd.isna(r.ref_bw) else (fmt_kg(r.ref_bw, 1) + ("*" if r.approx else ""))
-                _glc = "–" if pd.isna(r.gl) else fmt_kg(r.gl, 1)
-                _mrc = "–" if pd.isna(r.mratio) else f"{r.mratio:.0f}%"
-                _nrow.append(
-                    f'<tr><td>{wc_label(r.wc)}</td>'
-                    f'<td class="num mono">{fmt_kg(r.norm)}</td>'
-                    f'<td class="num mono">{_refbw}</td>'
-                    f'<td class="num gold-strong">{_glc}</td>'
-                    f'<td class="num mono">{_mrc}</td></tr>')
-            _subhead(_SEX_LABEL[_sx])
-            _tbl([("Klasse", ""), ("Norm (kg)", "num"), ("Ref-KG", "num"),
-                  ("Norm in GL", "num"), ("Median Total/Norm", "num")],
-                 "".join(_nrow))
-        st.markdown(
-            '<p style="color:var(--text-3);font-size:11.5px;margin:-14px 0 2px;max-width:860px">'
-            'Basis: KDK Raw, je (Geschlecht, Klasse) — ohne Altersklassen-Differenzierung. '
-            'IPF-GL ist ein Modell zum Körpergewichts-Ausgleich. '
-            '* Referenzgewicht geschätzt (keine bzw. offene Klasse).</p>',
-            unsafe_allow_html=True)
-
-        # ================= 2b · Körpergewicht vs. Total =================
+        # ---- Körpergewicht vs. Total (Graph über den Tabellen) ----
         _stat_head("Körpergewicht vs. Total",
                    "Punkt = eine Athlet:in · Linie = Durchschnitt je Geschlecht")
         _figs = go.Figure()
@@ -3946,6 +3919,33 @@ elif _page == "Statistik":
         _figs.update_xaxes(title_text="Körpergewicht [kg]")
         _figs.update_yaxes(title_text="Total [kg]")
         st.plotly_chart(_figs, use_container_width=True, config={"displayModeBar": False})
+
+        # Norm-Tabellen je Geschlecht getrennt
+        for _sx in _SEXES:
+            d = _norm_df[_norm_df["sex"] == _sx]
+            if d.empty:
+                continue
+            _nrow = []
+            for r in d.itertuples():
+                _refbw = "–" if pd.isna(r.ref_bw) else (fmt_kg(r.ref_bw, 1) + ("*" if r.approx else ""))
+                _glc = "–" if pd.isna(r.gl) else fmt_kg(r.gl, 1)
+                _mrc = "–" if pd.isna(r.mratio) else f"{r.mratio:.0f}%"
+                _nrow.append(
+                    f'<tr><td>{wc_label(r.wc)}</td>'
+                    f'<td class="num mono">{fmt_kg(r.norm)}</td>'
+                    f'<td class="num mono">{_refbw}</td>'
+                    f'<td class="num gold-strong">{_glc}</td>'
+                    f'<td class="num mono">{_mrc}</td></tr>')
+            _subhead(_SEX_LABEL[_sx])
+            _tbl([("Klasse", ""), ("Norm (kg)", "num"), ("Ref-KG", "num"),
+                  ("Norm in GL", "num"), ("Median Total/Norm", "num")],
+                 "".join(_nrow))
+        st.markdown(
+            '<p style="color:var(--text-3);font-size:11.5px;margin:-14px 0 2px;max-width:860px">'
+            'Basis: KDK Raw, je (Geschlecht, Klasse) — ohne Altersklassen-Differenzierung. '
+            'IPF-GL ist ein Modell zum Körpergewichts-Ausgleich. '
+            '* Referenzgewicht geschätzt (keine bzw. offene Klasse).</p>',
+            unsafe_allow_html=True)
 
         # ================= 3 · IPF GL Punkte je Klasse =================
         _stat_head("IPF GL Punkte je Klasse", "Was es in dieser Saison brauchte")
