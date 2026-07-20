@@ -1255,6 +1255,46 @@ def load_data() -> pd.DataFrame:
     return _fix_teams(out)
 
 
+@st.cache_data(show_spinner=False)
+def _all_time_team_by_name() -> dict:
+    """Letzter bekannter (nicht-leerer) Verein je Athlet:in aus ALLEN OeVK-Inlandsmeets
+    (all-time, nicht nur im Qualifikationsfenster). Länderpokal-Meets werden übersprungen,
+    damit keine Fun-Team-Namen als Verein landen. Dient als Fallback, wenn eine Person im
+    Fenster keinen Verein eingetragen hat."""
+    if not BASE_PATH.exists():
+        return {}
+    best: dict = {}   # name -> (sortkey_ns, team)
+    for folder in sorted(BASE_PATH.iterdir()):
+        if not folder.is_dir():
+            continue
+        e_file, m_file = folder / "entries.csv", folder / "meet.csv"
+        if not (e_file.exists() and m_file.exists()):
+            continue
+        try:
+            with open(m_file, "r", encoding="utf-8", errors="replace") as fh:
+                fh.readline()
+                fields = fh.readline().rstrip("\n").split(",")
+            m_date = fields[1] if len(fields) > 1 else ""
+            m_name = fields[5] if len(fields) > 5 else ""
+            if "länderpokal" in m_name.lower() or "laenderpokal" in m_name.lower():
+                continue
+            dt = pd.to_datetime(m_date, errors="coerce")
+            key = int(dt.value) if pd.notna(dt) else -1
+            df = pd.read_csv(e_file, usecols=lambda c: c in ("Name", "Team"))
+        except Exception:
+            continue
+        if "Name" not in df.columns or "Team" not in df.columns:
+            continue
+        for nm, tm in zip(df["Name"].astype(str), df["Team"].astype(str)):
+            t = tm.strip()
+            if not t or t.lower() == "nan":
+                continue
+            prev = best.get(nm)
+            if prev is None or key >= prev[0]:
+                best[nm] = (key, t)
+    return {nm: t for nm, (k, t) in best.items()}
+
+
 def _fix_teams(out: pd.DataFrame) -> pd.DataFrame:
     """Verein-Daten konsistent machen:
        1) Für EM/WM-Zeilen (_intl=True) **und Länderpokal-Meets** (OeVK-Wettkampf, aber
@@ -1316,13 +1356,16 @@ def _fix_teams(out: pd.DataFrame) -> pd.DataFrame:
         s2 = s2[s2.astype(str).str.strip().ne("") & s2.astype(str).str.lower().ne("nan")]
         return s2.iloc[0] if not s2.empty else None
     fallback_by_name = out.groupby("Name")["Team"].apply(_pick)
+    # Letzter bekannter Verein all-time (auch außerhalb des Fensters) als letzter Fallback,
+    # falls im Fenster nie ein Verein eingetragen war.
+    all_time = _all_time_team_by_name()
     empty = (
         out["Team"].isna()
         | out["Team"].astype(str).str.strip().eq("")
         | out["Team"].astype(str).str.lower().eq("nan")
     )
     out.loc[empty, "Team"] = out.loc[empty, "Name"].map(
-        lambda nm: latest_by_name.get(nm) or fallback_by_name.get(nm)
+        lambda nm: latest_by_name.get(nm) or fallback_by_name.get(nm) or all_time.get(nm)
     )
     return out
 
