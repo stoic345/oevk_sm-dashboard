@@ -3920,7 +3920,7 @@ elif _page == "Statistik":
         _stat_head("Körpergewicht vs. Total", "Jeder Punkt = eine Athlet:in (beste Leistung)")
         _figs = go.Figure()
         for _sx in _SEXES:
-            d = _pool[_pool["_sx"] == _sx]
+            d = _pool[(_pool["_sx"] == _sx) & (pd.to_numeric(_pool["TotalKg"], errors="coerce") > 0)]
             if d.empty:
                 continue
             _q = d["Qualifiziert"] == True if "Qualifiziert" in d.columns else (d["Differenz"] >= 0)
