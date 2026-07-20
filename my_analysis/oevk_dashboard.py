@@ -1205,9 +1205,16 @@ _USE_COLS = ["Name", "Sex", "WeightClassKg", "BodyweightKg", "Team", "TotalKg",
              "Best3SquatKg", "Best3BenchKg", "Best3DeadliftKg"]
 
 
+# Cache-Buster: hochzählen, wenn sich das Verhalten von aufgerufenen Helfern
+# (z. B. _fix_teams / _all_time_team_by_name) ändert, aber der Body von load_data
+# selbst gleich bleibt — sonst liefert @st.cache_data alte Ergebnisse.
+_LOADER_CACHE_BUST = "teamfix-2"
+
+
 @st.cache_data(show_spinner="Lade Wettkämpfe …")
 def load_data() -> pd.DataFrame:
     """Lädt und verarbeitet alle OeVK-Meets im Qualifikationszeitraum. Ergebnis wird gecacht."""
+    _ = _LOADER_CACHE_BUST  # invalidiert den Cache bei Helfer-Änderungen
     if not BASE_PATH.exists():
         return pd.DataFrame()
 
@@ -1373,6 +1380,7 @@ def _fix_teams(out: pd.DataFrame) -> pd.DataFrame:
 @st.cache_data(show_spinner="Lade Athlet:innen-Historie …")
 def load_full_history() -> pd.DataFrame:
     """Lädt ALLE OeVK-Meets ohne Zeitfenster-Filter. Für Athletenprofile."""
+    _ = _LOADER_CACHE_BUST  # invalidiert den Cache bei Helfer-Änderungen
     if not BASE_PATH.exists():
         return pd.DataFrame()
     all_entries: list = []
