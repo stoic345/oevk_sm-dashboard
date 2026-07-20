@@ -3956,19 +3956,24 @@ elif _page == "Statistik":
                 else (_team["Differenz"] >= 0)
             _agg = _team.groupby("Team").agg(
                 ath=("Name", "nunique"), qual=("_q", "sum"),
-                avg_gl=("GL_Points", "mean"), best_gl=("GL_Points", "max"),
+                avg_gl=("GL_Points", "mean"), med_gl=("GL_Points", "median"),
+                best_gl=("GL_Points", "max"),
             ).reset_index().sort_values(["qual", "avg_gl"], ascending=[False, False])
             _vrows = []
             for i, r in enumerate(_agg.itertuples(), start=1):
+                _quote = (r.qual / r.ath * 100) if r.ath else 0
                 _vrows.append(
                     f'<tr><td class="num mono">{i}</td>'
                     f'<td class="l">{esc(r.Team)}</td>'
                     f'<td class="num mono">{int(r.ath)}</td>'
                     f'<td class="num mono">{int(r.qual)}</td>'
+                    f'<td class="num mono">{_quote:.0f}%</td>'
                     f'<td class="num mono">{fmt_kg(r.avg_gl, 1)}</td>'
+                    f'<td class="num mono">{fmt_kg(r.med_gl, 1)}</td>'
                     f'<td class="num gold-strong">{fmt_kg(r.best_gl, 1)}</td></tr>')
             _tbl([("#", "num"), ("Verein", "l"), ("Athlet:innen", "num"),
-                  ("Qualifiziert", "num"), ("Ø IPF-GL", "num"), ("Bester GL", "num")],
+                  ("Qualifiziert", "num"), ("Quote", "num"), ("Ø IPF-GL", "num"),
+                  ("Median IPF-GL", "num"), ("Bester GL", "num")],
                  "".join(_vrows))
 
         # ================= 6 · Saisonverlauf =================
@@ -3999,7 +4004,8 @@ elif _page == "Statistik":
             _labels, _starts, _trows = [], [], []
             for ym in _months:
                 sub = _ts[_ts["_ym"] == ym]
-                meets = int(sub["MeetName"].nunique())
+                _mnames = sorted(str(m) for m in sub["MeetName"].dropna().unique())
+                meets = len(_mnames)
                 starts = int(len(sub))
                 aths = int(sub["Name"].nunique())
                 nq = int(_newq.get(ym, 0))
@@ -4010,7 +4016,8 @@ elif _page == "Statistik":
                     f'<td class="num mono">{meets}</td>'
                     f'<td class="num mono">{starts}</td>'
                     f'<td class="num mono">{aths}</td>'
-                    f'<td class="num gold-strong">{nq}</td></tr>')
+                    f'<td class="num gold-strong">{nq}</td>'
+                    f'<td class="l" style="white-space:normal">{esc(" · ".join(_mnames))}</td></tr>')
             _figt = go.Figure()
             _figt.add_trace(go.Bar(
                 x=_labels, y=_starts, marker=dict(color="#E2C977"),
@@ -4021,7 +4028,7 @@ elif _page == "Statistik":
             _figt.update_yaxes(title_text="Starts")
             st.plotly_chart(_figt, use_container_width=True, config={"displayModeBar": False})
             _tbl([("Monat", "l"), ("Wettkämpfe", "num"), ("Starts", "num"),
-                  ("Athlet:innen", "num"), ("Neu qualifiziert", "num")],
+                  ("Athlet:innen", "num"), ("Neu qualifiziert", "num"), ("Wettkämpfe (Namen)", "l")],
                  "".join(_trows))
 
 # --- Credits / Datenquelle ---
