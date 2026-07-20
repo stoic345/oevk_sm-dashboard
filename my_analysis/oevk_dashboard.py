@@ -3970,9 +3970,7 @@ elif _page == "Statistik":
                     f'<td class="num gold-strong">{fmt_kg(_max_gl, 1)}</td>'
                     f'<td class="num mono">{fmt_kg(_med_tot)}</td></tr>')
             if _srows:
-                st.markdown(f'<div class="meta" style="color:var(--gold);font-family:var(--font-mono);'
-                            f'font-size:12px;margin:4px 0 6px">{_SEX_LABEL[_sx]}</div>',
-                            unsafe_allow_html=True)
+                _subhead(_SEX_LABEL[_sx])
                 _tbl([("Klasse", ""), ("n", "num"), ("Median GL", "num"),
                       ("Top-10 % GL", "num"), ("Bester GL", "num"),
                       ("Median Total", "num")],
