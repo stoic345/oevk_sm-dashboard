@@ -3764,10 +3764,9 @@ elif _page == "Statistik":
         _nf = int(_pool[_pool["_sx"] == "F"]["Name"].nunique())
         _nm = int(_pool[_pool["_sx"] == "M"]["Name"].nunique())
         st.markdown(
-            '<div class="kpis kpis--3">'
+            '<div class="kpis" style="grid-template-columns:repeat(2,1fr)">'
             + kpi_card("Athlet:innen", _n_ath, accent=True, foot=f"{_nf} Frauen · {_nm} Männer")
-            + kpi_card("Qualifiziert", _n_qual, foot=f"{_quote:.0f}% des Feldes")
-            + kpi_card("Gewichtsklassen", _n_classes, foot=f"mit Teilnahme · {_n_meets} Wettkämpfe")
+            + kpi_card("Qualifiziert", _n_qual, foot=f"{_quote:.0f}% des Feldes · {_n_meets} Wettkämpfe")
             + "</div>",
             unsafe_allow_html=True)
 
@@ -3838,32 +3837,28 @@ elif _page == "Statistik":
         _fig_gl.update_xaxes(title_text="Norm in IPF-GL-Punkten")
         st.plotly_chart(_fig_gl, use_container_width=True, config={"displayModeBar": False})
 
-        _stat_head("Qualifikationsquote je Klasse", "Anteil der Teilnehmer:innen über der Norm")
-        _fig_rate = _bars_by_sex("rate", height=340, pct=True)
-        st.plotly_chart(_fig_rate, use_container_width=True, config={"displayModeBar": False})
-
-        # Tabelle (faktisch, ohne Wertung)
-        _nrow = []
-        for r in _norm_df.itertuples():
-            _refbw = "–" if pd.isna(r.ref_bw) else (fmt_kg(r.ref_bw, 1) + ("*" if r.approx else ""))
-            _glc = "–" if pd.isna(r.gl) else fmt_kg(r.gl, 1)
-            _ratec = "–" if pd.isna(r.rate) else f"{r.rate:.0f}%"
-            _mrc = "–" if pd.isna(r.mratio) else f"{r.mratio:.0f}%"
-            _small = ' <span style="color:var(--text-3);font-size:10px">kleine Fallzahl</span>' if 0 < r.n < 5 else ""
-            _nrow.append(
-                f'<tr><td class="l">{_SEX_LABEL[r.sex]}</td>'
-                f'<td>{wc_label(r.wc)}</td>'
-                f'<td class="num mono">{fmt_kg(r.norm)}</td>'
-                f'<td class="num mono">{_refbw}</td>'
-                f'<td class="num gold-strong">{_glc}</td>'
-                f'<td class="num mono">{r.n}{_small}</td>'
-                f'<td class="num mono">{r.nq}</td>'
-                f'<td class="num mono">{_ratec}</td>'
-                f'<td class="num mono">{_mrc}</td></tr>')
-        _tbl([("Geschl.", "l"), ("Klasse", ""), ("Norm (kg)", "num"),
-              ("Ref-KG", "num"), ("Norm in GL", "num"), ("n", "num"),
-              ("Qual.", "num"), ("Quote", "num"), ("Median Total/Norm", "num")],
-             "".join(_nrow))
+        # Norm-Tabellen je Geschlecht getrennt
+        for _sx in _SEXES:
+            d = _norm_df[_norm_df["sex"] == _sx]
+            if d.empty:
+                continue
+            _nrow = []
+            for r in d.itertuples():
+                _refbw = "–" if pd.isna(r.ref_bw) else (fmt_kg(r.ref_bw, 1) + ("*" if r.approx else ""))
+                _glc = "–" if pd.isna(r.gl) else fmt_kg(r.gl, 1)
+                _mrc = "–" if pd.isna(r.mratio) else f"{r.mratio:.0f}%"
+                _nrow.append(
+                    f'<tr><td>{wc_label(r.wc)}</td>'
+                    f'<td class="num mono">{fmt_kg(r.norm)}</td>'
+                    f'<td class="num mono">{_refbw}</td>'
+                    f'<td class="num gold-strong">{_glc}</td>'
+                    f'<td class="num mono">{_mrc}</td></tr>')
+            st.markdown(f'<div class="meta" style="color:var(--gold);font-family:var(--font-mono);'
+                        f'font-size:12px;margin:4px 0 6px">{_SEX_LABEL[_sx]}</div>',
+                        unsafe_allow_html=True)
+            _tbl([("Klasse", ""), ("Norm (kg)", "num"), ("Ref-KG", "num"),
+                  ("Norm in GL", "num"), ("Median Total/Norm", "num")],
+                 "".join(_nrow))
         st.markdown(
             '<p style="color:var(--text-3);font-size:11.5px;margin:-14px 0 2px;max-width:860px">'
             'Basis: KDK Raw, je (Geschlecht, Klasse) — ohne Altersklassen-Differenzierung. '
@@ -3871,8 +3866,8 @@ elif _page == "Statistik":
             '* Referenzgewicht geschätzt (keine bzw. offene Klasse).</p>',
             unsafe_allow_html=True)
 
-        # ================= 3 · Kraftstandards & Perzentile =================
-        _stat_head("Kraftstandards je Klasse", "Was es in dieser Saison brauchte")
+        # ================= 3 · IPF GL Punkte je Klasse =================
+        _stat_head("IPF GL Punkte je Klasse", "Was es in dieser Saison brauchte")
         for _sx in _SEXES:
             _srows = []
             for _wc in _WC_ORDER[_sx]:
@@ -3902,32 +3897,25 @@ elif _page == "Statistik":
                       ("Median Total", "num")],
                      "".join(_srows))
 
-        # ================= 4 · Klassentiefe & Körpergewicht-Streuung =================
+        # ================= 4 · Feldgröße & Qualifizierte (Tabelle) =================
         _stat_head("Feldgröße & Qualifizierte je Klasse")
-        _cols_d = len(_SEXES)
-        _figd = make_subplots(rows=1, cols=_cols_d, shared_yaxes=False,
-                              subplot_titles=[_SEX_LABEL[s] for s in _SEXES],
-                              horizontal_spacing=0.18)
-        for i, _sx in enumerate(_SEXES, start=1):
+        for _sx in _SEXES:
             d = _norm_df[_norm_df["sex"] == _sx]
             if d.empty:
                 continue
-            ys = [wc_label(w) for w in d["wc"]]
-            _figd.add_trace(go.Bar(y=ys, x=d["n"].tolist(), orientation="h",
-                                   name="Feld", marker=dict(color="#3A3A42"),
-                                   hovertemplate="%{y}: %{x} Athlet:innen<extra></extra>"),
-                            row=1, col=i)
-            _figd.add_trace(go.Bar(y=ys, x=d["nq"].tolist(), orientation="h",
-                                   name="Qualifiziert", marker=dict(color=_SEX_COLOR[_sx]),
-                                   hovertemplate="%{y}: %{x} qualifiziert<extra></extra>"),
-                            row=1, col=i)
-            _figd.update_yaxes(categoryorder="array",
-                               categoryarray=[wc_label(w) for w in _WC_ORDER[_sx]],
-                               autorange="reversed", row=1, col=i)
-        _plot_theme(_figd, height=360)
-        _figd.update_layout(barmode="overlay")
-        _figd.update_traces(opacity=0.92)
-        st.plotly_chart(_figd, use_container_width=True, config={"displayModeBar": False})
+            _frow = []
+            for r in d.itertuples():
+                _ratec = "–" if pd.isna(r.rate) else f"{r.rate:.0f}%"
+                _frow.append(
+                    f'<tr><td>{wc_label(r.wc)}</td>'
+                    f'<td class="num mono">{r.n}</td>'
+                    f'<td class="num mono">{r.nq}</td>'
+                    f'<td class="num mono">{_ratec}</td></tr>')
+            st.markdown(f'<div class="meta" style="color:var(--gold);font-family:var(--font-mono);'
+                        f'font-size:12px;margin:4px 0 6px">{_SEX_LABEL[_sx]}</div>',
+                        unsafe_allow_html=True)
+            _tbl([("Klasse", ""), ("Feld", "num"), ("Qualifiziert", "num"), ("Quote", "num")],
+                 "".join(_frow))
 
         _stat_head("Körpergewicht vs. Total", "Jeder Punkt = eine Athlet:in (beste Leistung)")
         _figs = go.Figure()
