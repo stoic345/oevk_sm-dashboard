@@ -3976,8 +3976,36 @@ elif _page == "Statistik":
                       ("Median Total", "num")],
                      "".join(_srows))
 
-        # ================= 4 · Feldgröße & Qualifizierte (Tabelle) =================
-        _stat_head("Feldgröße & Qualifizierte je Klasse")
+        # ================= 4 · Feldgröße & Qualifizierte =================
+        _stat_head("Feldgröße & Qualifizierte je Klasse",
+                   "dunkler Balken = Starts · farbiger Balken = qualifiziert")
+        _figd = make_subplots(rows=1, cols=len(_SEXES), shared_yaxes=False,
+                              subplot_titles=[_SEX_LABEL[s] for s in _SEXES],
+                              horizontal_spacing=0.18)
+        for i, _sx in enumerate(_SEXES, start=1):
+            dd = _norm_df[_norm_df["sex"] == _sx]
+            if dd.empty:
+                continue
+            ys = [wc_label(w) for w in dd["wc"]]
+            _figd.add_trace(go.Bar(
+                y=ys, x=dd["n"].tolist(), orientation="h", name="Starts",
+                marker=dict(color="#3A3A42"), showlegend=(i == 1), legendgroup="starts",
+                hovertemplate="%{y}: %{x} Starts<extra></extra>"), row=1, col=i)
+            _figd.add_trace(go.Bar(
+                y=ys, x=dd["nq"].tolist(), orientation="h", name="Qualifiziert",
+                marker=dict(color=_SEX_COLOR[_sx]), showlegend=False,
+                text=dd["nq"].tolist(), textposition="inside", insidetextanchor="middle",
+                hovertemplate="%{y}: %{x} qualifiziert<extra></extra>"), row=1, col=i)
+            _figd.update_yaxes(categoryorder="array",
+                               categoryarray=[wc_label(w) for w in _WC_ORDER[_sx]],
+                               autorange="reversed", row=1, col=i)
+        _plot_theme(_figd, height=380)
+        _figd.update_layout(barmode="overlay", showlegend=True,
+                            legend=dict(orientation="h", y=1.08, x=0,
+                                        font=dict(color="#B6B6BB")))
+        _figd.update_traces(opacity=0.95)
+        st.plotly_chart(_figd, use_container_width=True, config={"displayModeBar": False})
+
         for _sx in _SEXES:
             d = _norm_df[_norm_df["sex"] == _sx]
             if d.empty:
