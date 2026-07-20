@@ -1,3 +1,8 @@
+# DATA_VERSION: 2026-07-20
+# ^ Auto-bumped by the sync-oevk-data GitHub Action whenever meet data changes.
+#   Touching this source file forces Streamlit Community Cloud to redeploy with a
+#   fresh checkout — data-only commits alone do NOT trigger a redeploy, so new
+#   meets would otherwise stay invisible on the live app until a manual reboot.
 import streamlit as st
 import streamlit.components.v1 as _components
 import pandas as pd
@@ -2827,7 +2832,10 @@ if _page == "Qualifikation":
 
       function parseNum(s) {
         if (!s) return NaN;
-        s = s.replace(/\\s/g, '').replace(/[^\\-+\\d.,]/g, '').replace(',', '.');
+        // Echtes Minus (U+2212, aus fmt_diff) zuerst auf ASCII-Minus normalisieren —
+        // sonst strippt die Zeichenklasse unten das Vorzeichen und negative
+        // Differenzen werden als positive Beträge sortiert.
+        s = s.replace(/\\u2212/g, '-').replace(/\\s/g, '').replace(/[^\\-+\\d.,]/g, '').replace(',', '.');
         const f = parseFloat(s);
         return isNaN(f) ? NaN : f;
       }

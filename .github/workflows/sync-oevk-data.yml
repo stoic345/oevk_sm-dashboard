@@ -80,6 +80,12 @@ jobs:
           git add -f .last_check
           if [ "${{ steps.detect.outputs.data_changed }}" = "true" ]; then
             git add -f .last_data_update
+            # Streamlit Cloud redeployt nur bei Quellcode-Änderungen, nicht bei reinen
+            # Datei-Commits. Daher den DATA_VERSION-Marker im Haupt-Skript auf das
+            # heutige Datum setzen, damit die neuen Meets live sichtbar werden.
+            DV=$(date -u +'%Y-%m-%d')
+            sed -i -E "s/^# DATA_VERSION: .*/# DATA_VERSION: ${DV}/" my_analysis/oevk_dashboard.py
+            git add -f my_analysis/oevk_dashboard.py
             git commit -m "chore(data): sync OeVK + EM/WM ($(date -u +'%Y-%m-%d'))"
           else
             if git diff --cached --quiet; then
