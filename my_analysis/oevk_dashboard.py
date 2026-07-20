@@ -1096,6 +1096,32 @@ def _qual_limits_vec(df: pd.DataFrame) -> pd.Series:
     )
 
 
+def _gl_of(sex: str, total: float, bw: float, event: str = "KDK", equip: str = "Raw") -> float:
+    """Skalare IPF-GL-Punkte (Standard: KDK Raw) — für die Statistik-Seite.
+    Formel wie _gl_points_vec: total*100 / (a - b*exp(-c*bw))."""
+    coeffs = GL_COEFFS.get((str(sex).upper()[:1], event, equip))
+    if coeffs is None:
+        return float("nan")
+    a, b, c = coeffs
+    try:
+        total = float(total); bw = float(bw)
+    except (TypeError, ValueError):
+        return float("nan")
+    if not (bw > 0 and total > 0):
+        return float("nan")
+    denom = a - b * np.exp(-c * bw)
+    if denom <= 0:
+        return float("nan")
+    return round(total * 100.0 / denom, 2)
+
+
+def _sh(label: str, sort_type: str = "text", cls: str = "") -> str:
+    """Sortierbares Header-Cell — Click wird client-seitig via JS verarbeitet.
+    (Modul-Scope, damit alle Seiten inkl. Statistik es nutzen können.)"""
+    cls_attr = f' class="{cls} sortable" data-sort-type="{sort_type}"' if cls else ' class="sortable" data-sort-type="{}"'.format(sort_type)
+    return f'<th{cls_attr}>{label}<span class="sort-arrow">↕</span></th>'
+
+
 def _process_entries(df: pd.DataFrame, m_name: str, m_date_raw) -> pd.DataFrame:
     """Aufbereitung der Einträge eines OeVK-Meets (vektorisiert)."""
     # Numerische Spalten
@@ -2120,6 +2146,7 @@ if st.query_params.get("reset") or st.session_state.get("_reset_requested"):
 _GEN = st.session_state.get("_widget_gen", 0)
 _GEN_R = st.session_state.get("_gen_rec", 0)
 _GEN_T = st.session_state.get("_gen_topn", 0)
+_GEN_S = st.session_state.get("_gen_stat", 0)   # Statistik
 
 def _bump_gen(state_key: str, clear_sort: bool = False):
     """Erhöht einen Seiten-Generation-Zähler (Reset) + rerun."""
@@ -2351,10 +2378,10 @@ data["_wc_disp"] = data["WeightClassKg"].apply(wc_display)
 # --- NAVIGATION: Seitenauswahl (ersetzt st.tabs) ---
 # Segmented-Control oben im Hauptbereich; die Sidebar zeigt anschließend nur die Filter
 # der aktiven Seite. ?tab=records|topn (vom Athleten-Profil-Back-Button) erzwingt die Seite.
-_PAGES = ["Qualifikation", "Rekorde", "Bestenliste"]
+_PAGES = ["Qualifikation", "Rekorde", "Bestenliste", "Statistik"]
 _url_tab = st.query_params.get("tab")
-if _url_tab in ("records", "topn"):
-    st.session_state["_active_page"] = {"records": "Rekorde", "topn": "Bestenliste"}[_url_tab]
+if _url_tab in ("records", "topn", "stats"):
+    st.session_state["_active_page"] = {"records": "Rekorde", "topn": "Bestenliste", "stats": "Statistik"}[_url_tab]
 elif "_active_page" not in st.session_state:
     st.session_state["_active_page"] = "Qualifikation"
 _page = st.segmented_control("Ansicht", _PAGES, key="_active_page",
@@ -2753,11 +2780,6 @@ if _page == "Qualifikation":
             )
 
     if not table_df.empty:
-        def _sh(label: str, sort_type: str = "text", cls: str = "") -> str:
-            """Sortierbares Header-Cell — Click wird client-seitig via JS verarbeitet."""
-            cls_attr = f' class="{cls} sortable" data-sort-type="{sort_type}"' if cls else f' class="sortable" data-sort-type="{sort_type}"'
-            return f'<th{cls_attr}>{label}<span class="sort-arrow">↕</span></th>'
-
         _q_head = (
             '<th class="num nosort">#</th>'
             + _sh("Name", "text")
@@ -3658,6 +3680,353 @@ elif _page == "Bestenliste":
                     )
                 except Exception:
                     pass
+
+elif _page == "Statistik":
+    # ======================================================================
+    # STATISTIK — Saison-Auswertung (KDK Raw, Qualifikationsfenster)
+    # ======================================================================
+    st.sidebar.markdown('<div class="sb-divider"></div>', unsafe_allow_html=True)
+    _stat_sex = st.sidebar.selectbox(
+        "Geschlecht", ["Beide", "Frauen", "Männer"], key=f"stat_sex_v{_GEN_S}")
+    _stat_ref = st.sidebar.selectbox(
+        "Referenz-Körpergewicht (Norm → GL)", ["Pool-Median", "Klassenobergrenze"],
+        key=f"stat_ref_v{_GEN_S}",
+        help="Bezugsgewicht, mit dem die kg-Norm in IPF-GL-Punkte umgerechnet wird. "
+             "Pool-Median = mittleres Körpergewicht der tatsächlichen Teilnehmer:innen "
+             "der Klasse; Klassenobergrenze = oberes Limit der Klasse ('+'-Klassen "
+             "haben keine Obergrenze und nutzen immer den Pool-Median).")
+    if st.sidebar.button("Filter zurücksetzen", key=f"stat_reset_v{_GEN_S}",
+                         use_container_width=True):
+        _bump_gen("_gen_stat")
+
+    _SEXES = {"Beide": ["F", "M"], "Frauen": ["F"], "Männer": ["M"]}[_stat_sex]
+    _SEX_LABEL = {"F": "Frauen", "M": "Männer"}
+    _WC_ORDER = {"F": FEM_ORDER, "M": MAL_ORDER}
+    _SEX_COLOR = {"F": "#E2C977", "M": "#8FB8DE"}
+
+    def _stat_head(title, meta=""):
+        _m = f'<div class="meta">{meta}</div>' if meta else ""
+        st.markdown(f'<div class="section-head" style="margin:22px 0 10px">'
+                    f'<h2>{title}</h2>{_m}</div>', unsafe_allow_html=True)
+
+    def _plot_theme(fig, height=340):
+        fig.update_layout(
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            margin=dict(l=10, r=10, t=42, b=10), height=height,
+            font=dict(family="Archivo, sans-serif", color="#F5F5F4", size=12),
+            showlegend=False,
+            hoverlabel=dict(bgcolor="#18181B", bordercolor="#C9AE5B", font_color="#F5F5F4"),
+        )
+        fig.update_xaxes(gridcolor="#26262B", zerolinecolor="#26262B")
+        fig.update_yaxes(gridcolor="#26262B", zerolinecolor="#26262B")
+        return fig
+
+    def _tbl(headers, rows_html, extra_cls=""):
+        _h = "".join(f'<th class="{c}">{t}</th>' for t, c in headers)
+        st.markdown(
+            f'<div class="tablecard"><div class="tablescroll">'
+            f'<table class="tbl {extra_cls}"><thead><tr>{_h}</tr></thead>'
+            f'<tbody>{rows_html}</tbody></table></div></div>',
+            unsafe_allow_html=True)
+
+    def _name_link(nm):
+        return (f'<a href="?athlete={_urlquote(str(nm))}" target="_self" '
+                f'style="color:var(--gold-bright);text-decoration:none">{esc(str(nm))}</a>')
+
+    # ---------- Datenbasis ----------
+    _pool_all = df_scope.copy()
+    for _c in ("TotalKg", "BodyweightKg", "GL_Points", "Differenz"):
+        if _c in _pool_all.columns:
+            _pool_all[_c] = pd.to_numeric(_pool_all[_c], errors="coerce")
+    _pool_all["_sx"] = _pool_all["Sex"].astype(str).str.upper().str[:1]
+    _pool = (_pool_all.sort_values("TotalKg", ascending=False)
+             .drop_duplicates("Name").copy())
+    _pool = _pool[_pool["_sx"].isin(_SEXES)]
+
+    st.markdown('<div class="section-head"><h2>Statistik</h2>'
+                '<div class="meta">KDK Raw · Saison 2025/26</div></div>',
+                unsafe_allow_html=True)
+    st.markdown(
+        '<p style="color:var(--text-2);font-size:13.5px;margin:6px 0 4px;max-width:820px">'
+        'Auswertung aller gewerteten KDK-Raw-Leistungen im Qualifikationsfenster '
+        f'({QUAL_WINDOW_START.strftime("%d.%m.%Y")} – '
+        f'{(QUAL_WINDOW_END - pd.Timedelta(days=1)).strftime("%d.%m.%Y")}), '
+        'eine (beste) Leistung je Athlet:in.</p>',
+        unsafe_allow_html=True)
+
+    if _pool.empty:
+        st.info("Keine Daten im gewählten Bereich.")
+    else:
+        # ================= 1 · Feld-Überblick (KPIs) =================
+        _n_ath = int(_pool["Name"].nunique())
+        _n_qual = int(_pool["Qualifiziert"].sum()) if "Qualifiziert" in _pool.columns \
+            else int((_pool["Differenz"] >= 0).sum())
+        _quote = (_n_qual / _n_ath * 100) if _n_ath else 0.0
+        _n_classes = int(_pool.groupby(["_sx", "_wc_disp"]).ngroups)
+        _n_meets = int(_pool_all[_pool_all["_sx"].isin(_SEXES)]["MeetName"].nunique())
+        _nf = int(_pool[_pool["_sx"] == "F"]["Name"].nunique())
+        _nm = int(_pool[_pool["_sx"] == "M"]["Name"].nunique())
+        st.markdown(
+            '<div class="kpis kpis--3">'
+            + kpi_card("Athlet:innen", _n_ath, accent=True, foot=f"{_nf} Frauen · {_nm} Männer")
+            + kpi_card("Qualifiziert", _n_qual, foot=f"{_quote:.0f}% des Feldes")
+            + kpi_card("Klassen mit Feld", _n_classes, foot=f"{_n_meets} Wettkämpfe gewertet")
+            + "</div>",
+            unsafe_allow_html=True)
+
+        # ================= 2 · Qualifikationsnorm im Vergleich (neutral) =================
+        def _ceiling_bw(wc):
+            return float(wc[:-1]) if wc.endswith("+") else float(wc)
+
+        _norm_rows = []
+        for _sx in _SEXES:
+            for _wc in _WC_ORDER[_sx]:
+                _norm = _QUAL_FLAT.get((_sx, _wc))
+                if _norm is None:
+                    continue
+                _sub = _pool[(_pool["_sx"] == _sx) & (_pool["_wc_disp"] == _wc)]
+                _n = len(_sub)
+                _bw_med = float(_sub["BodyweightKg"].median()) if _n else float("nan")
+                if _stat_ref == "Klassenobergrenze" and not _wc.endswith("+"):
+                    _ref_bw, _approx = _ceiling_bw(_wc), False
+                elif _n and not np.isnan(_bw_med):
+                    _ref_bw, _approx = _bw_med, False
+                else:
+                    _ref_bw, _approx = _ceiling_bw(_wc), True
+                _gl_norm = _gl_of(_sx, _norm, _ref_bw)
+                _nq = int((_sub["TotalKg"] >= _norm).sum()) if _n else 0
+                _rate = (_nq / _n * 100) if _n else float("nan")
+                _mratio = float((_sub["TotalKg"] / _norm).median() * 100) if _n else float("nan")
+                _norm_rows.append(dict(sex=_sx, wc=_wc, norm=_norm, ref_bw=_ref_bw,
+                                       approx=_approx, gl=_gl_norm, n=_n, nq=_nq,
+                                       rate=_rate, mratio=_mratio))
+        _norm_df = pd.DataFrame(_norm_rows)
+
+        _stat_head("Qualifikationsnorm im Vergleich",
+                   "IPF-GL-Äquivalent je Klasse")
+        st.markdown(
+            '<p style="color:var(--text-2);font-size:13px;margin:0 0 10px;max-width:860px">'
+            'Die Normen werden vom ÖVK festgelegt. Zur Einordnung wird die kg-Norm jeder '
+            'Klasse über die IPF-GL-Formel (sportüblicher Körpergewichts-Ausgleich) in '
+            'GL-Punkte umgerechnet — so werden die Klassen direkt vergleichbar. Die '
+            'gestrichelte Linie markiert den Mittelwert je Geschlecht.</p>',
+            unsafe_allow_html=True)
+
+        def _bars_by_sex(val_key, height=340, pct=False):
+            _cols = len(_SEXES)
+            fig = make_subplots(rows=1, cols=_cols, shared_yaxes=False,
+                                subplot_titles=[_SEX_LABEL[s] for s in _SEXES],
+                                horizontal_spacing=0.18)
+            for i, _sx in enumerate(_SEXES, start=1):
+                d = _norm_df[_norm_df["sex"] == _sx]
+                if d.empty:
+                    continue
+                ys = [wc_label(w) for w in d["wc"]]
+                xs = [None if pd.isna(v) else float(v) for v in d[val_key]]
+                txt = ["–" if v is None else (f"{v:.0f}%" if pct else f"{v:.1f}") for v in xs]
+                fig.add_trace(go.Bar(
+                    y=ys, x=xs, orientation="h",
+                    marker=dict(color=_SEX_COLOR[_sx]),
+                    text=txt, textposition="auto",
+                    hovertemplate="%{y}: %{x:.1f}" + ("%" if pct else "") + "<extra></extra>",
+                ), row=1, col=i)
+                _vals = [v for v in xs if v is not None]
+                if _vals:
+                    _mean = sum(_vals) / len(_vals)
+                    fig.add_vline(x=_mean, line=dict(color="#C9AE5B", width=1, dash="dash"),
+                                  row=1, col=i)
+                fig.update_yaxes(categoryorder="array",
+                                 categoryarray=[wc_label(w) for w in _WC_ORDER[_sx]],
+                                 autorange="reversed", row=1, col=i)
+            return _plot_theme(fig, height)
+
+        _fig_gl = _bars_by_sex("gl", height=360)
+        _fig_gl.update_xaxes(title_text="Norm in IPF-GL-Punkten")
+        st.plotly_chart(_fig_gl, use_container_width=True, config={"displayModeBar": False})
+
+        _stat_head("Qualifikationsquote je Klasse", "Anteil der Teilnehmer:innen über der Norm")
+        _fig_rate = _bars_by_sex("rate", height=340, pct=True)
+        st.plotly_chart(_fig_rate, use_container_width=True, config={"displayModeBar": False})
+
+        # Tabelle (faktisch, ohne Wertung)
+        _nrow = []
+        for r in _norm_df.itertuples():
+            _refbw = "–" if pd.isna(r.ref_bw) else (fmt_kg(r.ref_bw, 1) + ("*" if r.approx else ""))
+            _glc = "–" if pd.isna(r.gl) else fmt_kg(r.gl, 1)
+            _ratec = "–" if pd.isna(r.rate) else f"{r.rate:.0f}%"
+            _mrc = "–" if pd.isna(r.mratio) else f"{r.mratio:.0f}%"
+            _small = ' <span style="color:var(--text-3);font-size:10px">kleine Fallzahl</span>' if 0 < r.n < 5 else ""
+            _nrow.append(
+                f'<tr><td class="l">{_SEX_LABEL[r.sex]}</td>'
+                f'<td>{wc_label(r.wc)}</td>'
+                f'<td class="num mono">{fmt_kg(r.norm)}</td>'
+                f'<td class="num mono">{_refbw}</td>'
+                f'<td class="num gold-strong">{_glc}</td>'
+                f'<td class="num mono">{r.n}{_small}</td>'
+                f'<td class="num mono">{r.nq}</td>'
+                f'<td class="num mono">{_ratec}</td>'
+                f'<td class="num mono">{_mrc}</td></tr>')
+        _tbl([("Geschl.", "l"), ("Klasse", ""), ("Norm (kg)", "num"),
+              ("Ref-KG", "num"), ("Norm in GL", "num"), ("n", "num"),
+              ("Qual.", "num"), ("Quote", "num"), ("Median Total/Norm", "num")],
+             "".join(_nrow))
+        st.markdown(
+            '<p style="color:var(--text-3);font-size:11.5px;margin:-14px 0 2px;max-width:860px">'
+            'Basis: KDK Raw, je (Geschlecht, Klasse) — ohne Altersklassen-Differenzierung. '
+            'IPF-GL ist ein Modell zum Körpergewichts-Ausgleich. '
+            '* Referenzgewicht geschätzt (keine bzw. offene Klasse).</p>',
+            unsafe_allow_html=True)
+
+        # ================= 3 · Kraftstandards & Perzentile =================
+        _stat_head("Kraftstandards je Klasse", "Was es in dieser Saison brauchte")
+        for _sx in _SEXES:
+            _srows = []
+            for _wc in _WC_ORDER[_sx]:
+                _sub = _pool[(_pool["_sx"] == _sx) & (_pool["_wc_disp"] == _wc)]
+                _n = len(_sub)
+                if _n == 0:
+                    continue
+                _gl = _sub["GL_Points"].dropna()
+                _tot = _sub["TotalKg"].dropna()
+                _med_gl = _gl.median() if not _gl.empty else float("nan")
+                _p90_gl = _gl.quantile(0.90) if not _gl.empty else float("nan")
+                _max_gl = _gl.max() if not _gl.empty else float("nan")
+                _med_tot = _tot.median() if not _tot.empty else float("nan")
+                _podium = (_tot.sort_values(ascending=False).iloc[2]
+                           if len(_tot) >= 3 else float("nan"))
+                _srows.append(
+                    f'<tr><td>{wc_label(_wc)}</td>'
+                    f'<td class="num mono">{_n}</td>'
+                    f'<td class="num mono">{fmt_kg(_med_gl, 1)}</td>'
+                    f'<td class="num mono">{fmt_kg(_p90_gl, 1)}</td>'
+                    f'<td class="num gold-strong">{fmt_kg(_max_gl, 1)}</td>'
+                    f'<td class="num mono">{fmt_kg(_med_tot)}</td>'
+                    f'<td class="num mono">{fmt_kg(_podium) if not pd.isna(_podium) else "–"}</td></tr>')
+            if _srows:
+                st.markdown(f'<div class="meta" style="color:var(--gold);font-family:var(--font-mono);'
+                            f'font-size:12px;margin:4px 0 6px">{_SEX_LABEL[_sx]}</div>',
+                            unsafe_allow_html=True)
+                _tbl([("Klasse", ""), ("n", "num"), ("Median GL", "num"),
+                      ("Top-10 % GL", "num"), ("Bester GL", "num"),
+                      ("Median Total", "num"), ("Podium-Total", "num")],
+                     "".join(_srows))
+
+        # ================= 4 · Klassentiefe & Körpergewicht-Streuung =================
+        _stat_head("Feldgröße & Qualifizierte je Klasse")
+        _cols_d = len(_SEXES)
+        _figd = make_subplots(rows=1, cols=_cols_d, shared_yaxes=False,
+                              subplot_titles=[_SEX_LABEL[s] for s in _SEXES],
+                              horizontal_spacing=0.18)
+        for i, _sx in enumerate(_SEXES, start=1):
+            d = _norm_df[_norm_df["sex"] == _sx]
+            if d.empty:
+                continue
+            ys = [wc_label(w) for w in d["wc"]]
+            _figd.add_trace(go.Bar(y=ys, x=d["n"].tolist(), orientation="h",
+                                   name="Feld", marker=dict(color="#3A3A42"),
+                                   hovertemplate="%{y}: %{x} Athlet:innen<extra></extra>"),
+                            row=1, col=i)
+            _figd.add_trace(go.Bar(y=ys, x=d["nq"].tolist(), orientation="h",
+                                   name="Qualifiziert", marker=dict(color=_SEX_COLOR[_sx]),
+                                   hovertemplate="%{y}: %{x} qualifiziert<extra></extra>"),
+                            row=1, col=i)
+            _figd.update_yaxes(categoryorder="array",
+                               categoryarray=[wc_label(w) for w in _WC_ORDER[_sx]],
+                               autorange="reversed", row=1, col=i)
+        _plot_theme(_figd, height=360)
+        _figd.update_layout(barmode="overlay")
+        _figd.update_traces(opacity=0.92)
+        st.plotly_chart(_figd, use_container_width=True, config={"displayModeBar": False})
+
+        _stat_head("Körpergewicht vs. Total", "Jeder Punkt = eine Athlet:in (beste Leistung)")
+        _figs = go.Figure()
+        for _sx in _SEXES:
+            d = _pool[_pool["_sx"] == _sx]
+            if d.empty:
+                continue
+            _q = d["Qualifiziert"] == True if "Qualifiziert" in d.columns else (d["Differenz"] >= 0)
+            _figs.add_trace(go.Scatter(
+                x=d["BodyweightKg"], y=d["TotalKg"], mode="markers",
+                name=_SEX_LABEL[_sx],
+                marker=dict(size=8, color=_SEX_COLOR[_sx],
+                            line=dict(width=[1.4 if q else 0 for q in _q],
+                                      color="#0B0B0C")),
+                customdata=list(zip(d["Name"], [wc_label(w) for w in d["_wc_disp"]],
+                                    d["GL_Points"])),
+                hovertemplate="<b>%{customdata[0]}</b> · %{customdata[1]}<br>"
+                              "BW %{x:.1f} · Total %{y:.1f} · GL %{customdata[2]:.1f}<extra></extra>",
+            ))
+        _plot_theme(_figs, height=420)
+        _figs.update_layout(showlegend=(len(_SEXES) > 1),
+                            legend=dict(orientation="h", y=1.08, x=0,
+                                        font=dict(color="#B6B6BB")))
+        _figs.update_xaxes(title_text="Körpergewicht [kg]")
+        _figs.update_yaxes(title_text="Total [kg]")
+        st.plotly_chart(_figs, use_container_width=True, config={"displayModeBar": False})
+
+        # ================= 5 · Saison-Höhepunkte & größte Steigerungen =================
+        _stat_head("Saison-Höhepunkte")
+
+        # itertuples() verstümmelt führende-Unterstrich-Spalten → für Leaderboards umbenennen
+        _pool_disp = _pool.rename(columns={"_sx": "sx", "_wc_disp": "wcd"})
+
+        def _lb(df_sorted, val_fn, val_cls="num gold-strong", n=10):
+            rows = []
+            for i, r in enumerate(df_sorted.head(n).itertuples(), start=1):
+                rows.append(
+                    f'<tr><td class="num mono">{i}</td>'
+                    f'<td class="l">{_name_link(r.Name)}</td>'
+                    f'<td class="l">{_SEX_LABEL.get(r.sx, r.sx)} {wc_label(r.wcd)}</td>'
+                    f'<td class="{val_cls}">{val_fn(r)}</td></tr>')
+            return "".join(rows)
+
+        _best_gl = _pool_disp.sort_values("GL_Points", ascending=False)
+        _tbl([("#", "num"), ("Name", "l"), ("Klasse", "l"), ("IPF GL", "num")],
+             _lb(_best_gl, lambda r: fmt_kg(r.GL_Points, 2)))
+        st.markdown('<div class="meta" style="color:var(--gold);font-family:var(--font-mono);'
+                    'font-size:12px;margin:-14px 0 6px">Beste IPF-GL-Leistungen</div>',
+                    unsafe_allow_html=True)
+
+        _best_tot = _pool_disp.sort_values("TotalKg", ascending=False)
+        st.markdown('<div class="meta" style="color:var(--gold);font-family:var(--font-mono);'
+                    'font-size:12px;margin:8px 0 6px">Größte Totals</div>', unsafe_allow_html=True)
+        _tbl([("#", "num"), ("Name", "l"), ("Klasse", "l"), ("Total", "num")],
+             _lb(_best_tot, lambda r: fmt_kg(r.TotalKg)))
+
+        # Most improved (≥2 Wettkämpfe im Fenster)
+        _mi_src = _pool_all[_pool_all["_sx"].isin(_SEXES)].copy()
+        _mi_src["_dt"] = pd.to_datetime(_mi_src["Date"], errors="coerce")
+        _imp = []
+        for _nm2, g in _mi_src.groupby("Name"):
+            g2 = g.dropna(subset=["_dt", "TotalKg"])
+            if g2["_dt"].nunique() < 2:
+                continue
+            g2 = g2.sort_values("_dt")
+            first_t = float(g2.iloc[0]["TotalKg"])
+            best_t = float(g2["TotalKg"].max())
+            delta = best_t - first_t
+            if delta <= 0:
+                continue
+            _imp.append((str(_nm2), g2.iloc[0]["_sx"], g2.iloc[0]["_wc_disp"],
+                         first_t, best_t, delta))
+        _imp.sort(key=lambda t: t[5], reverse=True)
+        if _imp:
+            st.markdown('<div class="meta" style="color:var(--gold);font-family:var(--font-mono);'
+                        'font-size:12px;margin:8px 0 6px">Größte Steigerungen '
+                        '(≥ 2 Wettkämpfe im Fenster)</div>', unsafe_allow_html=True)
+            _irows = []
+            for i, (nm2, sx2, wc2, ft, bt, dl) in enumerate(_imp[:10], start=1):
+                _irows.append(
+                    f'<tr><td class="num mono">{i}</td>'
+                    f'<td class="l">{_name_link(nm2)}</td>'
+                    f'<td class="l">{_SEX_LABEL.get(sx2, sx2)} {wc_label(wc2)}</td>'
+                    f'<td class="num mono">{fmt_kg(ft)}</td>'
+                    f'<td class="num mono">{fmt_kg(bt)}</td>'
+                    f'<td class="num" style="color:var(--green-bright)">+{fmt_kg(dl)}</td></tr>')
+            _tbl([("#", "num"), ("Name", "l"), ("Klasse", "l"),
+                  ("Erstes Total", "num"), ("Bestes Total", "num"), ("Δ", "num")],
+                 "".join(_irows))
 
 # --- Credits / Datenquelle ---
 st.markdown(
