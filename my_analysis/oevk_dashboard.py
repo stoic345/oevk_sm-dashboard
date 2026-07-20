@@ -3731,13 +3731,6 @@ elif _page == "Statistik":
     st.sidebar.markdown('<div class="sb-divider"></div>', unsafe_allow_html=True)
     _stat_sex = st.sidebar.selectbox(
         "Geschlecht", ["Beide", "Frauen", "Männer"], key=f"stat_sex_v{_GEN_S}")
-    _stat_ref = st.sidebar.selectbox(
-        "Referenz-Körpergewicht (Norm → GL)", ["Pool-Median", "Klassenobergrenze"],
-        key=f"stat_ref_v{_GEN_S}",
-        help="Bezugsgewicht, mit dem die kg-Norm in IPF-GL-Punkte umgerechnet wird. "
-             "Pool-Median = mittleres Körpergewicht der tatsächlichen Teilnehmer:innen "
-             "der Klasse; Klassenobergrenze = oberes Limit der Klasse ('+'-Klassen "
-             "haben keine Obergrenze und nutzen immer den Pool-Median).")
     if st.sidebar.button("Filter zurücksetzen", key=f"stat_reset_v{_GEN_S}",
                          use_container_width=True):
         _bump_gen("_gen_stat")
@@ -3772,6 +3765,13 @@ elif _page == "Statistik":
             f'<table class="tbl {extra_cls}"><thead><tr>{_h}</tr></thead>'
             f'<tbody>{rows_html}</tbody></table></div></div>',
             unsafe_allow_html=True)
+
+    def _subhead(label):
+        # Untertitel im Stil der Tabellen-Kopfzeile (Mono, fett, größer)
+        st.markdown(
+            f'<div style="font-family:var(--font-mono);font-size:15px;font-weight:700;'
+            f'letter-spacing:0.12em;text-transform:uppercase;color:var(--gold-bright);'
+            f'margin:16px 0 8px">{label}</div>', unsafe_allow_html=True)
 
     # ---------- Datenbasis ----------
     _pool_all = df_scope.copy()
@@ -3826,9 +3826,7 @@ elif _page == "Statistik":
                 _sub = _pool[(_pool["_sx"] == _sx) & (_pool["_wc_disp"] == _wc)]
                 _n = len(_sub)
                 _bw_med = float(_sub["BodyweightKg"].median()) if _n else float("nan")
-                if _stat_ref == "Klassenobergrenze" and not _wc.endswith("+"):
-                    _ref_bw, _approx = _ceiling_bw(_wc), False
-                elif _n and not np.isnan(_bw_med):
+                if _n and not np.isnan(_bw_med):
                     _ref_bw, _approx = _bw_med, False
                 else:
                     _ref_bw, _approx = _ceiling_bw(_wc), True
@@ -3896,9 +3894,7 @@ elif _page == "Statistik":
                     f'<td class="num mono">{_refbw}</td>'
                     f'<td class="num gold-strong">{_glc}</td>'
                     f'<td class="num mono">{_mrc}</td></tr>')
-            st.markdown(f'<div class="meta" style="color:var(--gold);font-family:var(--font-mono);'
-                        f'font-size:12px;margin:4px 0 6px">{_SEX_LABEL[_sx]}</div>',
-                        unsafe_allow_html=True)
+            _subhead(_SEX_LABEL[_sx])
             _tbl([("Klasse", ""), ("Norm (kg)", "num"), ("Ref-KG", "num"),
                   ("Norm in GL", "num"), ("Median Total/Norm", "num")],
                  "".join(_nrow))
@@ -3908,6 +3904,48 @@ elif _page == "Statistik":
             'IPF-GL ist ein Modell zum Körpergewichts-Ausgleich. '
             '* Referenzgewicht geschätzt (keine bzw. offene Klasse).</p>',
             unsafe_allow_html=True)
+
+        # ================= 2b · Körpergewicht vs. Total =================
+        _stat_head("Körpergewicht vs. Total",
+                   "Punkt = eine Athlet:in · Linie = Durchschnitt je Geschlecht")
+        _figs = go.Figure()
+        for _sx in _SEXES:
+            d = _pool[(_pool["_sx"] == _sx)
+                      & (pd.to_numeric(_pool["TotalKg"], errors="coerce") > 0)]
+            if d.empty:
+                continue
+            _q = d["Qualifiziert"] == True if "Qualifiziert" in d.columns else (d["Differenz"] >= 0)
+            _figs.add_trace(go.Scatter(
+                x=d["BodyweightKg"], y=d["TotalKg"], mode="markers",
+                name=_SEX_LABEL[_sx],
+                marker=dict(size=8, color=_SEX_COLOR[_sx],
+                            line=dict(width=[1.4 if q else 0 for q in _q],
+                                      color="#0B0B0C")),
+                customdata=list(zip(d["Name"], [wc_label(w) for w in d["_wc_disp"]],
+                                    d["GL_Points"])),
+                hovertemplate="<b>%{customdata[0]}</b> · %{customdata[1]}<br>"
+                              "BW %{x:.1f} · Total %{y:.1f} · GL %{customdata[2]:.1f}<extra></extra>",
+            ))
+            # Trend-/Durchschnittslinie (lineare Regression) je Geschlecht
+            _bwv = pd.to_numeric(d["BodyweightKg"], errors="coerce")
+            _tov = pd.to_numeric(d["TotalKg"], errors="coerce")
+            _ok = _bwv.notna() & _tov.notna()
+            if _ok.sum() >= 3:
+                _m, _b = np.polyfit(_bwv[_ok], _tov[_ok], 1)
+                _x0, _x1 = float(_bwv[_ok].min()), float(_bwv[_ok].max())
+                _figs.add_trace(go.Scatter(
+                    x=[_x0, _x1], y=[_m * _x0 + _b, _m * _x1 + _b],
+                    mode="lines", name=f"Ø {_SEX_LABEL[_sx]}",
+                    line=dict(color=_SEX_COLOR[_sx], width=2.5, dash="dash"),
+                    hovertemplate="Ø " + _SEX_LABEL[_sx] + ": BW %{x:.0f} → ~%{y:.0f} kg<extra></extra>",
+                ))
+        _plot_theme(_figs, height=840)
+        _figs.update_layout(showlegend=True,
+                            legend=dict(orientation="h", y=1.06, x=0,
+                                        font=dict(color="#B6B6BB")))
+        _figs.update_xaxes(title_text="Körpergewicht [kg]")
+        _figs.update_yaxes(title_text="Total [kg]")
+        st.plotly_chart(_figs, use_container_width=True, config={"displayModeBar": False})
 
         # ================= 3 · IPF GL Punkte je Klasse =================
         _stat_head("IPF GL Punkte je Klasse", "Was es in dieser Saison brauchte")
@@ -3954,37 +3992,9 @@ elif _page == "Statistik":
                     f'<td class="num mono">{r.n}</td>'
                     f'<td class="num mono">{r.nq}</td>'
                     f'<td class="num mono">{_ratec}</td></tr>')
-            st.markdown(f'<div class="meta" style="color:var(--gold);font-family:var(--font-mono);'
-                        f'font-size:12px;margin:4px 0 6px">{_SEX_LABEL[_sx]}</div>',
-                        unsafe_allow_html=True)
+            _subhead(_SEX_LABEL[_sx])
             _tbl([("Klasse", ""), ("Feld", "num"), ("Qualifiziert", "num"), ("Quote", "num")],
                  "".join(_frow))
-
-        _stat_head("Körpergewicht vs. Total", "Jeder Punkt = eine Athlet:in (beste Leistung)")
-        _figs = go.Figure()
-        for _sx in _SEXES:
-            d = _pool[(_pool["_sx"] == _sx) & (pd.to_numeric(_pool["TotalKg"], errors="coerce") > 0)]
-            if d.empty:
-                continue
-            _q = d["Qualifiziert"] == True if "Qualifiziert" in d.columns else (d["Differenz"] >= 0)
-            _figs.add_trace(go.Scatter(
-                x=d["BodyweightKg"], y=d["TotalKg"], mode="markers",
-                name=_SEX_LABEL[_sx],
-                marker=dict(size=8, color=_SEX_COLOR[_sx],
-                            line=dict(width=[1.4 if q else 0 for q in _q],
-                                      color="#0B0B0C")),
-                customdata=list(zip(d["Name"], [wc_label(w) for w in d["_wc_disp"]],
-                                    d["GL_Points"])),
-                hovertemplate="<b>%{customdata[0]}</b> · %{customdata[1]}<br>"
-                              "BW %{x:.1f} · Total %{y:.1f} · GL %{customdata[2]:.1f}<extra></extra>",
-            ))
-        _plot_theme(_figs, height=840)
-        _figs.update_layout(showlegend=(len(_SEXES) > 1),
-                            legend=dict(orientation="h", y=1.08, x=0,
-                                        font=dict(color="#B6B6BB")))
-        _figs.update_xaxes(title_text="Körpergewicht [kg]")
-        _figs.update_yaxes(title_text="Total [kg]")
-        st.plotly_chart(_figs, use_container_width=True, config={"displayModeBar": False})
 
         # ================= 5 · Vereinsranking =================
         _stat_head("Vereinsranking", "Beste Leistung je Athlet:in")
