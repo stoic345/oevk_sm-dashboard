@@ -3730,10 +3730,6 @@ elif _page == "Statistik":
             f'<tbody>{rows_html}</tbody></table></div></div>',
             unsafe_allow_html=True)
 
-    def _name_link(nm):
-        return (f'<a href="?athlete={_urlquote(str(nm))}" target="_self" '
-                f'style="color:var(--gold-bright);text-decoration:none">{esc(str(nm))}</a>')
-
     # ---------- Datenbasis ----------
     _pool_all = df_scope.copy()
     for _c in ("TotalKg", "BodyweightKg", "GL_Points", "Differenz"):
@@ -3771,7 +3767,7 @@ elif _page == "Statistik":
             '<div class="kpis kpis--3">'
             + kpi_card("Athlet:innen", _n_ath, accent=True, foot=f"{_nf} Frauen · {_nm} Männer")
             + kpi_card("Qualifiziert", _n_qual, foot=f"{_quote:.0f}% des Feldes")
-            + kpi_card("Klassen mit Feld", _n_classes, foot=f"{_n_meets} Wettkämpfe gewertet")
+            + kpi_card("Gewichtsklassen", _n_classes, foot=f"mit Teilnahme · {_n_meets} Wettkämpfe")
             + "</div>",
             unsafe_allow_html=True)
 
@@ -3807,10 +3803,7 @@ elif _page == "Statistik":
                    "IPF-GL-Äquivalent je Klasse")
         st.markdown(
             '<p style="color:var(--text-2);font-size:13px;margin:0 0 10px;max-width:860px">'
-            'Die Normen werden vom ÖVK festgelegt. Zur Einordnung wird die kg-Norm jeder '
-            'Klasse über die IPF-GL-Formel (sportüblicher Körpergewichts-Ausgleich) in '
-            'GL-Punkte umgerechnet — so werden die Klassen direkt vergleichbar. Die '
-            'gestrichelte Linie markiert den Mittelwert je Geschlecht.</p>',
+            'Norm jeder Klasse in GL-Punkte.</p>',
             unsafe_allow_html=True)
 
         def _bars_by_sex(val_key, height=340, pct=False):
@@ -3893,23 +3886,20 @@ elif _page == "Statistik":
                 _p90_gl = _gl.quantile(0.90) if not _gl.empty else float("nan")
                 _max_gl = _gl.max() if not _gl.empty else float("nan")
                 _med_tot = _tot.median() if not _tot.empty else float("nan")
-                _podium = (_tot.sort_values(ascending=False).iloc[2]
-                           if len(_tot) >= 3 else float("nan"))
                 _srows.append(
                     f'<tr><td>{wc_label(_wc)}</td>'
                     f'<td class="num mono">{_n}</td>'
                     f'<td class="num mono">{fmt_kg(_med_gl, 1)}</td>'
                     f'<td class="num mono">{fmt_kg(_p90_gl, 1)}</td>'
                     f'<td class="num gold-strong">{fmt_kg(_max_gl, 1)}</td>'
-                    f'<td class="num mono">{fmt_kg(_med_tot)}</td>'
-                    f'<td class="num mono">{fmt_kg(_podium) if not pd.isna(_podium) else "–"}</td></tr>')
+                    f'<td class="num mono">{fmt_kg(_med_tot)}</td></tr>')
             if _srows:
                 st.markdown(f'<div class="meta" style="color:var(--gold);font-family:var(--font-mono);'
                             f'font-size:12px;margin:4px 0 6px">{_SEX_LABEL[_sx]}</div>',
                             unsafe_allow_html=True)
                 _tbl([("Klasse", ""), ("n", "num"), ("Median GL", "num"),
                       ("Top-10 % GL", "num"), ("Bester GL", "num"),
-                      ("Median Total", "num"), ("Podium-Total", "num")],
+                      ("Median Total", "num")],
                      "".join(_srows))
 
         # ================= 4 · Klassentiefe & Körpergewicht-Streuung =================
@@ -3957,76 +3947,13 @@ elif _page == "Statistik":
                 hovertemplate="<b>%{customdata[0]}</b> · %{customdata[1]}<br>"
                               "BW %{x:.1f} · Total %{y:.1f} · GL %{customdata[2]:.1f}<extra></extra>",
             ))
-        _plot_theme(_figs, height=420)
+        _plot_theme(_figs, height=840)
         _figs.update_layout(showlegend=(len(_SEXES) > 1),
                             legend=dict(orientation="h", y=1.08, x=0,
                                         font=dict(color="#B6B6BB")))
         _figs.update_xaxes(title_text="Körpergewicht [kg]")
         _figs.update_yaxes(title_text="Total [kg]")
         st.plotly_chart(_figs, use_container_width=True, config={"displayModeBar": False})
-
-        # ================= 5 · Saison-Höhepunkte & größte Steigerungen =================
-        _stat_head("Saison-Höhepunkte")
-
-        # itertuples() verstümmelt führende-Unterstrich-Spalten → für Leaderboards umbenennen
-        _pool_disp = _pool.rename(columns={"_sx": "sx", "_wc_disp": "wcd"})
-
-        def _lb(df_sorted, val_fn, val_cls="num gold-strong", n=10):
-            rows = []
-            for i, r in enumerate(df_sorted.head(n).itertuples(), start=1):
-                rows.append(
-                    f'<tr><td class="num mono">{i}</td>'
-                    f'<td class="l">{_name_link(r.Name)}</td>'
-                    f'<td class="l">{_SEX_LABEL.get(r.sx, r.sx)} {wc_label(r.wcd)}</td>'
-                    f'<td class="{val_cls}">{val_fn(r)}</td></tr>')
-            return "".join(rows)
-
-        _best_gl = _pool_disp.sort_values("GL_Points", ascending=False)
-        _tbl([("#", "num"), ("Name", "l"), ("Klasse", "l"), ("IPF GL", "num")],
-             _lb(_best_gl, lambda r: fmt_kg(r.GL_Points, 2)))
-        st.markdown('<div class="meta" style="color:var(--gold);font-family:var(--font-mono);'
-                    'font-size:12px;margin:-14px 0 6px">Beste IPF-GL-Leistungen</div>',
-                    unsafe_allow_html=True)
-
-        _best_tot = _pool_disp.sort_values("TotalKg", ascending=False)
-        st.markdown('<div class="meta" style="color:var(--gold);font-family:var(--font-mono);'
-                    'font-size:12px;margin:8px 0 6px">Größte Totals</div>', unsafe_allow_html=True)
-        _tbl([("#", "num"), ("Name", "l"), ("Klasse", "l"), ("Total", "num")],
-             _lb(_best_tot, lambda r: fmt_kg(r.TotalKg)))
-
-        # Most improved (≥2 Wettkämpfe im Fenster)
-        _mi_src = _pool_all[_pool_all["_sx"].isin(_SEXES)].copy()
-        _mi_src["_dt"] = pd.to_datetime(_mi_src["Date"], errors="coerce")
-        _imp = []
-        for _nm2, g in _mi_src.groupby("Name"):
-            g2 = g.dropna(subset=["_dt", "TotalKg"])
-            if g2["_dt"].nunique() < 2:
-                continue
-            g2 = g2.sort_values("_dt")
-            first_t = float(g2.iloc[0]["TotalKg"])
-            best_t = float(g2["TotalKg"].max())
-            delta = best_t - first_t
-            if delta <= 0:
-                continue
-            _imp.append((str(_nm2), g2.iloc[0]["_sx"], g2.iloc[0]["_wc_disp"],
-                         first_t, best_t, delta))
-        _imp.sort(key=lambda t: t[5], reverse=True)
-        if _imp:
-            st.markdown('<div class="meta" style="color:var(--gold);font-family:var(--font-mono);'
-                        'font-size:12px;margin:8px 0 6px">Größte Steigerungen '
-                        '(≥ 2 Wettkämpfe im Fenster)</div>', unsafe_allow_html=True)
-            _irows = []
-            for i, (nm2, sx2, wc2, ft, bt, dl) in enumerate(_imp[:10], start=1):
-                _irows.append(
-                    f'<tr><td class="num mono">{i}</td>'
-                    f'<td class="l">{_name_link(nm2)}</td>'
-                    f'<td class="l">{_SEX_LABEL.get(sx2, sx2)} {wc_label(wc2)}</td>'
-                    f'<td class="num mono">{fmt_kg(ft)}</td>'
-                    f'<td class="num mono">{fmt_kg(bt)}</td>'
-                    f'<td class="num" style="color:var(--green-bright)">+{fmt_kg(dl)}</td></tr>')
-            _tbl([("#", "num"), ("Name", "l"), ("Klasse", "l"),
-                  ("Erstes Total", "num"), ("Bestes Total", "num"), ("Δ", "num")],
-                 "".join(_irows))
 
 # --- Credits / Datenquelle ---
 st.markdown(
