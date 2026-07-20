@@ -3943,6 +3943,87 @@ elif _page == "Statistik":
         _figs.update_yaxes(title_text="Total [kg]")
         st.plotly_chart(_figs, use_container_width=True, config={"displayModeBar": False})
 
+        # ================= 5 · Vereinsranking =================
+        _stat_head("Vereinsranking", "Beste Leistung je Athlet:in")
+        _team = _pool.copy()
+        _team["Team"] = _team["Team"].astype(str)
+        _team = _team[_team["Team"].str.strip().ne("") & _team["Team"].str.lower().ne("nan")]
+        if _team.empty:
+            st.markdown('<p style="color:var(--text-3);font-size:12px">Keine Vereinsdaten.</p>',
+                        unsafe_allow_html=True)
+        else:
+            _team["_q"] = (_team["Qualifiziert"] == True) if "Qualifiziert" in _team.columns \
+                else (_team["Differenz"] >= 0)
+            _agg = _team.groupby("Team").agg(
+                ath=("Name", "nunique"), qual=("_q", "sum"),
+                avg_gl=("GL_Points", "mean"), best_gl=("GL_Points", "max"),
+            ).reset_index().sort_values(["qual", "avg_gl"], ascending=[False, False])
+            _vrows = []
+            for i, r in enumerate(_agg.itertuples(), start=1):
+                _vrows.append(
+                    f'<tr><td class="num mono">{i}</td>'
+                    f'<td class="l">{esc(r.Team)}</td>'
+                    f'<td class="num mono">{int(r.ath)}</td>'
+                    f'<td class="num mono">{int(r.qual)}</td>'
+                    f'<td class="num mono">{fmt_kg(r.avg_gl, 1)}</td>'
+                    f'<td class="num gold-strong">{fmt_kg(r.best_gl, 1)}</td></tr>')
+            _tbl([("#", "num"), ("Verein", "l"), ("Athlet:innen", "num"),
+                  ("Qualifiziert", "num"), ("Ø IPF-GL", "num"), ("Bester GL", "num")],
+                 "".join(_vrows))
+
+        # ================= 6 · Saisonverlauf =================
+        _stat_head("Saisonverlauf", "Aktivität je Monat im Qualifikationsfenster")
+        _ts = _pool_all[_pool_all["_sx"].isin(_SEXES)].copy()
+        _ts["_dt"] = pd.to_datetime(_ts["Date"], errors="coerce")
+        _ts = _ts.dropna(subset=["_dt"])
+        if _ts.empty:
+            st.markdown('<p style="color:var(--text-3);font-size:12px">Keine Zeitdaten.</p>',
+                        unsafe_allow_html=True)
+        else:
+            _ts["_ym"] = _ts["_dt"].dt.to_period("M").astype(str)   # 'YYYY-MM'
+            _ts["_qe"] = (pd.to_numeric(_ts["TotalKg"], errors="coerce")
+                          >= pd.to_numeric(_ts["smLimit"], errors="coerce"))
+            # "Neu qualifiziert" auf denselben qualifizierten Athlet:innen-Satz wie die
+            # KPI stützen (beste Leistung je Athlet:in), damit die Summe konsistent bleibt.
+            _qual_names = (set(_pool.loc[_pool["Qualifiziert"] == True, "Name"])
+                           if "Qualifiziert" in _pool.columns
+                           else set(_pool.loc[_pool["Differenz"] >= 0, "Name"]))
+            _newq = (_ts[_ts["_qe"] & _ts["Name"].isin(_qual_names)]
+                     .sort_values("_dt").groupby("Name")["_ym"].first().value_counts())
+
+            def _mlabel(ym):
+                y, m = ym.split("-")
+                return f"{m}.{y}"
+
+            _months = sorted(_ts["_ym"].unique())
+            _labels, _starts, _trows = [], [], []
+            for ym in _months:
+                sub = _ts[_ts["_ym"] == ym]
+                meets = int(sub["MeetName"].nunique())
+                starts = int(len(sub))
+                aths = int(sub["Name"].nunique())
+                nq = int(_newq.get(ym, 0))
+                _labels.append(_mlabel(ym))
+                _starts.append(starts)
+                _trows.append(
+                    f'<tr><td class="l">{_mlabel(ym)}</td>'
+                    f'<td class="num mono">{meets}</td>'
+                    f'<td class="num mono">{starts}</td>'
+                    f'<td class="num mono">{aths}</td>'
+                    f'<td class="num gold-strong">{nq}</td></tr>')
+            _figt = go.Figure()
+            _figt.add_trace(go.Bar(
+                x=_labels, y=_starts, marker=dict(color="#E2C977"),
+                text=_starts, textposition="auto",
+                hovertemplate="%{x}: %{y} Starts<extra></extra>"))
+            _plot_theme(_figt, height=300)
+            _figt.update_xaxes(categoryorder="array", categoryarray=_labels)
+            _figt.update_yaxes(title_text="Starts")
+            st.plotly_chart(_figt, use_container_width=True, config={"displayModeBar": False})
+            _tbl([("Monat", "l"), ("Wettkämpfe", "num"), ("Starts", "num"),
+                  ("Athlet:innen", "num"), ("Neu qualifiziert", "num")],
+                 "".join(_trows))
+
 # --- Credits / Datenquelle ---
 st.markdown(
     '<div class="credit">Basiert auf Daten von '
