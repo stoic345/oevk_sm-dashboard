@@ -1,4 +1,4 @@
-# DATA_VERSION: 2026-07-23
+# DATA_VERSION: 2026-07-20
 # ^ Auto-bumped by the sync-oevk-data GitHub Action whenever meet data changes.
 #   Touching this source file forces Streamlit Community Cloud to redeploy with a
 #   fresh checkout — data-only commits alone do NOT trigger a redeploy, so new
@@ -1585,6 +1585,11 @@ def normalize_pdf_name(raw: str) -> str:
     last_name = " ".join(tokens[:last_idx]).title()  # titlecased – Bindestriche funktionieren
     first_name = " ".join(tokens[last_idx:])
     return f"{first_name} {last_name}"
+
+
+# Stand-Datum der offiziellen ÖVK-Rekordliste (aus der PDF-Kopfzeile "Stand: …").
+# Beim Aktualisieren der Rekord-CSV hier ebenfalls anpassen (ISO YYYY-MM-DD).
+OEVK_RECORDS_STAND = "2026-06-07"
 
 
 @st.cache_data(show_spinner="Lade offizielle Rekorde …")
@@ -3434,8 +3439,13 @@ elif _page == "Rekorde":
         st.markdown('<div class="rec-empty">Keine Rekorde für diese Auswahl.</div>',
                     unsafe_allow_html=True)
 
-    _stand = records_last_updated()
-    _stand_str = _stand.strftime("%d.%m.%Y") if _stand else "—"
+    # Stand aus dem PDF-Kopf (OEVK_RECORDS_STAND) — nicht die Datei-mtime,
+    # die beim Deploy/Checkout auf 'heute' zurückgesetzt würde.
+    try:
+        _stand_str = datetime.strptime(OEVK_RECORDS_STAND, "%Y-%m-%d").strftime("%d.%m.%Y")
+    except Exception:
+        _stand = records_last_updated()
+        _stand_str = _stand.strftime("%d.%m.%Y") if _stand else "—"
     st.markdown(
         f'<div class="rec-disclaimer">'
         f'<em><b>Quelle „Offiziell":</b> ÖVK-Rekordliste, Stand <b>{_stand_str}</b>, '
