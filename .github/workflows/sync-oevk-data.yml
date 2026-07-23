@@ -59,18 +59,25 @@ jobs:
           date -u +'%Y-%m-%dT%H:%M:%SZ' > .last_check
           echo "Wrote $(cat .last_check) to .last_check"
 
-      - name: Detect data changes & write .last_data_update only if data really changed
+      - name: Detect NEW in-window meets & write .last_data_update only then
         id: detect
         run: |
-          # OeVK-Daten + pre-filtered intl-CSV beobachten
+          # Immer die aktuellen OeVK-Daten + intl-CSV stagen (werden ohnehin committet).
           git add -f meet-data/oevk project-data/oevk_intl.csv
-          if git diff --cached --quiet -- meet-data/oevk project-data/oevk_intl.csv; then
+          # "Daten zuletzt aktualisiert" soll NUR vorrücken, wenn ein neuer Wettkampf
+          # IM Qualifikationsfenster hinzukommt — nicht bei OpenPowerlifting-Backfills
+          # alter Meets oder täglichem Re-Processing. Dazu Signatur der fensterrelevanten
+          # Meets vergleichen (scripts/data_signature.py).
+          python scripts/data_signature.py > .data_meets.new
+          if [ -f .data_meets ] && diff -q .data_meets .data_meets.new >/dev/null 2>&1; then
             echo "data_changed=false" >> "$GITHUB_OUTPUT"
-            echo "Keine Datenänderung."
+            echo "Kein neuer Wettkampf im Fenster."
+            rm -f .data_meets.new
           else
             echo "data_changed=true" >> "$GITHUB_OUTPUT"
+            mv .data_meets.new .data_meets
             date -u +'%Y-%m-%dT%H:%M:%SZ' > .last_data_update
-            echo "Daten geändert — .last_data_update geschrieben."
+            echo "Neuer Wettkampf im Fenster erkannt — .last_data_update geschrieben."
           fi
 
       - name: Commit & push
@@ -79,7 +86,7 @@ jobs:
           git config user.email "actions@users.noreply.github.com"
           git add -f .last_check
           if [ "${{ steps.detect.outputs.data_changed }}" = "true" ]; then
-            git add -f .last_data_update
+            git add -f .last_data_update .data_meets
             # Streamlit Cloud redeployt nur bei Quellcode-Änderungen, nicht bei reinen
             # Datei-Commits. Daher den DATA_VERSION-Marker im Haupt-Skript auf das
             # heutige Datum setzen, damit die neuen Meets live sichtbar werden.
