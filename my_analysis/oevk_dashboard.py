@@ -2346,24 +2346,32 @@ def _fmt_sync_dt(dt):
         return f"vor {delta_days} Tagen ({dt.strftime('%d.%m.%Y')})"
     return dt.strftime("%d.%m.%Y")
 
-# Marker-Datei "zuletzt geprüft" — Sync-Workflow touched sie bei JEDER Ausführung.
-_LAST_CHECK_FILE = Path(__file__).parent.parent / ".last_check"
-_last_check_dt = None
-try:
-    if _LAST_CHECK_FILE.exists():
-        _last_check_dt = datetime.fromtimestamp(_LAST_CHECK_FILE.stat().st_mtime)
-except Exception:
-    pass
+def _read_marker_dt(path):
+    """Liest den ISO-8601-Zeitstempel aus dem INHALT der Marker-Datei (vom Sync-Workflow
+    geschrieben, z. B. '2026-07-20T06:30:01Z'). Wichtig: NICHT die Datei-mtime verwenden —
+    ein Deploy/Checkout auf Streamlit Cloud setzt die mtime aller Dateien auf 'jetzt',
+    wodurch der echte Zeitpunkt verloren ginge."""
+    try:
+        if not path.exists():
+            return None
+        txt = path.read_text(encoding="utf-8", errors="replace").strip()
+        if not txt:
+            return None
+        dt = pd.to_datetime(txt, utc=True, errors="coerce")
+        if pd.isna(dt):
+            return None
+        return dt.tz_localize(None).to_pydatetime()   # naive UTC
+    except Exception:
+        return None
 
-# Marker-Datei "Daten zuletzt aktualisiert" — wird NUR getouched, wenn der Workflow
+# Marker-Datei "zuletzt geprüft" — Sync-Workflow schreibt sie bei JEDER Ausführung.
+_LAST_CHECK_FILE = Path(__file__).parent.parent / ".last_check"
+_last_check_dt = _read_marker_dt(_LAST_CHECK_FILE)
+
+# Marker-Datei "Daten zuletzt aktualisiert" — wird NUR geschrieben, wenn der Workflow
 # tatsächlich neue OeVK-Daten von OpenPowerlifting bekommen hat.
 _LAST_DATA_FILE = Path(__file__).parent.parent / ".last_data_update"
-_last_sync_dt = None
-try:
-    if _LAST_DATA_FILE.exists():
-        _last_sync_dt = datetime.fromtimestamp(_LAST_DATA_FILE.stat().st_mtime)
-except Exception:
-    pass
+_last_sync_dt = _read_marker_dt(_LAST_DATA_FILE)
 
 _latest_meet_dt = None
 _latest_meet_name = None
