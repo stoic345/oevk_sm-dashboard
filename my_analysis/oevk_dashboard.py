@@ -183,7 +183,7 @@ header[data-testid="stHeader"] [data-testid="stToolbarActions"] { display:none !
   background:var(--gold) !important; border:1px solid var(--gold) !important;
   border-radius:var(--r-sm) !important; color:var(--gold-ink) !important;
   width:100% !important; min-height:52px !important;
-  font-family:var(--font-mono) !important; font-size:11px !important;
+  font-family:var(--font-mono) !important; font-size:14px !important;
   letter-spacing:0.04em !important; text-transform:none !important; font-weight:700 !important; }
 .st-key-fb_pill button:hover, .st-key-fb_pill button:active, .st-key-fb_pill button:focus,
 .st-key-fb_pill button:focus:not(:active),
@@ -193,7 +193,7 @@ header[data-testid="stHeader"] [data-testid="stToolbarActions"] { display:none !
   background:var(--gold-bright) !important; box-shadow:none !important; }
 .st-key-fb_pill button p, .st-key-fb_pill_profile button p {
   color:var(--gold-ink) !important; font-weight:700 !important;
-  font-family:var(--font-mono) !important; font-size:11px !important;
+  font-family:var(--font-mono) !important; font-size:14px !important;
   letter-spacing:0.04em !important; }
 /* Alle 4 Boxen gleich hoch */
 .status-pill { min-height:52px; }
