@@ -42,6 +42,9 @@ def _render_feedback_form(page: str = "") -> None:
     ep = FEEDBACK_ENDPOINT.strip()
     if not ep.startswith("https://formspree.io/f/"):
         return
+    def _fb_note(kind: str, text: str) -> None:
+        st.markdown(f'<div class="fb-note fb-note--{kind}">{text}</div>', unsafe_allow_html=True)
+
     with st.form("feedback_form", clear_on_submit=True):
         _msg = st.text_area("Deine Nachricht", max_chars=2000,
                             placeholder="Fehler, Idee oder sonstiges Feedback …")
@@ -49,9 +52,9 @@ def _render_feedback_form(page: str = "") -> None:
         _sent = st.form_submit_button("Absenden")
     if _sent:
         if not (_msg or "").strip():
-            st.warning("Bitte schreib kurz, worum es geht.")
+            _fb_note("warn", "Bitte schreib kurz, worum es geht.")
         elif _mail.strip() and "@" not in _mail:
-            st.warning("Die E-Mail-Adresse sieht ungültig aus (optional — kann leer bleiben).")
+            _fb_note("warn", "Die E-Mail-Adresse sieht ungültig aus (optional — kann leer bleiben).")
         else:
             payload = {
                 "nachricht": _msg.strip(),
@@ -75,9 +78,9 @@ def _render_feedback_form(page: str = "") -> None:
             except Exception:
                 ok = False
             if ok:
-                st.success("Danke! Dein Feedback ist angekommen.")
+                _fb_note("ok", "Danke für dein Feedback")
             else:
-                st.error("Konnte gerade nicht gesendet werden — bitte später erneut versuchen.")
+                _fb_note("err", "Konnte gerade nicht gesendet werden — bitte später erneut versuchen.")
 
 
 # --- ASSETS ---
@@ -244,6 +247,13 @@ header[data-testid="stHeader"] [data-testid="stToolbarActions"] { display:none !
   border:1px solid var(--gold) !important; font-weight:700 !important; }
 [data-testid="stForm"] [data-testid="stFormSubmitButton"] button:hover {
   background:var(--gold-bright) !important; border-color:var(--gold-bright) !important; }
+/* Feedback-Hinweise (statt st.success/-error/-warning) im Dashboard-Look: grau + gold */
+.fb-note { font-family:var(--font-body); font-size:13px; font-weight:600;
+  padding:10px 14px; border-radius:var(--r-sm); margin-top:10px;
+  background:var(--surface-2); border:1px solid var(--gold-dim); color:var(--text); }
+.fb-note--ok { color:var(--gold-bright); border-color:var(--gold); }
+.fb-note--warn { color:var(--amber); border-color:var(--amber); }
+.fb-note--err { color:var(--red); border-color:var(--red); }
 
 /* Kicker / eyebrow */
 .kicker { font-family:var(--font-mono); font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--text-3); font-weight:500; }
