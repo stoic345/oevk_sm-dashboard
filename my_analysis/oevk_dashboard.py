@@ -182,9 +182,9 @@ header[data-testid="stHeader"] [data-testid="stToolbarActions"] { display:none !
 .st-key-fb_pill button, .st-key-fb_pill_profile button {
   background:var(--gold) !important; border:1px solid var(--gold) !important;
   border-radius:var(--r-sm) !important; color:var(--gold-ink) !important;
-  width:100% !important; min-height:52px !important;
-  font-family:var(--font-mono) !important; font-size:14px !important;
-  letter-spacing:0.04em !important; text-transform:none !important; font-weight:700 !important; }
+  width:100% !important; min-height:52px !important; height:100% !important;
+  font-family:var(--font-body) !important; font-size:14px !important;
+  letter-spacing:0.01em !important; text-transform:none !important; font-weight:700 !important; }
 .st-key-fb_pill button:hover, .st-key-fb_pill button:active, .st-key-fb_pill button:focus,
 .st-key-fb_pill button:focus:not(:active),
 .st-key-fb_pill_profile button:hover, .st-key-fb_pill_profile button:active,
@@ -193,10 +193,10 @@ header[data-testid="stHeader"] [data-testid="stToolbarActions"] { display:none !
   background:var(--gold-bright) !important; box-shadow:none !important; }
 .st-key-fb_pill button p, .st-key-fb_pill_profile button p {
   color:var(--gold-ink) !important; font-weight:700 !important;
-  font-family:var(--font-mono) !important; font-size:14px !important;
-  letter-spacing:0.04em !important; }
+  font-family:var(--font-body) !important; font-size:14px !important;
+  letter-spacing:0.01em !important; }
 /* Alle 4 Boxen gleich hoch */
-.status-pill { min-height:52px; }
+.status-pill { min-height:52px; height:auto; }
 /* Abstand zwischen den Top-Boxen und der Tab-Navigation verkleinern
    (Streamlit gibt der segmented_control standardmäßig 40px margin-top). */
 [data-testid="stButtonGroup"] { margin-top:6px !important; }
@@ -283,9 +283,10 @@ header[data-testid="stHeader"] [data-testid="stToolbarActions"] { display:none !
   padding:6px 12px; font-family:var(--font-mono); font-size:11.5px; line-height:1.15;
   min-width:0; text-align:center; }
 .status-pill .lab, .status-pill .val { text-align:center; }
-.status-pill .lab { color:var(--gold); letter-spacing:0.14em; text-transform:uppercase;
-  font-weight:600; font-size:10px; }
-.status-pill .val { color:var(--text); font-weight:600; font-variant-numeric:tabular-nums; }
+.status-pill .lab { color:var(--gold); font-family:var(--font-body); letter-spacing:0.01em;
+  text-transform:none; font-weight:600; font-size:12px; }
+.status-pill .val { color:var(--text); font-family:var(--font-mono); font-weight:500;
+  font-size:12.5px; font-variant-numeric:tabular-nums; }
 .status-pill a, .status-pill a:link, .status-pill a:visited {
   color:var(--gold-bright) !important; text-decoration:none !important; font-weight:600 !important;
 }
@@ -361,19 +362,19 @@ a.brand.brand--link:hover { opacity:0.85; }
 .credit a { color:var(--gold); text-decoration:none; }
 .credit a:hover { color:var(--gold-bright); text-decoration:underline; }
 .kpi { position:relative; overflow:hidden; background:linear-gradient(180deg,var(--surface),var(--bg-elev));
-  border:1px solid var(--line); border-radius:var(--r-lg); padding:20px; display:flex; flex-direction:column; gap:12px; }
+  border:1px solid var(--line); border-radius:var(--r-lg); padding:11px 16px; display:flex; flex-direction:column; gap:5px; }
 .kpi::after { content:""; position:absolute; inset:0 0 auto 0; height:2px;
   background:linear-gradient(90deg,transparent,var(--gold-dim),transparent); opacity:.5; }
 .kpi { text-align:center; }
 .kpi__top { display:flex; align-items:center; justify-content:center; }
 .kpi__value { display:block; text-align:center; }
-.kpi__foot { text-align:center; margin-top:6px; }
+.kpi__foot { text-align:center; margin-top:2px; }
 .kpi__icon { width:34px; height:34px; border-radius:9px; display:grid; place-items:center; font-size:17px;
   background:rgba(201,174,91,0.10); border:1px solid var(--gold-dim); }
-.kpi__label { font-family:var(--font-mono); font-size:14px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold-bright); font-weight:600; margin-bottom:10px; display:block; }
-.kpi__value { font-family:var(--font-mono); font-size:36px; font-weight:600; line-height:1; letter-spacing:-0.01em; color:var(--text); }
+.kpi__label { font-family:var(--font-mono); font-size:13px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold-bright); font-weight:600; margin-bottom:4px; display:block; }
+.kpi__value { font-family:var(--font-mono); font-size:29px; font-weight:600; line-height:1; letter-spacing:-0.01em; color:var(--text); }
 .kpi--accent .kpi__value { color:var(--text); }
-.kpi__foot { font-family:var(--font-mono); font-size:11px; color:var(--text-3); }
+.kpi__foot { font-family:var(--font-mono); font-size:11px; line-height:1.25; color:var(--text-3); }
 .kpi__foot .up { color:var(--green); }
 
 /* Section heading */
@@ -416,7 +417,40 @@ a.brand.brand--link:hover { opacity:0.85; }
 
 /* Tables */
 .tablecard { background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); overflow:hidden; margin-bottom:26px; }
-.tablescroll { overflow-x:auto; }
+.tablescroll { overflow-x:auto;
+  /* Deutlich sichtbarer goldener Horizontal-Scrollbar + selbst-ausblendender Rand-Fade
+     als Hinweis, dass seitlich mehr Spalten stehen. Reines CSS, kein JS.
+     WICHTIG: Streamlit setzt global `scrollbar-width:thin` — dadurch ignoriert Chrome
+     ::-webkit-scrollbar und zeigt wieder den dünnen, sich versteckenden Overlay-Balken.
+     Deshalb hier explizit auf `auto` zurücksetzen, damit unsere ::-webkit-Regeln greifen. */
+  scrollbar-width:auto !important;
+  background:
+    linear-gradient(to right, var(--surface), rgba(0,0,0,0)) 0 0,
+    linear-gradient(to left,  var(--surface), rgba(0,0,0,0)) 100% 0,
+    linear-gradient(to right, rgba(0,0,0,0.42), rgba(0,0,0,0)) 0 0,
+    linear-gradient(to left,  rgba(0,0,0,0.42), rgba(0,0,0,0)) 100% 0;
+  background-repeat:no-repeat;
+  background-size: 34px 100%, 34px 100%, 20px 100%, 20px 100%;
+  background-attachment: local, local, scroll, scroll; }
+.tablescroll::-webkit-scrollbar { height:14px; }
+.tablescroll::-webkit-scrollbar-track { background:var(--surface-2);
+  border-top:1px solid var(--gold-dim); }
+.tablescroll::-webkit-scrollbar-thumb { background:var(--gold); border-radius:8px;
+  border:3px solid var(--surface-2); }
+.tablescroll::-webkit-scrollbar-thumb:hover { background:var(--gold-bright); }
+/* Schwebender goldener Seitwärts-Scrollbalken: klebt am unteren Fensterrand, solange eine
+   breite Tabelle sichtbar ist — man muss also nicht ans Tabellenende scrollen. Wird per JS
+   (unten) mit der jeweils sichtbaren .tablescroll synchronisiert. Eigene Divs statt
+   ::-webkit-scrollbar, damit die Farbe garantiert Gold ist (Browser ignorieren die
+   Pseudo-Elemente teils komplett). */
+.oevk-floatbar { position:fixed; z-index:9990; height:12px; border-radius:7px;
+  background:var(--surface-2); border:1px solid var(--gold-dim);
+  box-shadow:0 3px 14px rgba(0,0,0,0.55); display:none; }
+.oevk-floatbar.is-on { display:block; }
+.oevk-floatbar__thumb { position:absolute; top:2px; height:6px; border-radius:4px;
+  background:var(--gold); cursor:grab; transition:background .12s ease; }
+.oevk-floatbar__thumb:hover { background:var(--gold-bright); }
+.oevk-floatbar__thumb.is-drag { background:var(--gold-bright); cursor:grabbing; }
 table.tbl { width:100%; border-collapse:collapse; font-size:13px; }
 table.tbl thead th { background:var(--surface-2); font-family:var(--font-mono); font-size:12px; letter-spacing:0.12em;
   text-transform:uppercase; color:var(--gold-bright); font-weight:700; text-align:center; padding:14px 14px;
@@ -1112,9 +1146,10 @@ div[data-testid="stButton"] > button.filter-row,
 
   /* Status-Pills: enges 2×2-Raster statt voller Stapel */
   .data-status { grid-template-columns:1fr 1fr !important; gap:8px !important; }
+  /* Mobil stehen Label und Wert untereinander — feste Desktop-Höhe hier aufheben. */
   .status-pill { flex-direction:column !important; align-items:center !important; gap:2px !important;
-    padding:7px 8px !important; }
-  .status-pill .lab { font-size:9px !important; }
+    padding:7px 8px !important; height:auto !important; min-height:0 !important; }
+  .status-pill .lab { font-size:11px !important; }
   .status-pill .val { font-size:11px !important; }
 
   /* KPI-Karten: eine kompakte Reihe mit 3 Karten */
@@ -4335,4 +4370,103 @@ st.markdown(
     '<a href="https://www.openpowerlifting.org" target="_blank" rel="noopener">openpowerlifting.org</a> · '
     'OpenIPF-Distribution: <a href="https://www.openipf.org" target="_blank" rel="noopener">openipf.org</a></div>',
     unsafe_allow_html=True,
+)
+
+# --- Schwebender goldener Seitwärts-Scrollbalken für breite Tabellen ---
+# Läuft (wie das Sortier-Skript) in einem 0px-Component-iframe und greift über
+# window.parent auf das Haupt-Dokument zu. Bindet sich immer an die gerade sichtbare
+# .tablescroll und blendet sich aus, sobald deren eigener Balken ohnehin im Bild ist.
+_components.html(
+    """
+<script>
+(function () {
+  var doc = window.parent.document, win = window.parent;
+  var BAR_ID = 'oevk-floatbar';
+  var drag = null;
+
+  function bar() {
+    var b = doc.getElementById(BAR_ID);
+    if (!b) {
+      b = doc.createElement('div');
+      b.id = BAR_ID; b.className = 'oevk-floatbar';
+      var t = doc.createElement('div');
+      t.className = 'oevk-floatbar__thumb';
+      b.appendChild(t);
+      doc.body.appendChild(b);
+      t.addEventListener('mousedown', function (e) {
+        var tgt = pick(); if (!tgt) return;
+        drag = { x: e.clientX, left: tgt.scrollLeft, el: tgt };
+        t.classList.add('is-drag');
+        e.preventDefault(); e.stopPropagation();
+      });
+      b.addEventListener('mousedown', function (e) {
+        if (e.target !== b) return;
+        var tgt = pick(); if (!tgt) return;
+        var r = b.getBoundingClientRect();
+        var frac = (e.clientX - r.left) / Math.max(1, r.width);
+        tgt.scrollLeft = frac * (tgt.scrollWidth - tgt.clientWidth);
+        sync();
+      });
+    }
+    return b;
+  }
+
+  // Sichtbare, tatsächlich überlaufende Tabelle mit der größten Bildschirmfläche.
+  function pick() {
+    var best = null, bestArea = 0, vh = win.innerHeight;
+    var list = doc.querySelectorAll('.tablescroll');
+    for (var i = 0; i < list.length; i++) {
+      var el = list[i];
+      if (el.scrollWidth - el.clientWidth < 4) continue;
+      var r = el.getBoundingClientRect();
+      var vis = Math.min(r.bottom, vh) - Math.max(r.top, 0);
+      if (vis > bestArea) { bestArea = vis; best = el; }
+    }
+    return bestArea > 40 ? best : null;
+  }
+
+  function sync() {
+    var b = bar(), t = b.firstChild;
+    var el = drag ? drag.el : pick();
+    if (!el) { b.classList.remove('is-on'); return; }
+    var r = el.getBoundingClientRect(), vh = win.innerHeight;
+    // Eigener Balken der Tabelle schon im Bild? Dann kein zweiter nötig.
+    if (!drag && r.bottom <= vh - 4) { b.classList.remove('is-on'); return; }
+    b.classList.add('is-on');
+    b.style.left = (r.left + 10) + 'px';
+    b.style.width = Math.max(60, r.width - 20) + 'px';
+    b.style.bottom = '16px';
+    var trackW = b.clientWidth - 6;
+    var thumbW = Math.max(44, (el.clientWidth / el.scrollWidth) * trackW);
+    var max = el.scrollWidth - el.clientWidth;
+    var frac = max > 0 ? el.scrollLeft / max : 0;
+    t.style.width = thumbW + 'px';
+    t.style.left = (3 + frac * (trackW - thumbW)) + 'px';
+  }
+
+  doc.addEventListener('mousemove', function (e) {
+    if (!drag) return;
+    var el = drag.el, b = bar();
+    var trackW = b.clientWidth - 6;
+    var thumbW = Math.max(44, (el.clientWidth / el.scrollWidth) * trackW);
+    var span = Math.max(1, trackW - thumbW);
+    var max = el.scrollWidth - el.clientWidth;
+    el.scrollLeft = drag.left + ((e.clientX - drag.x) / span) * max;
+    sync(); e.preventDefault();
+  });
+  doc.addEventListener('mouseup', function () {
+    if (!drag) return;
+    drag = null;
+    var t = bar().firstChild; t.classList.remove('is-drag');
+  });
+
+  win.addEventListener('scroll', sync, true);
+  win.addEventListener('resize', sync);
+  new win.MutationObserver(sync).observe(doc.body, { childList: true, subtree: true });
+  win.setInterval(sync, 400);
+  sync();
+})();
+</script>
+""",
+    height=0,
 )
