@@ -1,4 +1,4 @@
-# DATA_VERSION: 2026-07-27
+# DATA_VERSION: 2026-07-23
 # ^ Auto-bumped by the sync-oevk-data GitHub Action whenever meet data changes.
 #   Touching this source file forces Streamlit Community Cloud to redeploy with a
 #   fresh checkout — data-only commits alone do NOT trigger a redeploy, so new
@@ -180,8 +180,8 @@ header[data-testid="stHeader"] [data-testid="stToolbarActions"] { display:none !
   background:var(--gold) !important; border:1px solid var(--gold) !important;
   border-radius:var(--r-sm) !important; color:var(--gold-ink) !important;
   width:100% !important; min-height:52px !important;
-  font-family:var(--font-mono) !important; font-size:9px !important;
-  letter-spacing:0.12em !important; text-transform:uppercase !important; font-weight:700 !important; }
+  font-family:var(--font-mono) !important; font-size:11px !important;
+  letter-spacing:0.04em !important; text-transform:none !important; font-weight:700 !important; }
 .st-key-fb_pill button:hover, .st-key-fb_pill button:active, .st-key-fb_pill button:focus,
 .st-key-fb_pill button:focus:not(:active),
 .st-key-fb_pill_profile button:hover, .st-key-fb_pill_profile button:active,
@@ -220,6 +220,15 @@ header[data-testid="stHeader"] [data-testid="stToolbarActions"] { display:none !
   border-color:var(--gold) !important; box-shadow:0 0 0 1px var(--gold) !important; }
 [data-testid="stForm"] textarea::placeholder,
 [data-testid="stForm"] input::placeholder { color:var(--text-3) !important; }
+/* Browser-Autofill (Chrome) überschreibt den Hintergrund weiß — mit Inset-Shadow-Trick dunkel halten */
+[data-testid="stForm"] input:-webkit-autofill,
+[data-testid="stForm"] input:-webkit-autofill:hover,
+[data-testid="stForm"] input:-webkit-autofill:focus,
+[data-testid="stForm"] input:-webkit-autofill:active {
+  -webkit-box-shadow:0 0 0 1000px var(--bg-elev) inset !important;
+  box-shadow:0 0 0 1000px var(--bg-elev) inset !important;
+  -webkit-text-fill-color:#FFFFFF !important; caret-color:#FFFFFF !important;
+  border:1px solid var(--gold) !important; transition:background-color 9999s ease-out 0s !important; }
 [data-testid="stForm"] [data-baseweb="select"] > div {
   background:var(--bg-elev) !important; border:1px solid var(--gold-dim) !important; border-radius:8px !important; }
 [data-testid="stForm"] [data-baseweb="select"] > div:hover { border-color:var(--gold) !important; }
