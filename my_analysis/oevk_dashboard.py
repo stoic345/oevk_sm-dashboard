@@ -192,7 +192,9 @@ header[data-testid="stHeader"] [data-testid="stToolbarActions"] { display:none !
   color:var(--gold-ink) !important; border-color:var(--gold-bright) !important;
   background:var(--gold-bright) !important; box-shadow:none !important; }
 .st-key-fb_pill button p, .st-key-fb_pill_profile button p {
-  color:var(--gold-ink) !important; font-weight:700 !important; }
+  color:var(--gold-ink) !important; font-weight:700 !important;
+  font-family:var(--font-mono) !important; font-size:11px !important;
+  letter-spacing:0.04em !important; }
 /* Alle 4 Boxen gleich hoch */
 .status-pill { min-height:52px; }
 /* Abstand zwischen den Top-Boxen und der Tab-Navigation verkleinern
