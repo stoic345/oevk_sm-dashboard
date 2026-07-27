@@ -10,11 +10,75 @@ import numpy as np
 import base64
 import html as _html
 import re
+import urllib.request
+import urllib.parse
 from pathlib import Path
 from urllib.parse import quote as _urlquote
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+
+# --- FEEDBACK ---
+# Öffentlicher Formspree-Endpoint (kein Secret — steht bewusst im Client-Formular).
+# Leer lassen = Feedback-UI wird nicht angezeigt. Format: https://formspree.io/f/XXXXXXXX
+FEEDBACK_ENDPOINT = "https://formspree.io/f/maqravqj"
+
+
+def _feedback_configured() -> bool:
+    return FEEDBACK_ENDPOINT.strip().startswith("https://formspree.io/f/")
+
+
+def _feedback_toggle(key: str = "fb_pill", label: str = "Feedback & Kontakt") -> None:
+    """Pill-Button (als 4. Top-Box), der das Feedback-Formular ein-/ausklappt."""
+    if not _feedback_configured():
+        return
+    if st.button(label, key=key, use_container_width=True):
+        st.session_state["_fb_open"] = not st.session_state.get("_fb_open", False)
+
+
+def _render_feedback_form(page: str = "") -> None:
+    """Feedback-Formular (Nachricht + optional E-Mail) → Formspree-POST. Wird nur
+    gerendert, wenn ein gültiger Endpoint konfiguriert ist."""
+    ep = FEEDBACK_ENDPOINT.strip()
+    if not ep.startswith("https://formspree.io/f/"):
+        return
+    with st.form("feedback_form", clear_on_submit=True):
+        _msg = st.text_area("Deine Nachricht", max_chars=2000,
+                            placeholder="Fehler, Idee oder sonstiges Feedback …")
+        _mail = st.text_input("E-Mail (optional, für Rückfragen)")
+        _sent = st.form_submit_button("Absenden")
+    if _sent:
+        if not (_msg or "").strip():
+            st.warning("Bitte schreib kurz, worum es geht.")
+        elif _mail.strip() and "@" not in _mail:
+            st.warning("Die E-Mail-Adresse sieht ungültig aus (optional — kann leer bleiben).")
+        else:
+            payload = {
+                "nachricht": _msg.strip(),
+                "email": _mail.strip(),
+                "seite": page or "",
+                "_subject": "SM-Dashboard Feedback",
+            }
+            try:
+                data = urllib.parse.urlencode(payload).encode("utf-8")
+                req = urllib.request.Request(
+                    ep, data=data,
+                    headers={"Accept": "application/json",
+                             "Content-Type": "application/x-www-form-urlencoded",
+                             # Formspree steht hinter Cloudflare, das den Standard-
+                             # urllib-User-Agent als Bot blockt (Error 1010) → Browser-UA setzen.
+                             "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                                            "AppleWebKit/537.36 (KHTML, like Gecko) "
+                                            "Chrome/125.0 Safari/537.36")})
+                with urllib.request.urlopen(req, timeout=10) as r:
+                    ok = 200 <= getattr(r, "status", r.getcode()) < 300
+            except Exception:
+                ok = False
+            if ok:
+                st.success("Danke! Dein Feedback ist angekommen.")
+            else:
+                st.error("Konnte gerade nicht gesendet werden — bitte später erneut versuchen.")
+
 
 # --- ASSETS ---
 ASSETS_DIR = Path(__file__).parent / "assets"
@@ -111,6 +175,67 @@ header[data-testid="stHeader"] [data-testid="stToolbarActions"] { display:none !
 [data-testid="stSidebar"] [data-baseweb="select"] [data-baseweb="icon"] path {
   color:#FFFFFF !important; fill:#FFFFFF !important; opacity:1 !important; }
 
+/* --- Feedback-Box: 4. Box als goldene Action-Kachel, dunkler Text, Mono, klein & fett --- */
+.st-key-fb_pill button, .st-key-fb_pill_profile button {
+  background:var(--gold) !important; border:1px solid var(--gold) !important;
+  border-radius:var(--r-sm) !important; color:var(--gold-ink) !important;
+  width:100% !important; min-height:52px !important;
+  font-family:var(--font-mono) !important; font-size:9px !important;
+  letter-spacing:0.12em !important; text-transform:uppercase !important; font-weight:700 !important; }
+.st-key-fb_pill button:hover, .st-key-fb_pill button:active, .st-key-fb_pill button:focus,
+.st-key-fb_pill button:focus:not(:active),
+.st-key-fb_pill_profile button:hover, .st-key-fb_pill_profile button:active,
+.st-key-fb_pill_profile button:focus, .st-key-fb_pill_profile button:focus:not(:active) {
+  color:var(--gold-ink) !important; border-color:var(--gold-bright) !important;
+  background:var(--gold-bright) !important; box-shadow:none !important; }
+.st-key-fb_pill button p, .st-key-fb_pill_profile button p {
+  color:var(--gold-ink) !important; font-weight:700 !important; }
+/* Alle 4 Boxen gleich hoch */
+.status-pill { min-height:52px; }
+/* Abstand zwischen den Top-Boxen und der Tab-Navigation verkleinern
+   (Streamlit gibt der segmented_control standardmäßig 40px margin-top). */
+[data-testid="stButtonGroup"] { margin-top:6px !important; }
+/* --- Feedback-Formular: goldene Box, Felder an die Dashboard-Optik --- */
+[data-testid="stForm"] { background:var(--surface) !important;
+  border:1px solid var(--gold-dim) !important; border-radius:var(--r-md) !important;
+  padding:14px 16px !important; margin-top:8px !important; }
+[data-testid="stForm"] label, [data-testid="stForm"] label p {
+  color:var(--gold) !important; font-family:var(--font-body) !important; font-weight:700 !important; }
+[data-testid="stForm"] textarea,
+[data-testid="stForm"] input {
+  background:var(--bg-elev) !important; color:#FFFFFF !important;
+  border:1px solid var(--gold) !important; border-radius:8px !important; }
+[data-testid="stForm"] textarea:focus,
+[data-testid="stForm"] input:focus { border-color:var(--gold) !important;
+  box-shadow:none !important; outline:none !important; }
+/* Fokus-Rahmen gold statt Streamlit-Orange (Baseweb-Wrapper) */
+[data-testid="stForm"] [data-baseweb="input"],
+[data-testid="stForm"] [data-baseweb="textarea"],
+[data-testid="stForm"] [data-baseweb="base-input"] {
+  background:var(--bg-elev) !important; border-color:var(--gold) !important; }
+[data-testid="stForm"] [data-baseweb="input"]:focus-within,
+[data-testid="stForm"] [data-baseweb="textarea"]:focus-within,
+[data-testid="stForm"] [data-baseweb="base-input"]:focus-within,
+[data-testid="stForm"] [data-baseweb="select"] > div:focus-within {
+  border-color:var(--gold) !important; box-shadow:0 0 0 1px var(--gold) !important; }
+[data-testid="stForm"] textarea::placeholder,
+[data-testid="stForm"] input::placeholder { color:var(--text-3) !important; }
+[data-testid="stForm"] [data-baseweb="select"] > div {
+  background:var(--bg-elev) !important; border:1px solid var(--gold-dim) !important; border-radius:8px !important; }
+[data-testid="stForm"] [data-baseweb="select"] > div:hover { border-color:var(--gold) !important; }
+[data-testid="stForm"] [data-baseweb="select"] > div div,
+[data-testid="stForm"] [data-baseweb="select"] input { color:#FFFFFF !important; opacity:1 !important; }
+[data-testid="stForm"] [data-baseweb="select"] [data-baseweb="icon"],
+[data-testid="stForm"] [data-baseweb="select"] [data-baseweb="icon"] svg,
+[data-testid="stForm"] [data-baseweb="select"] [data-baseweb="icon"] path {
+  color:#FFFFFF !important; fill:#FFFFFF !important; opacity:1 !important; }
+[data-testid="stForm"] [data-testid="stFormSubmitButton"] button,
+[data-testid="stForm"] [data-testid="stFormSubmitButton"] button p {
+  background:var(--gold) !important; color:var(--gold-ink) !important;
+  border:1px solid var(--gold) !important; font-weight:700 !important; }
+[data-testid="stForm"] [data-testid="stFormSubmitButton"] button:hover {
+  background:var(--gold-bright) !important; border-color:var(--gold-bright) !important; }
+
 /* Kicker / eyebrow */
 .kicker { font-family:var(--font-mono); font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--text-3); font-weight:500; }
 .kicker--gold { color:var(--gold); }
@@ -129,7 +254,7 @@ header[data-testid="stHeader"] [data-testid="stToolbarActions"] { display:none !
   letter-spacing:0.02em; margin-top:10px; max-width:none; white-space:nowrap;
   overflow:hidden; text-overflow:ellipsis; }
 /* Data-Freshness-Status-Pills (Datenstand, letzte Aktualisierung, Quelle) */
-.data-status { display:grid; grid-template-columns:repeat(4, 1fr); gap:16px;
+.data-status { display:grid; grid-template-columns:repeat(3, 1fr); gap:16px;
   margin:0; align-items:stretch; }
 @media (max-width:900px) { .data-status { grid-template-columns:1fr 1fr; } }
 .status-pill { display:flex; align-items:center; justify-content:center; gap:8px;
@@ -1205,16 +1330,26 @@ _USE_COLS = ["Name", "Sex", "WeightClassKg", "BodyweightKg", "Team", "TotalKg",
              "Best3SquatKg", "Best3BenchKg", "Best3DeadliftKg"]
 
 
-# Cache-Buster: hochzählen, wenn sich das Verhalten von aufgerufenen Helfern
-# (z. B. _fix_teams / _all_time_team_by_name) ändert, aber der Body von load_data
-# selbst gleich bleibt — sonst liefert @st.cache_data alte Ergebnisse.
-_LOADER_CACHE_BUST = "teamfix-2"
+def _data_version_token() -> str:
+    """Token, das sich ändert, sobald der Sync neue Daten aufgenommen hat — Inhalt von
+    .last_data_update + der Meet-Signatur .data_meets. Wird als Cache-Key-Argument an die
+    Loader übergeben, damit @st.cache_data bei neuen Daten neu lädt (statt einen alten
+    Snapshot zu liefern; ein reiner Deploy/Redeploy leert den Cache nicht zuverlässig)."""
+    base = Path(__file__).parent.parent
+    parts = []
+    for name in (".last_data_update", ".data_meets"):
+        p = base / name
+        try:
+            parts.append(p.read_text(encoding="utf-8", errors="replace").strip() if p.exists() else "")
+        except Exception:
+            parts.append("")
+    return "|".join(parts)
 
 
 @st.cache_data(show_spinner="Lade Wettkämpfe …")
-def load_data() -> pd.DataFrame:
-    """Lädt und verarbeitet alle OeVK-Meets im Qualifikationszeitraum. Ergebnis wird gecacht."""
-    _ = _LOADER_CACHE_BUST  # invalidiert den Cache bei Helfer-Änderungen
+def load_data(cache_token: str = "") -> pd.DataFrame:
+    """Lädt und verarbeitet alle OeVK-Meets im Qualifikationszeitraum. Ergebnis wird gecacht;
+    `cache_token` (Datenversion) ist Teil des Cache-Keys → neu laden bei neuen Daten."""
     if not BASE_PATH.exists():
         return pd.DataFrame()
 
@@ -1378,9 +1513,9 @@ def _fix_teams(out: pd.DataFrame) -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner="Lade Athlet:innen-Historie …")
-def load_full_history() -> pd.DataFrame:
-    """Lädt ALLE OeVK-Meets ohne Zeitfenster-Filter. Für Athletenprofile."""
-    _ = _LOADER_CACHE_BUST  # invalidiert den Cache bei Helfer-Änderungen
+def load_full_history(cache_token: str = "") -> pd.DataFrame:
+    """Lädt ALLE OeVK-Meets ohne Zeitfenster-Filter. Für Athletenprofile.
+    `cache_token` (Datenversion) ist Teil des Cache-Keys → neu laden bei neuen Daten."""
     if not BASE_PATH.exists():
         return pd.DataFrame()
     all_entries: list = []
@@ -2282,7 +2417,7 @@ if PROFILE_MODE:
         ''',
         unsafe_allow_html=True,
     )
-    _hist = load_full_history()
+    _hist = load_full_history(_data_version_token())
     if _hist.empty:
         st.info("Historische Daten konnten nicht geladen werden.")
     else:
@@ -2291,6 +2426,9 @@ if PROFILE_MODE:
             st.info("Keine historischen Daten für " + str(_profile_param) + " gefunden.")
         else:
             render_athlete_profile(str(_profile_param), _rows)
+    _feedback_toggle("fb_pill_profile")
+    if st.session_state.get("_fb_open"):
+        _render_feedback_form("Profil")
     # Credit-Footer
     st.markdown(
         '<div class="credit">Basiert auf Daten von '
@@ -2330,7 +2468,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-data = load_data()
+data = load_data(_data_version_token())
 
 if data.empty:
     st.warning("Keine Daten gefunden. Bitte sicherstellen, dass meet-data/oevk/ befuellt ist.")
@@ -2404,31 +2542,30 @@ _latest_meet_val = (
     if _latest_meet_dt is not None else "—"
 )
 
-st.markdown(
-    f'<div class="data-status">'
-    f'<span class="status-pill{_check_stale_cls}"><span class="dot"></span>'
-    f'<span class="lab">Zuletzt nach Updates gesucht</span>'
-    f'<span class="val">{_fmt_sync_dt(_last_check_dt) if _last_check_dt is not None else "noch nie"}</span>'
-    f'</span>'
-    f'<span class="status-pill{_sync_stale_cls}">'
+# --- Info-Boxen (3) + Feedback-Box (4.) in einer Reihe ---
+_pill_sync = (
+    f'<div class="status-pill{_sync_stale_cls}">'
     f'<span class="lab">Daten zuletzt aktualisiert</span>'
-    f'<span class="val">{_fmt_sync_dt(_last_sync_dt)}</span>'
-    f'</span>'
-    f'<span class="status-pill">'
-    f'<span class="lab">Letzter Wettkampf</span>'
-    f'<span class="val">{_latest_meet_val}</span>'
-    f'</span>'
-    f'<span class="status-pill">'
-    f'<span class="lab">Quellen</span>'
-    f'<span class="val">'
-    f'<a href="https://www.openpowerlifting.org" target="_blank" rel="noopener">openpowerlifting.org</a>'
-    f' · '
-    f'<a href="https://www.openipf.org" target="_blank" rel="noopener">openipf.org</a>'
-    f'</span>'
-    f'</span>'
-    f'</div>',
-    unsafe_allow_html=True,
+    f'<span class="val">{_fmt_sync_dt(_last_sync_dt)}</span></div>'
 )
+_pill_meet = (
+    f'<div class="status-pill">'
+    f'<span class="lab">Letzter Wettkampf</span>'
+    f'<span class="val">{_latest_meet_val}</span></div>'
+)
+_pill_check = (
+    f'<div class="status-pill{_check_stale_cls}"><span class="dot"></span>'
+    f'<span class="lab">Zuletzt nach Updates gesucht</span>'
+    f'<span class="val">{_fmt_sync_dt(_last_check_dt) if _last_check_dt is not None else "noch nie"}</span></div>'
+)
+_status_cols = st.columns(4)
+_status_cols[0].markdown(_pill_check, unsafe_allow_html=True)
+_status_cols[1].markdown(_pill_sync, unsafe_allow_html=True)
+_status_cols[2].markdown(_pill_meet, unsafe_allow_html=True)
+with _status_cols[3]:
+    _feedback_toggle("fb_pill")
+if st.session_state.get("_fb_open"):
+    _render_feedback_form(st.session_state.get("_active_page", ""))
 
 # Fester Qualifikationszeitraum-Beginn (5. September 2025) — keine UI mehr nötig.
 qual_start_date = pd.Timestamp("2025-09-05").date()
@@ -3208,7 +3345,7 @@ if _page == "Qualifikation":
 elif _page == "Rekorde":
     _records_df = load_records()
     # OeVK-Historie + EM/WM-Daten für österreichische Athlet:innen mergen
-    _hist_full = load_full_history()
+    _hist_full = load_full_history(_data_version_token())
     _hist_intl = load_international_for_austrians()
     if not _hist_intl.empty and not _hist_full.empty:
         _hist_combined = pd.concat([_hist_full, _hist_intl], ignore_index=True)
@@ -3466,7 +3603,7 @@ elif _page == "Rekorde":
 # === Bestenliste — Top-N nach IPF GL Points / Total kg ======
 # ============================================================
 elif _page == "Bestenliste":
-    _hist_topn = load_full_history()
+    _hist_topn = load_full_history(_data_version_token())
 
     # --- Filter: in der Sidebar (nur diese Seite) ---
     _topn_disc = st.sidebar.selectbox(
@@ -3946,6 +4083,47 @@ elif _page == "Statistik":
         _figs.update_yaxes(title_text="Total [kg]")
         st.plotly_chart(_figs, use_container_width=True, config={"displayModeBar": False})
 
+        # ---- Körpergewicht vs. IPF-GL-Punkte ----
+        _stat_head("Körpergewicht vs. IPF-GL-Punkte",
+                   "Punkt = eine Athlet:in · Linie = Durchschnitt je Geschlecht")
+        _figg = go.Figure()
+        for _sx in _SEXES:
+            d = _pool[(_pool["_sx"] == _sx)
+                      & (pd.to_numeric(_pool["GL_Points"], errors="coerce") > 0)]
+            if d.empty:
+                continue
+            _q = d["Qualifiziert"] == True if "Qualifiziert" in d.columns else (d["Differenz"] >= 0)
+            _figg.add_trace(go.Scatter(
+                x=d["BodyweightKg"], y=d["GL_Points"], mode="markers",
+                name=_SEX_LABEL[_sx],
+                marker=dict(size=8, color=_SEX_COLOR[_sx],
+                            line=dict(width=[1.4 if q else 0 for q in _q],
+                                      color="#0B0B0C")),
+                customdata=list(zip(d["Name"], [wc_label(w) for w in d["_wc_disp"]],
+                                    d["TotalKg"])),
+                hovertemplate="<b>%{customdata[0]}</b> · %{customdata[1]}<br>"
+                              "BW %{x:.1f} · GL %{y:.1f} · Total %{customdata[2]:.1f}<extra></extra>",
+            ))
+            _bwv = pd.to_numeric(d["BodyweightKg"], errors="coerce")
+            _glv = pd.to_numeric(d["GL_Points"], errors="coerce")
+            _ok = _bwv.notna() & _glv.notna()
+            if _ok.sum() >= 3:
+                _m, _b = np.polyfit(_bwv[_ok], _glv[_ok], 1)
+                _x0, _x1 = float(_bwv[_ok].min()), float(_bwv[_ok].max())
+                _figg.add_trace(go.Scatter(
+                    x=[_x0, _x1], y=[_m * _x0 + _b, _m * _x1 + _b],
+                    mode="lines", name=f"Ø {_SEX_LABEL[_sx]}",
+                    line=dict(color=_SEX_COLOR[_sx], width=2.5, dash="dash"),
+                    hovertemplate="Ø " + _SEX_LABEL[_sx] + ": BW %{x:.0f} → ~%{y:.1f} GL<extra></extra>",
+                ))
+        _plot_theme(_figg, height=840)
+        _figg.update_layout(showlegend=True,
+                            legend=dict(orientation="h", y=1.06, x=0,
+                                        font=dict(color="#B6B6BB")))
+        _figg.update_xaxes(title_text="Körpergewicht [kg]")
+        _figg.update_yaxes(title_text="IPF-GL-Punkte")
+        st.plotly_chart(_figg, use_container_width=True, config={"displayModeBar": False})
+
         # Norm-Tabellen je Geschlecht getrennt
         for _sx in _SEXES:
             d = _norm_df[_norm_df["sex"] == _sx]
@@ -3966,12 +4144,6 @@ elif _page == "Statistik":
             _tbl([("Klasse", ""), ("Norm (kg)", "num"), ("Ref-KG", "num"),
                   ("Norm in GL", "num"), ("Median Total/Norm", "num")],
                  "".join(_nrow))
-        st.markdown(
-            '<p style="color:var(--text-3);font-size:11.5px;margin:-14px 0 2px;max-width:860px">'
-            'Basis: KDK Raw, je (Geschlecht, Klasse) — ohne Altersklassen-Differenzierung. '
-            'IPF-GL ist ein Modell zum Körpergewichts-Ausgleich. '
-            '* Referenzgewicht geschätzt (keine bzw. offene Klasse).</p>',
-            unsafe_allow_html=True)
 
         # ================= 3 · IPF GL Punkte je Klasse =================
         _stat_head("IPF GL Punkte je Klasse", "Was es in dieser Saison brauchte")
