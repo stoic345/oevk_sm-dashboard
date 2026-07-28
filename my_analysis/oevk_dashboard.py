@@ -509,19 +509,9 @@ a.nm-link:hover { color:var(--gold-bright) !important; }
 [data-testid="stDecoration"],
 [data-testid="stToolbarActions"],
 [data-testid="stAppDeployButton"],
-/* Streamlit-Cloud-Badges unten rechts: roter Streamlit-Button + GitHub-Avatar des
-   App-Erstellers. Streamlit vergibt gehashte Klassennamen (z. B. _viewerBadge_aycw8_23),
-   die sich bei jedem Update ändern — deshalb Teilstring-Selektoren statt fixer Klassen.
-   Der Avatar verlinkt auf share.streamlit.io/user/<name> (NICHT auf github.com), das
-   alte a[href*="github.com"]-Muster hat deshalb nie gegriffen. */
-[class*="_viewerBadge_"],
-[class*="_profileContainer_"],
-[class*="_profilePreview_"],
-a[href^="https://streamlit.io/cloud"],
-a[href^="https://share.streamlit.io/user/"],
-.viewerBadge_container__1QSob,
-.viewerBadge_link__1S137,
-a[href*="streamlit.io"]:has(> img),
+/* HINWEIS: Die Streamlit-Cloud-Badges unten rechts (rotes Logo + Creator-Avatar) sind
+   hier NICHT ausblendbar — sie liegen im obersten Dokument, während dieses CSS im
+   App-iframe landet. Das übernimmt das Skript am Dateiende via window.top.document. */
 #MainMenu,
 footer { display: none !important; visibility: hidden !important; }
 /* Unused space above the header — Streamlit's default block top-padding minimieren */
@@ -1259,12 +1249,25 @@ def _normalize_wc_key(wc_series: pd.Series) -> pd.Series:
     return result
 
 
+# Kleinstes plausibles Wettkampf-Körpergewicht. Darunter liegen ausschließlich
+# Tippfehler aus der Quelle (real kleinster Wert im Datenbestand: 39,4 kg; der eine
+# 16,0-kg-Datensatz in Meet 2328 ist offensichtlich ein Upstream-Fehler).
+# Wichtig für die GL-Formel: der Nenner (a − b·e^(−c·BW)) wird bei sehr kleinem BW
+# null oder negativ (z. B. F/Bankdrücken/Raw bei 24,0 kg) — knapp darüber liefert er
+# absurd große Punktzahlen (24,05 kg → 18.427 Punkte), die jede Bestenliste anführen.
+MIN_PLAUSIBLE_BW_KG = 30.0
+
+
 def _gl_points_vec(df: pd.DataFrame) -> pd.Series:
-    """Vektorisierte IPF-GL-Punkte (4 Disziplinen: KDK/BD × Raw/Single-ply)."""
-    result = pd.Series(0.0, index=df.index)
+    """Vektorisierte IPF-GL-Punkte (4 Disziplinen: KDK/BD × Raw/Single-ply).
+
+    Nicht berechenbare Zeilen ergeben NaN (nicht 0.0) — 0.0 wäre ein scheinbar
+    gültiger Wert und würde Mittelwerte/Sortierungen verfälschen. Verhalten damit
+    identisch zum skalaren `_gl_of`."""
+    result = pd.Series(np.nan, index=df.index)
     sex_upper = df["Sex"].astype(str).str.upper().str[:1]
     equip = df["Equipment"].astype(str)
-    valid = (df["BodyweightKg"] > 0) & (df["TotalKg"] > 0)
+    valid = (df["BodyweightKg"] >= MIN_PLAUSIBLE_BW_KG) & (df["TotalKg"] > 0)
 
     for (sex, event_display, equipment), (a, b, c) in GL_COEFFS.items():
         event_key = "KDK" if event_display == "KDK" else "Bankdrücken"
@@ -1279,7 +1282,10 @@ def _gl_points_vec(df: pd.DataFrame) -> pd.Series:
         bw = df.loc[mask, "BodyweightKg"]
         total = df.loc[mask, "TotalKg"]
         denom = a - b * np.exp(-c * bw)
-        result.loc[mask] = (total * 100.0 / denom).round(2)
+        ok = denom > 0                      # Sicherheitsnetz wie in _gl_of
+        if not ok.any():
+            continue
+        result.loc[bw.index[ok]] = (total[ok] * 100.0 / denom[ok]).round(2)
 
     return result
 
@@ -4401,6 +4407,22 @@ _components.html(
   var doc = window.parent.document, win = window.parent;
   var BAR_ID = 'oevk-floatbar';
   var drag = null;
+
+  // Streamlit-Cloud-Badges (rotes Logo + Creator-Avatar) liegen im OBERSTEN Dokument —
+  // die App läuft dort in einem iframe. CSS aus der App kann sie deshalb nicht treffen;
+  // stattdessen von hier aus einen <style> ins oberste Dokument injizieren. Lokal ist
+  // window.top === window.parent, dann überspringt sich der Block selbst.
+  try {
+    var topDoc = window.top.document;
+    if (topDoc && topDoc !== doc && !topDoc.getElementById('oevk-hide-badges')) {
+      var hb = topDoc.createElement('style');
+      hb.id = 'oevk-hide-badges';
+      hb.textContent = '[class*="_viewerBadge_"],[class*="_profileContainer_"],' +
+        '[class*="_profilePreview_"],a[href^="https://streamlit.io/cloud"],' +
+        'a[href^="https://share.streamlit.io/user/"]{display:none !important;}';
+      topDoc.head.appendChild(hb);
+    }
+  } catch (e) { /* cross-origin o. Ä. — dann bleiben die Badges eben sichtbar */ }
 
   function bar() {
     var b = doc.getElementById(BAR_ID);
