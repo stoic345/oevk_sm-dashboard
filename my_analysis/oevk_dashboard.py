@@ -509,13 +509,19 @@ a.nm-link:hover { color:var(--gold-bright) !important; }
 [data-testid="stDecoration"],
 [data-testid="stToolbarActions"],
 [data-testid="stAppDeployButton"],
+/* Streamlit-Cloud-Badges unten rechts: roter Streamlit-Button + GitHub-Avatar des
+   App-Erstellers. Streamlit vergibt gehashte Klassennamen (z. B. _viewerBadge_aycw8_23),
+   die sich bei jedem Update ändern — deshalb Teilstring-Selektoren statt fixer Klassen.
+   Der Avatar verlinkt auf share.streamlit.io/user/<name> (NICHT auf github.com), das
+   alte a[href*="github.com"]-Muster hat deshalb nie gegriffen. */
+[class*="_viewerBadge_"],
+[class*="_profileContainer_"],
+[class*="_profilePreview_"],
+a[href^="https://streamlit.io/cloud"],
+a[href^="https://share.streamlit.io/user/"],
 .viewerBadge_container__1QSob,
-.viewerBadge_container__r5tak,
 .viewerBadge_link__1S137,
-.viewerBadge_link__qRIco,
-.viewerBadge_text__1JaDK,
 a[href*="streamlit.io"]:has(> img),
-a[href*="github.com"][title*="View source"],
 #MainMenu,
 footer { display: none !important; visibility: hidden !important; }
 /* Unused space above the header — Streamlit's default block top-padding minimieren */
