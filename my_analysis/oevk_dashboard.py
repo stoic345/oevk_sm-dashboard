@@ -4471,6 +4471,14 @@ _components.html(
       gs.id = 'oevk-gc';
       gs.async = true;
       gs.setAttribute('data-goatcounter', 'https://' + gcCode + '.goatcounter.com/count');
+      // Die Auto-Zählung von count.js hängt am load-Event der Seite. Das ist längst
+      // vorbei, wenn Streamlit dieses Component-Skript ausführt — ohne no_onload +
+      // eigenen count()-Aufruf wird deshalb GAR NICHTS gezählt (verifiziert: Skript
+      // geladen, aber 0 Beacons). So ist es genau ein Treffer pro Seitenaufruf.
+      gs.setAttribute('data-goatcounter-settings', '{"no_onload": true}');
+      gs.onload = function () {
+        try { topWin.goatcounter.count(); } catch (e) {}
+      };
       gs.src = 'https://gc.zgo.at/count.js';
       gcDoc.head.appendChild(gs);
     }
