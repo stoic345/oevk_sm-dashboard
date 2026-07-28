@@ -1231,8 +1231,12 @@ GL_COEFFS = {
     ('F', 'BD',  'Single-ply'): (221.82209,  357.00377,  0.02937),
 }
 
-# Qualification window for Österreichische Staatsmeisterschaft KDK Classic 2026 (5.–6. September 2026):
-# Results count from the day after the 2025 nationals up to but NOT including nationals weekend.
+# Qualifikationsfenster für die Österreichische Staatsmeisterschaft KDK Classic 2026
+# (5.–6. September 2026).
+# START: Die Staatsmeisterschaft 2025 (06.09.2025) liegt BEWUSST im Fenster — Ergebnisse
+#        von dort zählen für die Qualifikation 2026 (vom Verband so gewollt).
+# END:   Die SM 2026 selbst zählt NICHT für ihre eigene Qualifikation — Wettkämpfe am
+#        Tag des Fensterendes und danach werden ausgeschlossen (`< QUAL_WINDOW_END`).
 QUAL_WINDOW_START = pd.Timestamp("2025-09-05")
 QUAL_WINDOW_END   = pd.Timestamp("2026-09-05")  # championship start — meets ON/after excluded
 
@@ -1463,7 +1467,11 @@ def load_data(cache_token: str = "") -> pd.DataFrame:
             m_date_raw = fields[1] if len(fields) > 1 else ""
             m_name = fields[5] if len(fields) > 5 else folder.name
             m_date_parsed = pd.to_datetime(m_date_raw, errors="coerce")
-            if pd.isna(m_date_parsed) or m_date_parsed < QUAL_WINDOW_START:
+            # Fenster beidseitig prüfen: die SM 2026 selbst (und alles danach) darf nicht
+            # in die Qualifikation einfließen — vorher wurde nur die Untergrenze geprüft.
+            if (pd.isna(m_date_parsed)
+                    or m_date_parsed < QUAL_WINDOW_START
+                    or m_date_parsed >= QUAL_WINDOW_END):
                 continue
 
             df = pd.read_csv(
@@ -2662,12 +2670,17 @@ with _status_cols[3]:
 if st.session_state.get("_fb_open"):
     _render_feedback_form(st.session_state.get("_active_page", ""))
 
-# Fester Qualifikationszeitraum-Beginn (5. September 2025) — keine UI mehr nötig.
-qual_start_date = pd.Timestamp("2025-09-05").date()
+# Fester Qualifikationszeitraum — keine UI nötig. Grenzen kommen aus den Konstanten
+# (vorher war der Start hier ein zweites Mal hart codiert und das Ende fehlte ganz,
+# wodurch die SM 2026 für ihre eigene Qualifikation gezählt hätte).
+qual_start_date = QUAL_WINDOW_START.date()
 meet_dates = pd.to_datetime(data["Date"], errors="coerce")
-in_window = meet_dates >= pd.Timestamp(qual_start_date)
+in_window = (meet_dates >= QUAL_WINDOW_START) & (meet_dates < QUAL_WINDOW_END)
 limit_num = pd.to_numeric(data["smLimit"], errors="coerce")
 data = data.copy()
+# Bewusst KEIN Filter auf `Place`: Gaststarts (Place == "G") zählen, wenn das Limit
+# erreicht wurde — so vom Verband gewollt. (DQ-Zeilen haben TotalKg 0 und können das
+# Limit ohnehin nicht erreichen.)
 data["Qualifiziert"] = (data["TotalKg"] >= limit_num) & in_window
 data["_wc_disp"] = data["WeightClassKg"].apply(wc_display)
 
