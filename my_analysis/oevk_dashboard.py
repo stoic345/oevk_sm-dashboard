@@ -451,6 +451,18 @@ a.brand.brand--link:hover { opacity:0.85; }
   background:var(--gold); cursor:grab; transition:background .12s ease; }
 .oevk-floatbar__thumb:hover { background:var(--gold-bright); }
 .oevk-floatbar__thumb.is-drag { background:var(--gold-bright); cursor:grabbing; }
+/* Mitschwebende Kopfzeile: Klon des <thead>, der oben am Fensterrand klebt, sobald die
+   Tabelle nach oben aus dem Bild scrollt. Nötig als Klon, weil .tablescroll wegen
+   overflow-x:auto ein eigener Scroll-Container ist — ein normales position:sticky im
+   <thead> würde dort kleben und beim Seiten-Scrollen mit rauswandern.
+   Der Kasten reicht bis ganz nach oben (top:0) und schiebt den Klon per padding-top
+   herunter: Streamlits eigener Header ist transparent, sonst blitzen darüber weiter
+   Datenzeilen durch. pointer-events:none, damit das Band die Streamlit-Toolbar
+   (Sidebar-Button) nicht abfängt. */
+.oevk-fixedhead { position:fixed; z-index:9985; overflow:hidden; display:none;
+  background:var(--bg); box-shadow:0 6px 16px rgba(0,0,0,0.5); pointer-events:none; }
+.oevk-fixedhead.is-on { display:block; }
+.oevk-fixedhead table { border-collapse:collapse; pointer-events:auto; }
 table.tbl { width:100%; border-collapse:collapse; font-size:13px; }
 table.tbl thead th { background:var(--surface-2); font-family:var(--font-mono); font-size:12px; letter-spacing:0.12em;
   text-transform:uppercase; color:var(--gold-bright); font-weight:700; text-align:center; padding:14px 14px;
@@ -4377,7 +4389,7 @@ st.markdown(
 # window.parent auf das Haupt-Dokument zu. Bindet sich immer an die gerade sichtbare
 # .tablescroll und blendet sich aus, sobald deren eigener Balken ohnehin im Bild ist.
 _components.html(
-    """
+    r"""
 <script>
 (function () {
   var doc = window.parent.document, win = window.parent;
@@ -4411,19 +4423,21 @@ _components.html(
     return b;
   }
 
-  // Sichtbare, tatsächlich überlaufende Tabelle mit der größten Bildschirmfläche.
-  function pick() {
+  // Sichtbare Tabelle mit der größten Bildschirmfläche.
+  // needWide=true → nur Tabellen, die tatsächlich seitlich überlaufen (für den Balken).
+  function pickAny(needWide) {
     var best = null, bestArea = 0, vh = win.innerHeight;
     var list = doc.querySelectorAll('.tablescroll');
     for (var i = 0; i < list.length; i++) {
       var el = list[i];
-      if (el.scrollWidth - el.clientWidth < 4) continue;
+      if (needWide && el.scrollWidth - el.clientWidth < 4) continue;
       var r = el.getBoundingClientRect();
       var vis = Math.min(r.bottom, vh) - Math.max(r.top, 0);
       if (vis > bestArea) { bestArea = vis; best = el; }
     }
     return bestArea > 40 ? best : null;
   }
+  function pick() { return pickAny(true); }
 
   function sync() {
     var b = bar(), t = b.firstChild;
@@ -4460,11 +4474,82 @@ _components.html(
     var t = bar().firstChild; t.classList.remove('is-drag');
   });
 
-  win.addEventListener('scroll', sync, true);
-  win.addEventListener('resize', sync);
-  new win.MutationObserver(sync).observe(doc.body, { childList: true, subtree: true });
-  win.setInterval(sync, 400);
-  sync();
+  // ---- Mitschwebende Kopfzeile ----
+  var HEAD_ID = 'oevk-fixedhead';
+  function headBox() {
+    var h = doc.getElementById(HEAD_ID);
+    if (!h) {
+      h = doc.createElement('div');
+      h.id = HEAD_ID; h.className = 'oevk-fixedhead';
+      doc.body.appendChild(h);
+    }
+    return h;
+  }
+
+  // Klon nur neu bauen, wenn sich Tabelle/Spalten/Sortierpfeile geändert haben.
+  function buildHead(el) {
+    var src = el.querySelector('table');
+    if (!src || !src.querySelector('thead')) return null;
+    var h = headBox();
+    var srcTh = src.querySelectorAll('thead tr:last-child th');
+    var sig = src.className + '|' + srcTh.length + '|' + Math.round(src.offsetWidth) +
+              '|' + src.querySelector('thead').textContent.replace(/\s+/g, ' ').slice(0, 200);
+    if (h.getAttribute('data-sig') !== sig) {
+      h.innerHTML = '';
+      var t = doc.createElement('table');
+      t.className = src.className;
+      t.style.tableLayout = 'fixed';
+      t.style.width = src.offsetWidth + 'px';
+      t.appendChild(src.querySelector('thead').cloneNode(true));
+      h.appendChild(t);
+      var dstTh = t.querySelectorAll('thead tr:last-child th');
+      for (var i = 0; i < srcTh.length && i < dstTh.length; i++) {
+        dstTh[i].style.width = srcTh[i].getBoundingClientRect().width + 'px';
+        (function (idx) {
+          dstTh[idx].addEventListener('click', function () { srcTh[idx].click(); });
+        })(i);
+      }
+      h.setAttribute('data-sig', sig);
+    }
+    return h.firstChild;
+  }
+
+  function syncHead() {
+    var h = headBox();
+    var el = pickAny(false);
+    if (!el) { h.classList.remove('is-on'); return; }
+    var t = buildHead(el);
+    if (!t) { h.classList.remove('is-on'); return; }
+    var hdr = doc.querySelector('[data-testid="stHeader"]');
+    var top = hdr ? Math.max(0, hdr.getBoundingClientRect().bottom) : 0;
+    var r = el.getBoundingClientRect();
+    // Höhe am ORIGINAL messen — der Klon ist bis zum Einblenden display:none (Höhe 0).
+    var srcHead = el.querySelector('thead');
+    var hh = srcHead ? srcHead.getBoundingClientRect().height : 0;
+    if (hh < 1) { h.classList.remove('is-on'); return; }
+    // Nur zeigen, solange die echte Kopfzeile oben raus ist und noch Zeilen sichtbar sind.
+    if (r.top < top && r.bottom > top + hh + 30) {
+      h.classList.add('is-on');
+      h.style.left = r.left + 'px';
+      // Bis ganz nach oben ziehen und den Klon per padding-top unter Streamlits
+      // (transparenten) Header schieben — sonst bleiben dort Zeilen sichtbar.
+      h.style.top = '0px';
+      h.style.paddingTop = top + 'px';
+      h.style.width = r.width + 'px';
+      h.style.height = (top + hh) + 'px';
+      t.style.transform = 'translateX(' + (-el.scrollLeft) + 'px)';
+    } else {
+      h.classList.remove('is-on');
+    }
+  }
+
+  function syncAll() { sync(); syncHead(); }
+
+  win.addEventListener('scroll', syncAll, true);
+  win.addEventListener('resize', syncAll);
+  new win.MutationObserver(syncAll).observe(doc.body, { childList: true, subtree: true });
+  win.setInterval(syncAll, 400);
+  syncAll();
 })();
 </script>
 """,
