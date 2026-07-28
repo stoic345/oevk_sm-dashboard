@@ -21,7 +21,9 @@ import time
 
 from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
 
-DEFAULT_URL = "https://sm-dashboard.streamlit.app/"
+# ?nostats=1 unterdrückt die Zugriffsstatistik im Dashboard — Keep-alive-Aufrufe sollen
+# nicht als Besucher gezählt werden.
+DEFAULT_URL = "https://sm-dashboard.streamlit.app/?nostats=1"
 
 
 def main() -> int:

@@ -34,4 +34,6 @@ jobs:
           python -m playwright install --with-deps chromium
 
       - name: Wake the Streamlit app
-        run: python scripts/wake_streamlit.py https://sm-dashboard.streamlit.app/
+        # ?nostats=1 unterdrückt die Zugriffsstatistik — der Keep-alive soll die
+        # Besucherzahlen nicht aufblähen (4 Aufrufe/Tag).
+        run: python scripts/wake_streamlit.py "https://sm-dashboard.streamlit.app/?nostats=1"

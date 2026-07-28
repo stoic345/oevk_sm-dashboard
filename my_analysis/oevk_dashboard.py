@@ -23,6 +23,21 @@ from plotly.subplots import make_subplots
 # Leer lassen = Feedback-UI wird nicht angezeigt. Format: https://formspree.io/f/XXXXXXXX
 FEEDBACK_ENDPOINT = "https://formspree.io/f/maqravqj"
 
+# --- ZUGRIFFSSTATISTIK ---
+# GoatCounter-Site-Code (nur [a-z0-9-]); das Dashboard liegt dann auf
+# https://<code>.goatcounter.com und ist nur nach Login sichtbar.
+# Leer lassen = kein Tracking-Skript, kein externer Request.
+# GoatCounter ist cookielos und speichert keine Personendaten (IP wird serverseitig mit
+# einem alle 8 h rotierenden Salt gehasht), daher ist kein Consent-Banner nötig.
+ANALYTICS_GC_CODE = "stoic345"
+
+
+def _gc_code_safe() -> str:
+    """Site-Code nur zurückgeben, wenn er unbedenklich ist — der Wert landet in einem
+    JS-String-Literal, deshalb strikt auf [a-z0-9-] begrenzen."""
+    code = str(ANALYTICS_GC_CODE or "").strip().lower()
+    return code if code and re.fullmatch(r"[a-z0-9-]{1,60}", code) else ""
+
 
 def _feedback_configured() -> bool:
     return FEEDBACK_ENDPOINT.strip().startswith("https://formspree.io/f/")
@@ -4424,6 +4439,30 @@ _components.html(
     }
   } catch (e) { /* cross-origin o. Ä. — dann bleiben die Badges eben sichtbar */ }
 
+  // Anonyme Zugriffsstatistik (GoatCounter). Wird ins OBERSTE Dokument gehängt, damit
+  // Pfad und Referrer die echte URL zeigen (im iframe wäre es nur "/~/+/").
+  // Zählt NICHT bei ?nostats=1 (Keep-alive-Workflow), nicht auf localhost (lokale
+  // Entwicklung soll die Statistik nicht verfälschen) und nicht bei Headless-Browsern.
+  // Der id-Check verhindert Doppelzählung bei Streamlit-Reruns. Kein sichtbares Element.
+  try {
+    var gcCode = '__GC_CODE__';
+    var topWin = window.top, gcDoc = topWin.document;
+    var gcHost = topWin.location.hostname || '';
+    var gcSkip = !gcCode
+      || /[?&]nostats=1/.test(topWin.location.search || '')
+      || gcHost === 'localhost' || gcHost === '127.0.0.1' || gcHost === '[::1]'
+      || /HeadlessChrome|Playwright|bot|spider|crawler/i.test(navigator.userAgent || '')
+      || !!gcDoc.getElementById('oevk-gc');
+    if (!gcSkip) {
+      var gs = gcDoc.createElement('script');
+      gs.id = 'oevk-gc';
+      gs.async = true;
+      gs.setAttribute('data-goatcounter', 'https://' + gcCode + '.goatcounter.com/count');
+      gs.src = 'https://gc.zgo.at/count.js';
+      gcDoc.head.appendChild(gs);
+    }
+  } catch (e) { /* ohne Statistik weiterlaufen */ }
+
   function bar() {
     var b = doc.getElementById(BAR_ID);
     if (!b) {
@@ -4580,6 +4619,6 @@ _components.html(
   syncAll();
 })();
 </script>
-""",
+""".replace("__GC_CODE__", _gc_code_safe()),
     height=0,
 )
