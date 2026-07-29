@@ -860,6 +860,26 @@ button[data-testid="stExpandSidebarButton"] * {
 /* Rekorde-Tabellen: feste Spaltenausrichtung über alle 4 Disziplinen hinweg */
 .tbl-records { table-layout:fixed; min-width:1350px; }
 .tbl-records td, .tbl-records th { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* Qualifikations-Tabelle: feste, knappe Spaltenbreiten (colgroup im Markup) statt
+   inhalts-/kopfzeilengetriebener Breite — sonst wird die Tabelle ~2250px breit. Enge
+   Innenabstände und kurze, weniger gesperrte Kopfzeilen holen den Rest. min-width
+   verhindert, dass die Spalten auf schmalen Fenstern zusammengequetscht werden; dann
+   scrollt die Tabelle stattdessen (wie bei .tbl-records). */
+table.tbl.tbl-qual { table-layout:fixed; min-width:1265px; }  /* = Summe der colgroup-Breiten */
+/* Kopfzeilen dürfen umbrechen (2 Zeilen) — sonst diktieren sie die Spaltenbreite:
+   „GESCHLECHT" brauchte gesperrt 100px bei Inhalt „W". Zellen bleiben einzeilig und
+   werden bei Bedarf mit „…" gekürzt (Volltext im title-Tooltip). */
+/* ACHTUNG Spezifität: `table.tbl thead th` (1 Klasse + 3 Elemente) schlägt
+   `.tbl-qual thead th` (1 Klasse + 2 Elemente). Deshalb hier durchgehend
+   `table.tbl.tbl-qual …` (2 Klassen) — sonst greifen Schriftgröße und Padding nicht. */
+table.tbl.tbl-qual thead th { padding:8px 5px; letter-spacing:0; font-size:10.5px;
+  white-space:normal; line-height:1.2; vertical-align:bottom; }
+table.tbl.tbl-qual thead th .sort-arrow { margin-left:2px; font-size:9px; }
+table.tbl.tbl-qual tbody td { padding:8px 6px; overflow:hidden; text-overflow:ellipsis;
+  white-space:nowrap; }
+/* SBD ist die längste Zahlenspalte ("227,5 / 167,5 / 277,5") — etwas kleiner, damit sie
+   vollständig sichtbar bleibt, ohne 190px zu belegen. */
+table.tbl.tbl-qual tbody td:nth-child(8) { font-size:12px; }
 
 .rec-empty { padding:30px 14px; text-align:center; color:var(--text-3);
   font-family:var(--font-mono); font-size:13px; font-style:italic; }
@@ -1188,6 +1208,9 @@ div[data-testid="stButton"] > button.filter-row,
   /* --- Tabelle bleibt wie Desktop, scrollt horizontal --- */
   .tablescroll { overflow-x:auto !important; -webkit-overflow-scrolling:touch !important; }
   table.tbl { min-width:100%; }
+  /* Qualifikations-Tabelle behält ihre festen Spaltenbreiten — sonst würden die Spalten
+     mobil zusammengestaucht. Stattdessen wie bisher horizontal wischen. */
+  table.tbl.tbl-qual { min-width:1265px; }
 
   /* --- Athletenprofil "Qualifiziert"-Hero: rechte Spalte unter den Status-Block schieben --- */
   .qual-hero { flex-direction:column !important; align-items:stretch !important; gap:10px !important;
@@ -1339,11 +1362,13 @@ def _gl_of(sex: str, total: float, bw: float, event: str = "KDK", equip: str = "
     return round(total * 100.0 / denom, 2)
 
 
-def _sh(label: str, sort_type: str = "text", cls: str = "") -> str:
+def _sh(label: str, sort_type: str = "text", cls: str = "", title: str = "") -> str:
     """Sortierbares Header-Cell — Click wird client-seitig via JS verarbeitet.
-    (Modul-Scope, damit alle Seiten inkl. Statistik es nutzen können.)"""
+    (Modul-Scope, damit alle Seiten inkl. Statistik es nutzen können.)
+    `title`: Langform für abgekürzte Spaltenköpfe (Tooltip)."""
     cls_attr = f' class="{cls} sortable" data-sort-type="{sort_type}"' if cls else ' class="sortable" data-sort-type="{}"'.format(sort_type)
-    return f'<th{cls_attr}>{label}<span class="sort-arrow">↕</span></th>'
+    title_attr = f' title="{esc(title)}"' if title else ""
+    return f'<th{cls_attr}{title_attr}>{label}<span class="sort-arrow">↕</span></th>'
 
 
 def _process_entries(df: pd.DataFrame, m_name: str, m_date_raw) -> pd.DataFrame:
@@ -3089,21 +3114,24 @@ if _page == "Qualifikation":
             )
 
     if not table_df.empty:
+        # Kurze Spaltenköpfe: die Spaltenbreite wurde vorher fast ausschließlich von den
+        # langen Überschriften bestimmt (z. B. 127px für „Geschlecht" bei Inhalt „W").
+        # Langform steckt jeweils im title-Tooltip.
         _q_head = (
             '<th class="num nosort">#</th>'
             + _sh("Name", "text")
-            + _sh("Geschlecht", "text")
+            + _sh("Geschl.", "text", "", "Geschlecht")
             + _sh("Alter", "num", "num")
-            + _sh("Körpergewicht", "num", "num")
-            + '<th class="nosort">Gewichtsklasse</th>'
+            + _sh("BW", "num", "num", "Körpergewicht in kg")
+            + '<th class="nosort" title="Gewichtsklasse">Klasse</th>'
             + _sh("Total", "num", "num")
-            + '<th class="num nosort">SBD</th>'
-            + _sh("SM Limit", "num", "num")
-            + _sh("Differenz", "diff")
-            + _sh("IPF GL Punkte", "num", "num")
+            + '<th class="num nosort" title="Kniebeuge / Bankdrücken / Kreuzheben">SBD</th>'
+            + _sh("Limit", "num", "num", "SM Limit")
+            + _sh("Diff", "diff", "", "Differenz zum Limit")
+            + _sh("IPF GL", "num", "num", "IPF GL Punkte")
             + _sh("Verein", "text")
             + _sh("Wettkampf", "text")
-            + _sh("Wettkampfdatum", "date")
+            + _sh("Datum", "date", "", "Wettkampfdatum")
         )
         _q_rows = []
         for i, r in enumerate(best_per_athlete.itertuples(), start=1):
@@ -3115,7 +3143,7 @@ if _page == "Qualifikation":
             _q_rows.append(
                 f'<tr class="{row_cls}">'
                 f'<td class="num rank" data-label="">{i}</td>'
-                f'<td class="cell-name l" data-label="Name">{_name_link}</td>'
+                f'<td class="cell-name l" data-label="Name" title="{esc(r.Name)}">{_name_link}</td>'
                 f'<td data-label="Geschlecht"><span class="sex-tag">{sex_display(r.Sex)}</span></td>'
                 f'<td class="num mono" data-label="Alter">{fmt_age(r.Age)}</td>'
                 f'<td class="num mono" data-label="Körpergewicht">{fmt_kg(r.BodyweightKg, 2)}</td>'
@@ -3125,12 +3153,37 @@ if _page == "Qualifikation":
                 f'<td class="num mono" data-label="SM Limit">{fmt_kg(r.smLimit)}</td>'
                 f'<td data-label="Differenz"><span class="diff {diff_class(r.Differenz)}">{fmt_diff(r.Differenz)}</span></td>'
                 f'<td class="num gold-strong" data-label="IPF GL Punkte">{fmt_kg(r.GL_Points, 2)}</td>'
-                f'<td class="l" data-label="Verein">{esc(r.Team)}</td>'
-                f'<td class="l" data-label="Wettkampf">{esc(r.MeetName)}</td>'
+                f'<td class="l" data-label="Verein" title="{esc(r.Team)}">{esc(r.Team)}</td>'
+                f'<td class="l" data-label="Wettkampf" title="{esc(r.MeetName)}">{esc(r.MeetName)}</td>'
                 f'<td class="mono" data-label="Wettkampfdatum">{fmt_date(r.Date)}</td></tr>'
             )
+        # Feste Spaltenbreiten (Summe ~1339px) — sonst ziehen die Textspalten die Tabelle
+        # auf über 2200px auf. Lange Namen/Vereine/Wettkämpfe werden per CSS mit „…"
+        # gekürzt, der Volltext steht im title-Tooltip der Zelle.
+        # Breiten sind am gemessenen Zellinhalt bemessen (nicht geschätzt): Zahlen- und
+        # Datumsspalten bekommen genau, was sie brauchen — dort darf NICHTS abgeschnitten
+        # werden. Nur Name/Verein/Wettkampf werden bewusst gekürzt (title-Tooltip).
+        _Q_COLGROUP = (
+            '<colgroup>'
+            '<col style="width:42px">'    # #
+            '<col style="width:170px">'   # Name (gekürzt)
+            '<col style="width:58px">'    # Geschl.
+            '<col style="width:48px">'    # Alter
+            '<col style="width:56px">'    # BW
+            '<col style="width:58px">'    # Klasse
+            '<col style="width:56px">'    # Total
+            '<col style="width:180px">'   # SBD
+            '<col style="width:56px">'    # Limit
+            '<col style="width:60px">'    # Diff
+            '<col style="width:62px">'    # IPF GL
+            '<col style="width:155px">'   # Verein (gekürzt)
+            '<col style="width:170px">'   # Wettkampf (gekürzt)
+            '<col style="width:94px">'    # Datum
+            '</colgroup>'
+        )
         st.markdown(
-            f'<div class="tablecard" id="qual-tablecard"><div class="tablescroll"><table class="tbl" id="qual-table">'
+            f'<div class="tablecard" id="qual-tablecard"><div class="tablescroll">'
+            f'<table class="tbl tbl-qual" id="qual-table">{_Q_COLGROUP}'
             f'<thead><tr>{_q_head}</tr></thead><tbody>{"".join(_q_rows)}</tbody></table></div></div>',
             unsafe_allow_html=True,
         )
