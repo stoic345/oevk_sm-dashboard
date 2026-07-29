@@ -293,14 +293,16 @@ header[data-testid="stHeader"] [data-testid="stToolbarActions"] { display:none !
 .data-status { display:grid; grid-template-columns:repeat(3, 1fr); gap:16px;
   margin:0; align-items:stretch; }
 @media (max-width:900px) { .data-status { grid-template-columns:1fr 1fr; } }
+/* Innerhalb einer Box EINE Schrift (Archivo) — Label und Wert unterscheiden sich nur
+   über Farbe und Gewicht, nicht über die Schriftart. */
 .status-pill { display:flex; align-items:center; justify-content:center; gap:8px;
   background:var(--bg-elev); border:1px solid var(--gold-dim); border-radius:var(--r-sm);
-  padding:6px 12px; font-family:var(--font-mono); font-size:11.5px; line-height:1.15;
+  padding:6px 12px; font-family:var(--font-body); font-size:11.5px; line-height:1.15;
   min-width:0; text-align:center; }
-.status-pill .lab, .status-pill .val { text-align:center; }
-.status-pill .lab { color:var(--gold); font-family:var(--font-body); letter-spacing:0.01em;
+.status-pill .lab, .status-pill .val { text-align:center; font-family:var(--font-body); }
+.status-pill .lab { color:var(--gold); letter-spacing:0.01em;
   text-transform:none; font-weight:600; font-size:12px; }
-.status-pill .val { color:var(--text); font-family:var(--font-mono); font-weight:500;
+.status-pill .val { color:var(--text); font-weight:500;
   font-size:12.5px; font-variant-numeric:tabular-nums; }
 .status-pill a, .status-pill a:link, .status-pill a:visited {
   color:var(--gold-bright) !important; text-decoration:none !important; font-weight:600 !important;
