@@ -1522,7 +1522,7 @@ def load_data(cache_token: str = "") -> pd.DataFrame:
 
     # EM/WM-Ergebnisse österreichischer Athlet:innen ebenfalls im Qualifikationsfenster berücksichtigen.
     try:
-        _intl = load_international_for_austrians()
+        _intl = load_international_for_austrians(cache_token)
         if not _intl.empty:
             _dt = pd.to_datetime(_intl.get("Date"), errors="coerce")
             _intl_in_window = _intl[(_dt >= QUAL_WINDOW_START) & (_dt < QUAL_WINDOW_END)]
@@ -1534,11 +1534,11 @@ def load_data(cache_token: str = "") -> pd.DataFrame:
     if not all_entries:
         return pd.DataFrame()
     out = pd.concat(all_entries, ignore_index=True)
-    return _fix_teams(out)
+    return _fix_teams(out, cache_token)
 
 
 @st.cache_data(show_spinner=False)
-def _all_time_team_by_name() -> dict:
+def _all_time_team_by_name(cache_token: str = "") -> dict:
     """Letzter bekannter (nicht-leerer) Verein je Athlet:in aus ALLEN OeVK-Inlandsmeets
     (all-time, nicht nur im Qualifikationsfenster). Länderpokal-Meets werden übersprungen,
     damit keine Fun-Team-Namen als Verein landen. Dient als Fallback, wenn eine Person im
@@ -1577,7 +1577,7 @@ def _all_time_team_by_name() -> dict:
     return {nm: t for nm, (k, t) in best.items()}
 
 
-def _fix_teams(out: pd.DataFrame) -> pd.DataFrame:
+def _fix_teams(out: pd.DataFrame, cache_token: str = "") -> pd.DataFrame:
     """Verein-Daten konsistent machen:
        1) Für EM/WM-Zeilen (_intl=True) **und Länderpokal-Meets** (OeVK-Wettkampf, aber
           mit Fun-Team-Namen wie "Team Vorarlberg" / "OFF1" / "Supakraft Overshoot Gang"):
@@ -1640,7 +1640,7 @@ def _fix_teams(out: pd.DataFrame) -> pd.DataFrame:
     fallback_by_name = out.groupby("Name")["Team"].apply(_pick)
     # Letzter bekannter Verein all-time (auch außerhalb des Fensters) als letzter Fallback,
     # falls im Fenster nie ein Verein eingetragen war.
-    all_time = _all_time_team_by_name()
+    all_time = _all_time_team_by_name(cache_token)
     empty = (
         out["Team"].isna()
         | out["Team"].astype(str).str.strip().eq("")
@@ -1683,7 +1683,7 @@ def load_full_history(cache_token: str = "") -> pd.DataFrame:
 
     # EM/WM-Ergebnisse österreichischer Athlet:innen mit aufnehmen (ohne Zeitfenster-Filter).
     try:
-        _intl = load_international_for_austrians()
+        _intl = load_international_for_austrians(cache_token)
         if not _intl.empty:
             all_entries.append(_intl)
     except Exception:
@@ -1692,7 +1692,7 @@ def load_full_history(cache_token: str = "") -> pd.DataFrame:
     if not all_entries:
         return pd.DataFrame()
     out = pd.concat(all_entries, ignore_index=True)
-    return _fix_teams(out)
+    return _fix_teams(out, cache_token)
 
 
 import unicodedata as _ud
@@ -1707,8 +1707,13 @@ def _norm_name(s) -> str:
 
 
 @st.cache_data(show_spinner="Lade EM/WM-Ergebnisse …")
-def load_international_for_austrians() -> pd.DataFrame:
+def load_international_for_austrians(cache_token: str = "") -> pd.DataFrame:
     """Liefert EM/WM-Ergebnisse österreichischer Athlet:innen.
+
+    `cache_token` gehört zum Cache-Key: ohne ihn liest Streamlit die Datei nach dem
+    ersten Aufruf nie wieder, auch wenn der Sync sie inzwischen überschrieben hat —
+    genau dadurch fehlten neue EM/WM-Ergebnisse live (z. B. WM Sub-Junioren/Junioren
+    vom 18.08.2026).
 
     Strategie:
       1) Wenn `project-data/oevk_intl.csv` existiert (vorberechnet via
@@ -1890,7 +1895,7 @@ def load_sm_starters(cache_token: str = "") -> frozenset:
 
 
 @st.cache_data(show_spinner="Lade offizielle Rekorde …")
-def load_records() -> pd.DataFrame:
+def load_records(cache_token: str = "") -> pd.DataFrame:
     """Lädt die manuell gepflegte ÖVK-Rekordliste (Quelle der Wahrheit)."""
     p = PROJECT_DATA_DIR / "oevk_records.csv"
     if not p.exists():
@@ -3613,10 +3618,10 @@ if _page == "Qualifikation":
 
 
 elif _page == "Rekorde":
-    _records_df = load_records()
+    _records_df = load_records(_data_version_token())
     # OeVK-Historie + EM/WM-Daten für österreichische Athlet:innen mergen
     _hist_full = load_full_history(_data_version_token())
-    _hist_intl = load_international_for_austrians()
+    _hist_intl = load_international_for_austrians(_data_version_token())
     if not _hist_intl.empty and not _hist_full.empty:
         _hist_combined = pd.concat([_hist_full, _hist_intl], ignore_index=True)
     elif not _hist_intl.empty:
