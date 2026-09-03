@@ -867,7 +867,7 @@ button[data-testid="stExpandSidebarButton"] * {
    Innenabstände und kurze, weniger gesperrte Kopfzeilen holen den Rest. min-width
    verhindert, dass die Spalten auf schmalen Fenstern zusammengequetscht werden; dann
    scrollt die Tabelle stattdessen (wie bei .tbl-records). */
-table.tbl.tbl-qual { table-layout:fixed; min-width:1265px; }  /* = Summe der colgroup-Breiten */
+table.tbl.tbl-qual { table-layout:fixed; min-width:1267px; }  /* = Summe der colgroup-Breiten */
 /* Kopfzeilen dürfen umbrechen (2 Zeilen) — sonst diktieren sie die Spaltenbreite:
    „GESCHLECHT" brauchte gesperrt 100px bei Inhalt „W". Zellen bleiben einzeilig und
    werden bei Bedarf mit „…" gekürzt (Volltext im title-Tooltip). */
@@ -881,7 +881,11 @@ table.tbl.tbl-qual tbody td { padding:8px 6px; overflow:hidden; text-overflow:el
   white-space:nowrap; }
 /* SBD ist die längste Zahlenspalte ("227,5 / 167,5 / 277,5") — etwas kleiner, damit sie
    vollständig sichtbar bleibt, ohne 190px zu belegen. */
-table.tbl.tbl-qual tbody td:nth-child(8) { font-size:12px; }
+table.tbl.tbl-qual tbody td:nth-child(9) { font-size:12px; }
+/* Spalte „Start SM": grünes Häkchen für tatsächliche SM-Starter:innen. */
+table.tbl.tbl-qual tbody td.start-sm { color:var(--text-3); }
+table.tbl.tbl-qual tbody td.start-sm .yes { color:var(--green); font-weight:700;
+  font-size:15px; line-height:1; }
 
 .rec-empty { padding:30px 14px; text-align:center; color:var(--text-3);
   font-family:var(--font-mono); font-size:13px; font-style:italic; }
@@ -1145,6 +1149,9 @@ div[data-testid="stButton"] > button.filter-row,
   background:var(--bg-elev) !important; border:1px solid var(--gold-dim) !important;
   border-radius:var(--r-md) !important; padding:12px 14px !important;
   width:100% !important; box-sizing:border-box !important; margin:0 !important;
+  /* Gleiche Höhe für alle Filter-Checkboxen: „Nur Qualifizierte anzeigen" bricht auf
+     zwei Zeilen um, kürzere Labels sonst niedriger. */
+  min-height:65px !important;
   display:flex !important; align-items:center !important; justify-content:center !important;
   transition:border-color .12s ease;
 }
@@ -1212,7 +1219,7 @@ div[data-testid="stButton"] > button.filter-row,
   table.tbl { min-width:100%; }
   /* Qualifikations-Tabelle behält ihre festen Spaltenbreiten — sonst würden die Spalten
      mobil zusammengestaucht. Stattdessen wie bisher horizontal wischen. */
-  table.tbl.tbl-qual { min-width:1265px; }
+  table.tbl.tbl-qual { min-width:1267px; }
 
   /* --- Athletenprofil "Qualifiziert"-Hero: rechte Spalte unter den Status-Block schieben --- */
   .qual-hero { flex-direction:column !important; align-items:stretch !important; gap:10px !important;
@@ -1857,6 +1864,28 @@ def normalize_pdf_name(raw: str) -> str:
 OEVK_RECORDS_STAND = "2026-06-07"
 
 
+@st.cache_data(show_spinner=False)
+def load_sm_starters(cache_token: str = "") -> frozenset:
+    """Namen der SM-2026-Starter:innen aus der offiziellen Startliste.
+
+    `name_opl` ist die Matching-Spalte: dort steht der Name genau so wie in den
+    OpenPowerlifting-Daten. Nötig, weil Verband und OPL bei einigen Personen
+    abweichen (Zweitnamen, Bindestriche, Namensänderung) — z. B. steht
+    „Montalbetti Victoria" in der Startliste, bei OPL aber „Victoria Moser".
+    Fehlt die Datei, ist das Feature einfach aus.
+    `cache_token` gehört zum Cache-Key, damit neue Daten den Cache invalidieren."""
+    p = PROJECT_DATA_DIR / "sm26_starters.csv"
+    if not p.exists():
+        return frozenset()
+    try:
+        df = pd.read_csv(p, dtype=str).fillna("")
+        if "name_opl" not in df.columns:
+            return frozenset()
+        return frozenset(n for n in df["name_opl"].str.strip() if n)
+    except Exception:
+        return frozenset()
+
+
 @st.cache_data(show_spinner="Lade offizielle Rekorde …")
 def load_records() -> pd.DataFrame:
     """Lädt die manuell gepflegte ÖVK-Rekordliste (Quelle der Wahrheit)."""
@@ -2372,6 +2401,9 @@ def _filter_qs() -> str:
     oq = st.session_state.get("_persist_only_qual")
     if oq is False:
         parts.append("foq=0")
+    osx = st.session_state.get("_persist_only_start")
+    if osx is False:
+        parts.append("fos=0")
     return "&".join(parts)
 
 
@@ -2429,9 +2461,12 @@ if _fm is not None:
 _foq = _qp_get("foq")
 if _foq is not None:
     st.session_state["_persist_only_qual"] = (_foq != "0")
+_fos = _qp_get("fos")
+if _fos is not None:
+    st.session_state["_persist_only_start"] = (_fos != "0")
 
 # Filter-Parameter aus der URL entfernen (wurden in den State übernommen).
-for _fk in ("ft", "fn", "fs", "fw", "fm", "foq"):
+for _fk in ("ft", "fn", "fs", "fw", "fm", "foq", "fos"):
     try:
         del st.query_params[_fk]
     except (KeyError, AttributeError):
@@ -2444,14 +2479,15 @@ if st.query_params.get("reset") or st.session_state.get("_reset_requested"):
     for _k in ("team_select", "name_select", "sex_select", "wc_select", "meet_select",
                "date_select", "only_qualified", "athlete",
                "_persist_team", "_persist_name", "_persist_sex", "_persist_wc",
-               "_persist_meet", "_persist_only_qual",
+               "_persist_meet", "_persist_only_qual", "_persist_only_start",
                "_reset_requested"):
         if _k in st.session_state:
             del st.session_state[_k]
     # Auch rotations-spezifische alte Keys löschen
     for _k in list(st.session_state.keys()):
         if any(_k.startswith(p) for p in ("team_select_v", "name_select_v", "sex_select_v",
-                                          "wc_select_v", "meet_select_v", "only_qualified_v")):
+                                          "wc_select_v", "meet_select_v", "only_qualified_v",
+                                          "only_starters_v")):
             del st.session_state[_k]
     st.session_state["_widget_gen"] = st.session_state.get("_widget_gen", 0) + 1
     # Beim Reset auch den Sort-State im sessionStorage löschen — das nächste Rendering
@@ -2709,6 +2745,9 @@ data = data.copy()
 # erreicht wurde — so vom Verband gewollt. (DQ-Zeilen haben TotalKg 0 und können das
 # Limit ohnehin nicht erreichen.)
 data["Qualifiziert"] = (data["TotalKg"] >= limit_num) & in_window
+# Startet die Person laut offizieller Startliste bei der SM 2026?
+_SM_STARTERS = load_sm_starters(_data_version_token())
+data["StartetSM"] = data["Name"].astype(str).isin(_SM_STARTERS)
 data["_wc_disp"] = data["WeightClassKg"].apply(wc_display)
 
 # --- NAVIGATION: Seitenauswahl (ersetzt st.tabs) ---
@@ -2743,6 +2782,7 @@ _PERSIST_PAIRS = (
     (f"wc_select_v{_GEN}",       "_persist_wc"),
     (f"meet_select_v{_GEN}",     "_persist_meet"),
     (f"only_qualified_v{_GEN}",  "_persist_only_qual"),
+    (f"only_starters_v{_GEN}",   "_persist_only_start"),
 )
 for _wkey, _pkey in _PERSIST_PAIRS:
     if _wkey not in st.session_state and _pkey in st.session_state:
@@ -2828,7 +2868,7 @@ if _page == "Qualifikation":
     # Filter-Reset-Button (nur Qualifikations-Filter) — Generation-Bump + Sort-Reset.
     if st.sidebar.button("↺ Filter zurücksetzen", key="reset_filters_btn"):
         for _pk in ("_persist_team", "_persist_name", "_persist_sex", "_persist_wc",
-                    "_persist_meet", "_persist_only_qual"):
+                    "_persist_meet", "_persist_only_qual", "_persist_only_start"):
             st.session_state.pop(_pk, None)
         _bump_gen("_widget_gen", clear_sort=True)
 
@@ -2841,6 +2881,18 @@ if _page == "Qualifikation":
         st.session_state[f"only_qualified_v{_GEN}"] = (
             True if _persist_only_qual is None else bool(_persist_only_qual)
         )
+    # Startliste-Filter — standardmäßig AKTIV (zeigt beim ersten Laden nur die
+    # tatsächlich Startenden). Default wie oben vor dem Widget setzen. Steht bewusst
+    # ÜBER „Nur Qualifizierte anzeigen".
+    if f"only_starters_v{_GEN}" not in st.session_state:
+        _persist_only_start = st.session_state.get("_persist_only_start")
+        st.session_state[f"only_starters_v{_GEN}"] = (
+            True if _persist_only_start is None else bool(_persist_only_start)
+        )
+    show_only_starters = st.sidebar.checkbox(
+        "Nur Startende anzeigen",
+        key=f"only_starters_v{_GEN}",
+    )
     show_only_qualified = st.sidebar.checkbox(
         "Nur Qualifizierte anzeigen",
         key=f"only_qualified_v{_GEN}",
@@ -2923,7 +2975,6 @@ df_filtered = df_filtered.sort_values(["Sex", "wc_sort"])
 
 # --- KPI-KARTEN ---
 n_athletes = df_filtered["Name"].nunique()
-n_meets = df_filtered["MeetName"].nunique()
 
 # Qualifizierte: gesamt + Aufteilung nach Geschlecht (eindeutige Personen)
 _qual_unique = (
@@ -2950,18 +3001,22 @@ qual_foot = (
     f'<span style="color:var(--gold);font-weight:600">Männer · {n_qual_m} / {n_m} ({_qm_rate}%)</span>'
 )
 
-# Wettkämpfe-Aufschlüsselung: national (OeVK) vs. EM/WM (intl)
-if "_intl" in df_filtered.columns:
-    _meet_intl_map = df_filtered.groupby("MeetName")["_intl"].any()
-    n_meets_intl = int(_meet_intl_map.sum())
-    n_meets_nat  = int((~_meet_intl_map).sum())
+# Startende laut offizieller Startliste: gesamt + Aufteilung nach Geschlecht
+# (eindeutige Personen, gleicher Filterscope wie die übrigen KPI-Karten)
+if "StartetSM" in df_filtered.columns:
+    _start_unique = df_filtered[df_filtered["StartetSM"] == True].drop_duplicates("Name")
 else:
-    n_meets_intl = 0
-    n_meets_nat = n_meets
-meets_foot = (
-    f'<span style="color:var(--gold);font-weight:600">National · {n_meets_nat}</span>'
+    _start_unique = df_filtered.iloc[0:0]
+n_start = len(_start_unique)
+n_start_f = int((_start_unique["Sex"].astype(str).str.upper() == "F").sum())
+n_start_m = int((_start_unique["Sex"].astype(str).str.upper() == "M").sum())
+_st_total = max(n_start_f + n_start_m, 1)
+_st_pct_f = round(n_start_f / _st_total * 100)
+_st_pct_m = 100 - _st_pct_f if (n_start_f + n_start_m) > 0 else 0
+starters_foot = (
+    f'<span style="color:var(--gold);font-weight:600">Frauen · {n_start_f} ({_st_pct_f}%)</span>'
     f'<span style="opacity:0.4;margin:0 8px">|</span>'
-    f'<span style="color:var(--gold);font-weight:600">EM/WM · {n_meets_intl}</span>'
+    f'<span style="color:var(--gold);font-weight:600">Männer · {n_start_m} ({_st_pct_m}%)</span>'
 )
 
 # Geschlechterverteilung (alle Athlet:innen im Filterscope) — als Fuß in der Athlet:innen-Karte
@@ -3041,9 +3096,9 @@ if _url_tab in ("records", "topn"):
 if _page == "Qualifikation":
     st.markdown(
         '<div class="kpis kpis--3">'
-        + kpi_card("Qualifiziert", n_qual, accent=True, foot=qual_foot)
+        + kpi_card("Starter:innen", n_start, foot=starters_foot)
+        + kpi_card("Qualifizierte", n_qual, accent=True, foot=qual_foot)
         + kpi_card("Athlet:innen", n_athletes, foot=athlete_foot)
-        + kpi_card("Wettkämpfe", n_meets, foot=meets_foot)
         + "</div>",
         unsafe_allow_html=True,
     )
@@ -3057,6 +3112,12 @@ if _page == "Qualifikation":
     else:
         table_df = df_filtered
         section_title = "Athlet:innen"
+
+    # Startliste-Filter (Default AN): nur Personen, die laut offizieller Startliste
+    # tatsächlich bei der SM 2026 antreten.
+    if show_only_starters and "StartetSM" in table_df.columns:
+        table_df = table_df[table_df["StartetSM"] == True]
+        section_title = "Starter:innen SM 2026"
 
     # Bestleistung pro Person (höchstes Total). Default-Sortierung: Qualifizierte zuerst,
     # dann IPF GL Punkte absteigend. (Wird auch für den CSV-Export verwendet.)
@@ -3079,6 +3140,7 @@ if _page == "Qualifikation":
             rows.append({
                 "#": i,
                 "Name": r.Name,
+                "Start SM": "ja" if getattr(r, "StartetSM", False) else "nein",
                 "Geschlecht": sex_display(r.Sex),
                 "Alter": fmt_age(r.Age),
                 "Körpergewicht (kg)": fmt_kg(r.BodyweightKg, 2),
@@ -3122,6 +3184,7 @@ if _page == "Qualifikation":
         _q_head = (
             '<th class="num nosort">#</th>'
             + _sh("Name", "text")
+            + _sh("Start SM", "text", "num", "Startet bei der Staatsmeisterschaft 2026")
             + _sh("Geschl.", "text", "", "Geschlecht")
             + _sh("Alter", "num", "num")
             + _sh("BW", "num", "num", "Körpergewicht in kg")
@@ -3142,10 +3205,15 @@ if _page == "Qualifikation":
             _fqs = _filter_qs()
             _athlete_href = f"?athlete={_urlquote(str(r.Name))}" + (f"&{_fqs}" if _fqs else "")
             _name_link = f'<a class="nm nm-link" href="{_athlete_href}" target="_self">{esc(r.Name)}</a>'
+            _start_cell = (
+                '<span class="yes" title="Startet bei der SM 2026">✓</span>'
+                if getattr(r, "StartetSM", False) else "–"
+            )
             _q_rows.append(
                 f'<tr class="{row_cls}">'
                 f'<td class="num rank" data-label="">{i}</td>'
                 f'<td class="cell-name l" data-label="Name" title="{esc(r.Name)}">{_name_link}</td>'
+                f'<td class="num start-sm" data-label="Start SM">{_start_cell}</td>'
                 f'<td data-label="Geschlecht"><span class="sex-tag">{sex_display(r.Sex)}</span></td>'
                 f'<td class="num mono" data-label="Alter">{fmt_age(r.Age)}</td>'
                 f'<td class="num mono" data-label="Körpergewicht">{fmt_kg(r.BodyweightKg, 2)}</td>'
@@ -3168,7 +3236,8 @@ if _page == "Qualifikation":
         _Q_COLGROUP = (
             '<colgroup>'
             '<col style="width:42px">'    # #
-            '<col style="width:170px">'   # Name (gekürzt)
+            '<col style="width:150px">'   # Name (gekürzt)
+            '<col style="width:44px">'    # Start SM
             '<col style="width:58px">'    # Geschl.
             '<col style="width:48px">'    # Alter
             '<col style="width:56px">'    # BW
@@ -3179,7 +3248,7 @@ if _page == "Qualifikation":
             '<col style="width:60px">'    # Diff
             '<col style="width:62px">'    # IPF GL
             '<col style="width:155px">'   # Verein (gekürzt)
-            '<col style="width:170px">'   # Wettkampf (gekürzt)
+            '<col style="width:148px">'   # Wettkampf (gekürzt)
             '<col style="width:94px">'    # Datum
             '</colgroup>'
         )
@@ -3194,7 +3263,7 @@ if _page == "Qualifikation":
             _components.html(
                 """
     <script>
-    (function(){ try { window.parent.sessionStorage.removeItem('oevk_sort_state_v1'); } catch(e){} })();
+    (function(){ try { window.parent.sessionStorage.removeItem('oevk_sort_state_v1'); window.parent.sessionStorage.removeItem('oevk_sort_state_v2'); } catch(e){} })();
     </script>
                 """,
                 height=0,
@@ -3207,7 +3276,7 @@ if _page == "Qualifikation":
     (function () {
       const doc = window.parent.document;
       const SS = window.parent.sessionStorage;
-      const SORT_KEY = 'oevk_sort_state_v1';
+      const SORT_KEY = 'oevk_sort_state_v2';
       function loadState() {
         try { const raw = SS.getItem(SORT_KEY); if (!raw) return null; const o = JSON.parse(raw);
               if (typeof o.col === 'number' && (o.dir === 'asc' || o.dir === 'desc')) return o; }
@@ -3247,7 +3316,7 @@ if _page == "Qualifikation":
       }
 
       // Default sort: IPF GL Punkte (column index 10), descending.
-      const DEFAULT_STATE = { col: 10, dir: 'desc' };
+      const DEFAULT_STATE = { col: 11, dir: 'desc' };
 
       // Track per-table state so we know when to re-apply (tbody-content fingerprint).
       let wiredTable = null;
@@ -3388,16 +3457,31 @@ if _page == "Qualifikation":
     # Basis = alle Qualifizierten (Datum+Equipment+Event), unabhängig von Team/WC-Filter,
     # damit man die Verteilung sieht und per Klick filtern kann.
     if not selected_name and not best_baseline.empty:
+        # Beide Zusammenfassungen (Gewichtsklassen-Chart + Vereinsliste) folgen dem
+        # Startliste-Filter: ist er an, werden die tatsächlich Startenden gezählt —
+        # sonst würden die Überschriften „Startende …" andere Zahlen behaupten als
+        # darunter stehen.
+        if show_only_starters and "StartetSM" in df_baseline_scope.columns:
+            _base_view = (
+                df_baseline_scope[df_baseline_scope["StartetSM"] == True]
+                .sort_values("TotalKg", ascending=False)
+                .drop_duplicates("Name")
+            )
+            _base_word = "Startende"
+        else:
+            _base_view = best_baseline
+            _base_word = "Qualifizierte"
+
         # Counts pro (Geschlecht, Gewichtsklasse)
-        bl = best_baseline.assign(
-            _wc=best_baseline["WeightClassKg"].apply(wc_display),
-            _sx=best_baseline["Sex"].astype(str).str.upper(),
+        bl = _base_view.assign(
+            _wc=_base_view["WeightClassKg"].apply(wc_display),
+            _sx=_base_view["Sex"].astype(str).str.upper(),
         )
         fem_counts = {wc: int(((bl["_sx"] == "F") & (bl["_wc"] == wc)).sum()) for wc in FEM_ORDER}
         mal_counts = {wc: int(((bl["_sx"] == "M") & (bl["_wc"] == wc)).sum()) for wc in MAL_ORDER}
 
         count_team = (
-            best_baseline.groupby("Team").size().reset_index(name="n").sort_values("n", ascending=False)
+            _base_view.groupby("Team").size().reset_index(name="n").sort_values("n", ascending=False)
         )
 
         # Chart "Qualifizierte pro Gewichtsklasse" nur zeigen, wenn keine Klassen gefiltert sind.
@@ -3406,8 +3490,8 @@ if _page == "Qualifikation":
             st.markdown(
                 '<div class="section-head" style="margin-top:18px"><div>'
                 '<div class="kicker kicker--gold">Verteilung</div>'
-                '<h2>Qualifizierte pro Gewichtsklasse</h2></div>'
-                f'<div class="meta">{int(best_baseline["Name"].nunique())} Athlet:innen gesamt</div></div>',
+                f'<h2>{_base_word} pro Gewichtsklasse</h2></div>'
+                f'<div class="meta">{int(_base_view["Name"].nunique())} Athlet:innen gesamt</div></div>',
                 unsafe_allow_html=True,
             )
 
@@ -3486,7 +3570,7 @@ if _page == "Qualifikation":
         st.markdown(
             '<div class="section-head" style="margin-top:24px"><div>'
             '<div class="kicker kicker--gold">Vereine</div>'
-            '<h2>Qualifizierte pro Verein</h2></div>'
+            f'<h2>{_base_word} pro Verein</h2></div>'
             f'<div class="meta">{len(count_team)} Vereine vertreten</div></div>',
             unsafe_allow_html=True,
         )
