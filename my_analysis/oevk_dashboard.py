@@ -520,6 +520,9 @@ a.nm-link:hover { color:var(--gold-bright) !important; }
   text-decoration:none; white-space:nowrap; }
 .profile-close:hover { color:var(--gold-bright); border-color:var(--gold-dim); }
 .profile-note { font-family:var(--font-mono); font-size:10px; color:var(--text-3); margin-top:10px; opacity:0.8; }
+/* Kleine Fußnote unter der Qualifikations-Tabelle (erklärt fehlende Startende). */
+.table-note { font-family:var(--font-body); font-size:12.5px; color:var(--text);
+  font-weight:500; margin:-16px 0 20px; padding:0 2px; }
 /* Streamlit Cloud "View source on GitHub"-Badge verstecken.
    WICHTIG: NIEMALS stHeader oder stToolbar komplett verstecken — die Toolbar enthält den
    Sidebar-Expand-Button (»). Nur die Badge-/Menü-/Deploy-Elemente entfernen. */
@@ -3258,6 +3261,26 @@ if _page == "Qualifikation":
             f'<thead><tr>{_q_head}</tr></thead><tbody>{"".join(_q_rows)}</tbody></table></div></div>',
             unsafe_allow_html=True,
         )
+        # Startende, die in unseren Daten kein Qualifikationsergebnis haben, fehlen in
+        # der Tabelle (sie filtert auf Qualifizierte) — die KPI-Karte zählt sie aber, weil
+        # sie laut offizieller Startliste antreten. Diese Lücke hier offenlegen, statt sie
+        # wie einen Fehler wirken zu lassen. Verschwindet von selbst, sobald das Ergebnis
+        # bei OpenPowerlifting auftaucht.
+        if show_only_starters and show_only_qualified:
+            _n_start_missing = int(n_start - len(
+                set(_start_unique["Name"]) & set(_qual_unique["Name"])
+            ))
+            if _n_start_missing > 0:
+                _one = _n_start_missing == 1
+                _pers = "1 Startende:r" if _one else f"{_n_start_missing} Startende"
+                _verb = "ist" if _one else "sind"
+                _whom = "dieser Person" if _one else "diesen Personen"
+                st.markdown(
+                    f'<div class="table-note">{_pers} laut offizieller Startliste '
+                    f'{_verb} hier nicht aufgeführt — zu {_whom} liegt in den '
+                    'OpenPowerlifting-Daten kein Qualifikationsergebnis vor.</div>',
+                    unsafe_allow_html=True,
+                )
         # Wenn ein Reset stattgefunden hat, vorab den persistierten Sort-State löschen.
         if st.session_state.pop("_clear_sort_storage", False):
             _components.html(
