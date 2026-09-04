@@ -59,25 +59,46 @@ jobs:
           date -u +'%Y-%m-%dT%H:%M:%SZ' > .last_check
           echo "Wrote $(cat .last_check) to .last_check"
 
-      - name: Detect NEW in-window meets & write .last_data_update only then
+      - name: Detect changed meets (all + in-window) and write markers
         id: detect
         run: |
           # Immer die aktuellen OeVK-Daten + intl-CSV stagen (werden ohnehin committet).
           git add -f meet-data/oevk project-data/oevk_intl.csv
-          # "Daten zuletzt aktualisiert" soll NUR vorrücken, wenn ein neuer Wettkampf
-          # IM Qualifikationsfenster hinzukommt — nicht bei OpenPowerlifting-Backfills
-          # alter Meets oder täglichem Re-Processing. Dazu Signatur der fensterrelevanten
-          # Meets vergleichen (scripts/data_signature.py).
-          python scripts/data_signature.py > .data_meets.new
+
+          # ZWEI Signaturen, weil zwei verschiedene Dinge daran haengen:
+          #
+          #  .data_meets   (Modus "all")    -> DATA_VERSION-Bump = Redeploy.
+          #    Der Redeploy startet Streamlit neu und aendert das Daten-Token; nur so
+          #    sehen die Loader neue Dateien ueberhaupt. Bestenliste/Statistik/Rekorde
+          #    nutzen All-Time-Daten und brauchen das auch nach Ende des Qualifikations-
+          #    fensters (z. B. fuer die SM-Ergebnisse selbst).
+          #
+          #  .window_meets (Modus "window") -> ".last_data_update", also das angezeigte
+          #    Datum "Daten zuletzt aktualisiert". Rueckt nur bei qualifikations-
+          #    relevanten Daten vor, nicht bei Backfills alter Meets und nicht bei
+          #    Wettkaempfen nach Fensterende.
+          python scripts/data_signature.py all    > .data_meets.new
+          python scripts/data_signature.py window > .window_meets.new
+
           if [ -f .data_meets ] && diff -q .data_meets .data_meets.new >/dev/null 2>&1; then
             echo "data_changed=false" >> "$GITHUB_OUTPUT"
-            echo "Kein neuer Wettkampf im Fenster."
+            echo "Keine Aenderung an den Meets (all)."
             rm -f .data_meets.new
           else
             echo "data_changed=true" >> "$GITHUB_OUTPUT"
             mv .data_meets.new .data_meets
+            echo "Meets (all) geaendert — DATA_VERSION wird gebumpt."
+          fi
+
+          if [ -f .window_meets ] && diff -q .window_meets .window_meets.new >/dev/null 2>&1; then
+            echo "window_changed=false" >> "$GITHUB_OUTPUT"
+            echo "Kein neuer Wettkampf im Qualifikationsfenster."
+            rm -f .window_meets.new
+          else
+            echo "window_changed=true" >> "$GITHUB_OUTPUT"
+            mv .window_meets.new .window_meets
             date -u +'%Y-%m-%dT%H:%M:%SZ' > .last_data_update
-            echo "Neuer Wettkampf im Fenster erkannt — .last_data_update geschrieben."
+            echo "Neuer Wettkampf im Fenster — .last_data_update geschrieben."
           fi
 
       - name: Commit & push
@@ -85,8 +106,11 @@ jobs:
           git config user.name  "oevk-sync-bot"
           git config user.email "actions@users.noreply.github.com"
           git add -f .last_check
+          if [ "${{ steps.detect.outputs.window_changed }}" = "true" ]; then
+            git add -f .last_data_update .window_meets
+          fi
           if [ "${{ steps.detect.outputs.data_changed }}" = "true" ]; then
-            git add -f .last_data_update .data_meets
+            git add -f .data_meets
             # Streamlit Cloud redeployt nur bei Quellcode-Änderungen, nicht bei reinen
             # Datei-Commits. Daher den DATA_VERSION-Marker im Haupt-Skript auf das
             # heutige Datum setzen, damit die neuen Meets live sichtbar werden.

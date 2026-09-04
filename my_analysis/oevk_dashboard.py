@@ -2614,12 +2614,17 @@ if PROFILE_MODE:
 
 # --- TOP-HEADER ---
 _days = (QUAL_WINDOW_END.normalize() - pd.Timestamp.now().normalize()).days
-if _days > 0:
-    _count_num, _count_unit = str(_days), "Tage"
+# Der komplette Label-Text steckt in _count_unit — vorher hing " bis zur SM" fest im
+# Markup und wurde an jeden Fall angeklebt ("Heute bis zur SM", "Absolviert bis zur SM").
+# Das Jahr kommt aus QUAL_WINDOW_END, muss also fuer 2027 nicht angepasst werden.
+if _days > 1:
+    _count_num, _count_unit = str(_days), "Tage bis zur SM"
+elif _days == 1:
+    _count_num, _count_unit = "1", "Tag bis zur SM"
 elif _days == 0:
-    _count_num, _count_unit = "0", "Heute"
+    _count_num, _count_unit = "0", "Heute ist es soweit"
 else:
-    _count_num, _count_unit = "✓", "Absolviert"
+    _count_num, _count_unit = "✓", f"SM {QUAL_WINDOW_END.year} vorbei"
 
 st.markdown(
     f"""
@@ -2634,7 +2639,7 @@ st.markdown(
       <div class="target target--solo">
         <div class="target__count">
           <span class="num">{_count_num}</span>
-          <span class="unit">{_count_unit} bis zur SM</span>
+          <span class="unit">{_count_unit}</span>
         </div>
       </div>
     </div>
