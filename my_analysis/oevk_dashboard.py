@@ -865,6 +865,16 @@ button[data-testid="stExpandSidebarButton"] * {
 /* Rekorde-Tabellen: feste Spaltenausrichtung über alle 4 Disziplinen hinweg */
 .tbl-records { table-layout:fixed; min-width:1350px; }
 .tbl-records td, .tbl-records th { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* SM-Ergebnis-Tabelle: gleiche Kompaktheit wie die Qualifikations-Tabelle. */
+table.tbl.tbl-sm { table-layout:fixed; min-width:800px; }
+table.tbl.tbl-sm thead th { padding:8px 6px; letter-spacing:0; font-size:10.5px;
+  white-space:normal; line-height:1.2; vertical-align:bottom; }
+table.tbl.tbl-sm tbody td { padding:8px 6px; overflow:hidden; text-overflow:ellipsis;
+  white-space:nowrap; }
+/* Medaillenfarben für Platz 1-3 und den Medaillenspiegel. */
+.sm-gold   { color:#E2C977 !important; font-weight:700 !important; }
+.sm-silver { color:#C9CBD1 !important; font-weight:700 !important; }
+.sm-bronze { color:#C68C5B !important; font-weight:700 !important; }
 /* Qualifikations-Tabelle: feste, knappe Spaltenbreiten (colgroup im Markup) statt
    inhalts-/kopfzeilengetriebener Breite — sonst wird die Tabelle ~2250px breit. Enge
    Innenabstände und kurze, weniger gesperrte Kopfzeilen holen den Rest. min-width
@@ -1872,6 +1882,52 @@ def normalize_pdf_name(raw: str) -> str:
 OEVK_RECORDS_STAND = "2026-06-07"
 
 
+# --- SM-ERGEBNISSE ---
+# Die SM liegt bewusst AUSSERHALB des Qualifikationsfensters, `load_data` schliesst sie
+# also aus. Deshalb ein eigener, schlanker Loader nur fuer dieses eine Meet.
+# Ausserdem verwirft `_USE_COLS` die Einzelversuche (Squat1Kg …) — die brauchen wir hier
+# fuer die Erfolgsquote, also wird die entries.csv bewusst mit ALLEN Spalten gelesen.
+SM_RESULTS_DATE = "2026-09-05"          # Tag 1 der Staatsmeisterschaft 2026
+SM_RESULTS_LABEL = "SM 2026 Ergebnisse"
+_SM_ATTEMPT_COLS = [f"{lift}{i}Kg" for lift in ("Squat", "Bench", "Deadlift") for i in (1, 2, 3)]
+
+
+@st.cache_data(show_spinner="Lade SM-Ergebnisse …")
+def load_sm_results(cache_token: str = "") -> pd.DataFrame:
+    """Ergebnisse der Staatsmeisterschaft (Meet mit Datum SM_RESULTS_DATE).
+
+    Der Ordner wird ueber das Datum + „Staatsmeisterschaft" im Namen gesucht, nicht
+    ueber eine feste Meet-ID — OpenPowerlifting vergibt die IDs selbst.
+    Fehlt das Meet (Sync war noch nicht), kommt ein leerer DataFrame zurueck; die Seite
+    blendet sich dann aus. `cache_token` gehoert zum Cache-Key (siehe f0953ce)."""
+    if not BASE_PATH.exists():
+        return pd.DataFrame()
+    for folder in sorted(BASE_PATH.iterdir()):
+        m_file, e_file = folder / "meet.csv", folder / "entries.csv"
+        if not (m_file.is_file() and e_file.is_file()):
+            continue
+        try:
+            with open(m_file, "r", encoding="utf-8", errors="replace") as fh:
+                fh.readline()
+                fields = fh.readline().rstrip("\n").split(",")
+            m_date = fields[1] if len(fields) > 1 else ""
+            m_name = fields[5] if len(fields) > 5 else folder.name
+            if m_date != SM_RESULTS_DATE or "staatsmeisterschaft" not in m_name.lower():
+                continue
+            df = pd.read_csv(e_file, dtype={"WeightClassKg": str}, encoding="utf-8",
+                             encoding_errors="replace")
+            for c in _SM_ATTEMPT_COLS:
+                if c in df.columns:
+                    df[c] = pd.to_numeric(
+                        df[c].astype(str).str.replace(",", ".", regex=False), errors="coerce")
+                else:
+                    df[c] = pd.NA
+            return _process_entries(df, m_name, m_date)
+        except Exception:
+            continue
+    return pd.DataFrame()
+
+
 @st.cache_data(show_spinner=False)
 def load_sm_starters(cache_token: str = "") -> frozenset:
     """Namen der SM-2026-Starter:innen aus der offiziellen Startliste.
@@ -1995,6 +2051,25 @@ def compute_dataset_bests(history: pd.DataFrame) -> pd.DataFrame:
                     "date_iso":     str(r["Date"]),
                 })
     return pd.DataFrame(rows)
+
+
+# --- CHART-HELFER (von Statistik- und SM-Seite genutzt) ---
+_SEX_LABEL = {"F": "Frauen", "M": "Männer"}
+_SEX_COLOR = {"F": "#E2C977", "M": "#8FB8DE"}
+
+
+def _plot_theme(fig, height=340):
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=10, r=10, t=42, b=10), height=height,
+        font=dict(family="Archivo, sans-serif", color="#F5F5F4", size=12),
+        showlegend=False,
+        hoverlabel=dict(bgcolor="#18181B", bordercolor="#C9AE5B", font_color="#F5F5F4"),
+    )
+    fig.update_xaxes(gridcolor="#26262B", zerolinecolor="#26262B")
+    fig.update_yaxes(gridcolor="#26262B", zerolinecolor="#26262B")
+    return fig
 
 
 # --- HTML/FORMAT-HELFER (Design-Komponenten) ---
@@ -2631,7 +2706,7 @@ st.markdown(
     <div class="topbar">
       <a class="brand brand--link" href="?reset=1" target="_self">
         <div>
-          <div class="brand__title"><span class="accent">ÖSTERREICHISCHE STAATSMEISTERSCHAFT!</span> Wer ist qualifiziert?<span class="beta">BETA</span></div>
+          <div class="brand__title"><span class="accent">ÖSTERREICHISCHE STAATSMEISTERSCHAFT {QUAL_WINDOW_END.year}!</span> Wer ist qualifiziert?</div>
           <div class="brand__date">5. – 6. September 2026</div>
           <div class="brand__sub">Alle Athlet:innen, die das Limit erreicht haben — hier zusammengefasst.</div>
         </div>
@@ -2766,16 +2841,29 @@ data["_wc_disp"] = data["WeightClassKg"].apply(wc_display)
 # --- NAVIGATION: Seitenauswahl (ersetzt st.tabs) ---
 # Segmented-Control oben im Hauptbereich; die Sidebar zeigt anschließend nur die Filter
 # der aktiven Seite. ?tab=records|topn (vom Athleten-Profil-Back-Button) erzwingt die Seite.
-_PAGES = ["Qualifikation", "Rekorde", "Bestenliste", "Statistik"]
+# SM-Ergebnisse nur anbieten, wenn das Meet auch in den Daten liegt. Solange der Sync
+# es noch nicht geholt hat, fehlt der Tab ganz und die Startseite bleibt die
+# Qualifikation — sonst wäre die Startseite leer.
+_sm_results = load_sm_results(_data_version_token())
+_HAS_SM = not _sm_results.empty
+_PAGES = ([SM_RESULTS_LABEL] if _HAS_SM else []) + ["Qualifikation", "Rekorde", "Bestenliste", "Statistik"]
+_DEFAULT_PAGE = SM_RESULTS_LABEL if _HAS_SM else "Qualifikation"
 _url_tab = st.query_params.get("tab")
-if _url_tab in ("records", "topn", "stats"):
-    st.session_state["_active_page"] = {"records": "Rekorde", "topn": "Bestenliste", "stats": "Statistik"}[_url_tab]
+_TAB_MAP = {"records": "Rekorde", "topn": "Bestenliste", "stats": "Statistik",
+            "qual": "Qualifikation"}
+if _HAS_SM:
+    _TAB_MAP["sm"] = SM_RESULTS_LABEL
+if _url_tab in _TAB_MAP:
+    st.session_state["_active_page"] = _TAB_MAP[_url_tab]
 elif "_active_page" not in st.session_state:
-    st.session_state["_active_page"] = "Qualifikation"
+    st.session_state["_active_page"] = _DEFAULT_PAGE
+# Falls ein alter Session-State auf eine Seite zeigt, die es (noch) nicht gibt.
+if st.session_state.get("_active_page") not in _PAGES:
+    st.session_state["_active_page"] = _DEFAULT_PAGE
 _page = st.segmented_control("Ansicht", _PAGES, key="_active_page",
                              label_visibility="collapsed")
 if _page is None:
-    _page = st.session_state.get("_active_page") or "Qualifikation"
+    _page = st.session_state.get("_active_page") or _DEFAULT_PAGE
 
 # --- SIDEBAR: Filter ---
 # Kombinierte Gewichtsklassen-Optionen (Frauen zuerst, dann Männer).
@@ -2824,6 +2912,8 @@ def _idx_of(options, value):
     except (ValueError, TypeError):
         return None
 
+
+sm_sex = sm_wc = sm_team = None
 
 if _page == "Qualifikation":
     selected_team = st.sidebar.selectbox(
@@ -2940,11 +3030,55 @@ if _page == "Qualifikation":
         unsafe_allow_html=True,
     )
 
+elif _page == SM_RESULTS_LABEL:
+    # Eigene Filter für die SM-Seite. Sie greifen auf die Ergebnisdaten, nicht auf die
+    # Qualifikations-Pipeline — deshalb eigene Variablen statt der selected_*-Keys.
+    # F- und M-Gewichtsklassen sind disjunkt (52/57/63/69/76/84 vs. 59/66/74/83/93/
+    # 105/120/120+), eine gemeinsame Klassenliste ist also eindeutig.
+    _sm_team_opts = sorted(
+        t for t in _sm_results["Team"].astype(str).str.strip().unique() if t)
+    _sm_wc_opts = (_sm_results[["WeightClassKg", "wc_sort"]]
+                   .drop_duplicates("WeightClassKg").sort_values("wc_sort")["WeightClassKg"].tolist())
+    # Optik exakt wie im Qualifikations-Tab: index=None + placeholder (kein "Alle"-
+    # Eintrag), keine eigene Kopfzeile, gleiche Divider- und Reset-Button-Gestaltung.
+    sm_team = st.sidebar.selectbox(
+        "Verein",
+        _sm_team_opts,
+        index=None,
+        placeholder="Verein wählen",
+        key=f"sm_team_v{_GEN}",
+    )
+    sm_sex = st.sidebar.selectbox(
+        "Geschlecht",
+        [("F", "Frauen"), ("M", "Männer")],
+        index=None,
+        format_func=lambda opt: opt[1],
+        placeholder="Geschlecht wählen",
+        key=f"sm_sex_v{_GEN}",
+    )
+    sm_sex = sm_sex[0] if sm_sex else None
+    sm_wc = st.sidebar.selectbox(
+        "Gewichtsklasse",
+        _sm_wc_opts,
+        index=None,
+        format_func=lambda w: f"{wc_label(w)} kg",
+        placeholder="Klasse wählen",
+        key=f"sm_wc_v{_GEN}",
+    )
+    st.sidebar.markdown('<div class="sb-divider"></div>', unsafe_allow_html=True)
+    if st.sidebar.button("↺ Filter zurücksetzen", key="sm_reset_btn"):
+        for _k in (f"sm_sex_v{_GEN}", f"sm_wc_v{_GEN}", f"sm_team_v{_GEN}"):
+            st.session_state.pop(_k, None)
+        st.rerun()
+    selected_team = selected_name = selected_sex = selected_wc = selected_meet = None
+    show_only_qualified = True
+    show_only_starters = True
 else:
     # Auf anderen Seiten existieren die Qualifikations-Filter nicht — Defaults setzen,
     # damit die (global laufende) Pipeline keine NameErrors wirft.
     selected_team = selected_name = selected_sex = selected_wc = selected_meet = None
     show_only_qualified = True
+    show_only_starters = True
 # --- DATEN-BASIS: nur Raw + KDK gelten als Qualifikation, alles andere ignorieren ---
 df_scope = data[(data["Equipment"] == "Raw") & (data["Event_Display"] == "KDK") & in_window]
 
@@ -4179,27 +4313,12 @@ elif _page == "Statistik":
         _bump_gen("_gen_stat")
 
     _SEXES = {"Beide": ["F", "M"], "Frauen": ["F"], "Männer": ["M"]}[_stat_sex]
-    _SEX_LABEL = {"F": "Frauen", "M": "Männer"}
     _WC_ORDER = {"F": FEM_ORDER, "M": MAL_ORDER}
-    _SEX_COLOR = {"F": "#E2C977", "M": "#8FB8DE"}
 
     def _stat_head(title, meta=""):
         _m = f'<div class="meta">{meta}</div>' if meta else ""
         st.markdown(f'<div class="section-head" style="margin:22px 0 10px">'
                     f'<h2>{title}</h2>{_m}</div>', unsafe_allow_html=True)
-
-    def _plot_theme(fig, height=340):
-        fig.update_layout(
-            template="plotly_dark",
-            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-            margin=dict(l=10, r=10, t=42, b=10), height=height,
-            font=dict(family="Archivo, sans-serif", color="#F5F5F4", size=12),
-            showlegend=False,
-            hoverlabel=dict(bgcolor="#18181B", bordercolor="#C9AE5B", font_color="#F5F5F4"),
-        )
-        fig.update_xaxes(gridcolor="#26262B", zerolinecolor="#26262B")
-        fig.update_yaxes(gridcolor="#26262B", zerolinecolor="#26262B")
-        return fig
 
     def _tbl(headers, rows_html, extra_cls=""):
         _h = "".join(f'<th class="{c}">{t}</th>' for t, c in headers)
@@ -4588,6 +4707,694 @@ elif _page == "Statistik":
                   ("Athlet:innen", "num"), ("Neu qualifiziert", "num"), ("Wettkämpfe (Namen)", "l")],
                  "".join(_trows))
 
+elif _page == SM_RESULTS_LABEL:
+    # --- SM-ERGEBNISSE ---
+    # Eigene Quelle: die SM liegt bewusst ausserhalb des Qualifikationsfensters, in
+    # `data`/`df_filtered` ist sie deshalb nicht enthalten.
+    _sm_full = _sm_results.copy()
+    _sm = _sm_results.copy()
+    # Sidebar-Filter (Geschlecht / Gewichtsklasse / Verein) auf Tabellen und Statistik.
+    # Kopfzeile und KPI-Karten bleiben absichtlich auf Meet-Ebene — sie beschreiben die
+    # Meisterschaft, nicht die Auswahl.
+    if sm_sex:
+        _sm = _sm[_sm["Sex"].astype(str).str.upper().str[:1] == sm_sex]
+    if sm_wc:
+        _sm = _sm[_sm["WeightClassKg"] == sm_wc]
+    if sm_team:
+        _sm = _sm[_sm["Team"].astype(str).str.strip() == sm_team]
+    _sm_filtered = bool(sm_sex or sm_wc or sm_team)
+    _sm["place_num"] = pd.to_numeric(_sm["Place"], errors="coerce")
+    _sm["is_dq"] = _sm["Place"].astype(str).str.upper().isin(["DQ", "DD", "NS"])
+    _sm["sx1"] = _sm["Sex"].astype(str).str.upper().str[:1]
+    # KPI-Karten folgen der Sidebar-Auswahl (Verein/Geschlecht/Klasse). Nur der
+    # Meet-Titel kommt weiter aus _sm_full — der aendert sich durch Filter nicht und
+    # .iloc[0] wuerde bei leerer Auswahl knallen.
+    _sm_n = len(_sm)
+    _sm_f = int((_sm["sx1"] == "F").sum())
+    _sm_m = int((_sm["sx1"] == "M").sum())
+    _sm_dq = int(_sm["is_dq"].sum())
+    _sm_teams = int(_sm["Team"].astype(str).str.strip().replace("", pd.NA).nunique())
+    _sm_classes = int(_sm["WeightClassKg"].nunique())
+    # Bei gewaehltem Verein ist "Vereine: 1" nutzlos — dann stattdessen die Medaillen
+    # dieses Vereins zeigen.
+    _sel_med = _sm[(~_sm["is_dq"]) & _sm["place_num"].isin([1, 2, 3])]
+    _sel_g = int((_sel_med["place_num"] == 1).sum())
+    _sel_s = int((_sel_med["place_num"] == 2).sum())
+    _sel_b = int((_sel_med["place_num"] == 3).sum())
+    # Aktive Filter fuer die Kopfzeile beschreiben
+    _filter_bits = []
+    if sm_team:
+        _filter_bits.append(esc(sm_team))
+    if sm_sex:
+        _filter_bits.append("Frauen" if sm_sex == "F" else "Männer")
+    if sm_wc:
+        _filter_bits.append(f"{wc_label(sm_wc)} kg")
+    _filter_meta = (f'<div class="meta">{" · ".join(_filter_bits)}</div>'
+                    if _filter_bits else "")
+
+    st.markdown(
+        '<div class="section-head"><div>'
+        '<div class="kicker kicker--gold">Ergebnisse</div>'
+        f'<h2>{esc(_sm_full["MeetName"].iloc[0])}</h2></div>'
+        f'{_filter_meta}</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="kpis kpis--3">'
+        + kpi_card("Angetreten", _sm_n, accent=True, foot=(
+            f'<span style="color:var(--gold);font-weight:600">Frauen · {_sm_f}</span>'
+            '<span style="opacity:0.4;margin:0 8px">|</span>'
+            f'<span style="color:var(--gold);font-weight:600">Männer · {_sm_m}</span>'))
+        + kpi_card("Gewertet", _sm_n - _sm_dq, foot=(
+            f'<span style="color:var(--gold);font-weight:600">{_sm_dq} ohne gültiges Ergebnis</span>'))
+        + (kpi_card("Medaillen", _sel_g + _sel_s + _sel_b, foot=(
+            f'<span style="color:var(--gold);font-weight:600">Gold · {_sel_g}</span>'
+            '<span style="opacity:0.4;margin:0 8px">|</span>'
+            f'<span style="color:var(--gold);font-weight:600">Silber · {_sel_s}</span>'
+            '<span style="opacity:0.4;margin:0 8px">|</span>'
+            f'<span style="color:var(--gold);font-weight:600">Bronze · {_sel_b}</span>'))
+           if sm_team else
+           kpi_card("Vereine", _sm_teams, foot=(
+            f'<span style="color:var(--gold);font-weight:600">{_sm_classes} Gewichtsklassen</span>')))
+        + "</div>",
+        unsafe_allow_html=True,
+    )
+
+    if _sm.empty:
+        st.info("Keine Ergebnisse für diese Filter — Auswahl in der Sidebar anpassen.")
+
+    # ---------- Statistik 1: Beste IPF-GL-Punkte ----------
+    st.markdown(
+        '<div class="section-head" style="margin-top:26px"><div>'
+        '<div class="kicker kicker--gold">Statistik</div>'
+        '<h2>Beste IPF-GL-Punkte</h2></div>'
+        '<div class="meta">Relativpunktewertung nach IPF GL Punkten</div></div>',
+        unsafe_allow_html=True,
+    )
+    _gl_cols = st.columns(2)
+    for _i, (_sx_key, _sx_title) in enumerate((("F", "Frauen"), ("M", "Männer"))):
+        _top = (_sm[(_sm["sx1"] == _sx_key) & (~_sm["is_dq"])]
+                .sort_values("GL_Points", ascending=False).head(15))
+        _r_html = "".join(
+            f'<tr><td class="num rank">{_i2}</td>'
+            f'<td class="l" title="{esc(_t.Name)}">{esc(_t.Name)}</td>'
+            f'<td class="mono">{wc_label(_t.WeightClassKg)}</td>'
+            f'<td class="num mono-strong">{fmt_kg(_t.TotalKg)}</td>'
+            f'<td class="num gold-strong">{fmt_kg(_t.GL_Points, 2)}</td>'
+            f'<td class="l" title="{esc(_t.Team)}">{esc(_t.Team)}</td></tr>'
+            for _i2, _t in enumerate(_top.itertuples(), start=1)
+        )
+        with _gl_cols[_i]:
+            st.markdown(
+                '<div class="tablecard"><div class="tablescroll">'
+                '<table class="tbl" data-sortable="1"><thead><tr>'
+                '<th class="num nosort">#</th>'
+                + _sh(_sx_title, "text", "l") + _sh("Klasse", "text")
+                + _sh("Total", "num", "num") + _sh("IPF GL", "num", "num")
+                + _sh("Verein", "text", "l")
+                + '</tr></thead>'
+                f'<tbody>{_r_html}</tbody></table></div></div>',
+                unsafe_allow_html=True,
+            )
+
+    # ---------- Statistik 2: Medaillenspiegel je Verein ----------
+    _med = _sm[(~_sm["is_dq"]) & _sm["place_num"].isin([1, 2, 3])]
+    if _med.empty:
+        _mtab = pd.DataFrame(columns=[1, 2, 3])
+    else:
+        _mtab = (_med.assign(_p=_med["place_num"].astype(int))
+                 .pivot_table(index="Team", columns="_p", values="Name",
+                              aggfunc="count", fill_value=0))
+    for _c in (1, 2, 3):
+        if _c not in _mtab.columns:
+            _mtab[_c] = 0
+    _mtab = _mtab[[1, 2, 3]]
+    _mtab["ges"] = _mtab.sum(axis=1)
+    _starts_by_team = _sm.groupby("Team").size()
+    # Standard-Sortierung: Gesamtzahl der Medaillen, bei Gleichstand Gold > Silber > Bronze.
+    _mtab = _mtab.sort_values(["ges", 1, 2, 3], ascending=False)
+    st.markdown(
+        '<div class="section-head" style="margin-top:26px"><div>'
+        '<div class="kicker kicker--gold">Statistik</div>'
+        '<h2>Medaillen je Verein</h2></div>'
+        f'<div class="meta">{len(_mtab)} Vereine auf dem Podium</div></div>',
+        unsafe_allow_html=True,
+    )
+    _med_rows = "".join(
+        f'<tr><td class="l" title="{esc(_t)}">{esc(_t)}</td>'
+        f'<td class="num mono sm-gold">{int(_row[1])}</td>'
+        f'<td class="num mono sm-silver">{int(_row[2])}</td>'
+        f'<td class="num mono sm-bronze">{int(_row[3])}</td>'
+        f'<td class="num mono-strong">{int(_row["ges"])}</td>'
+        f'<td class="num mono">{int(_starts_by_team.get(_t, 0))}</td></tr>'
+        for _t, _row in _mtab.iterrows()
+    )
+    st.markdown(
+        '<div class="tablecard"><div class="tablescroll">'
+        '<table class="tbl" data-sortable="1"><thead><tr>'
+        + _sh("Verein", "text", "l")
+        + _sh("Gold", "num", "num", "1. Plätze")
+        + _sh("Silber", "num", "num", "2. Plätze")
+        + _sh("Bronze", "num", "num", "3. Plätze")
+        + _sh("Gesamt", "num", "num")
+        + _sh("Angetreten", "num", "num")
+        + '</tr></thead>'
+        f'<tbody>{_med_rows}</tbody></table></div></div>',
+        unsafe_allow_html=True,
+    )
+
+    # ---------- Statistik: Engste Entscheidungen ----------
+    # Abstand zwischen Platz 1 und 2 je (Geschlecht, Gewichtsklasse).
+    _duel = []
+    for (_dsx, _dwc), _grp2 in _sm[~_sm["is_dq"]].groupby(["sx1", "WeightClassKg"]):
+        _p1 = _grp2[_grp2["place_num"] == 1]
+        _p2 = _grp2[_grp2["place_num"] == 2]
+        if _p1.empty or _p2.empty:
+            continue
+        _a, _b2 = _p1.iloc[0], _p2.iloc[0]
+        _duel.append({"sx": _dsx, "wc": _dwc,
+                      "win": _a["Name"], "wt": float(_a["TotalKg"]), "wteam": _a["Team"],
+                      "sec": _b2["Name"], "st": float(_b2["TotalKg"]), "steam": _b2["Team"],
+                      "gap": round(float(_a["TotalKg"]) - float(_b2["TotalKg"]), 2),
+                      "wcs": float(_a["wc_sort"])})
+    _duel_df = pd.DataFrame(_duel).sort_values("gap") if _duel else pd.DataFrame()
+    st.markdown(
+        '<div class="section-head" style="margin-top:26px"><div>'
+        '<div class="kicker kicker--gold">Statistik</div>'
+        '<h2>Engste Entscheidungen</h2></div>'
+        f'<div class="meta">{len(_duel_df)} Klassen mit Platz 1 und 2 · '
+        f'engster Abstand {fmt_kg(_duel_df["gap"].min()) if not _duel_df.empty else "–"} kg'
+        '</div></div>',
+        unsafe_allow_html=True,
+    )
+    if _duel_df.empty:
+        st.markdown('<div class="table-note">Keine Klasse mit Platz 1 und 2 in dieser '
+                    'Auswahl.</div>', unsafe_allow_html=True)
+    else:
+        _du_rows = "".join(
+            f'<tr><td><span class="sex-tag">{sex_display(_t.sx)}</span></td>'
+            f'<td class="mono">{wc_label(_t.wc)}</td>'
+            f'<td class="l sm-gold" title="{esc(_t.win)}">{esc(_t.win)}</td>'
+            f'<td class="l" title="{esc(_t.wteam)}">{esc(_t.wteam)}</td>'
+            f'<td class="num mono-strong">{fmt_kg(_t.wt)}</td>'
+            f'<td class="l sm-silver" title="{esc(_t.sec)}">{esc(_t.sec)}</td>'
+            f'<td class="l" title="{esc(_t.steam)}">{esc(_t.steam)}</td>'
+            f'<td class="num mono">{fmt_kg(_t.st)}</td>'
+            f'<td class="num gold-strong">{fmt_kg(_t.gap)}</td></tr>'
+            for _t in _duel_df.itertuples()
+        )
+        st.markdown(
+            '<div class="tablecard"><div class="tablescroll">'
+            '<table class="tbl" data-sortable="1"><thead><tr>'
+            + _sh("Geschl.", "text", "", "Geschlecht") + _sh("Klasse", "text")
+            + _sh("Sieger:in", "text", "l")
+            + _sh("Verein", "text", "l", "Verein der Siegerin / des Siegers")
+            + _sh("Total", "num", "num")
+            + _sh("Zweite:r", "text", "l")
+            + _sh("Verein", "text", "l", "Verein auf Platz 2")
+            + _sh("Total", "num", "num")
+            + _sh("Abstand", "num", "num", "Vorsprung auf Platz 2")
+            + '</tr></thead>'
+            f'<tbody>{_du_rows}</tbody></table></div></div>',
+            unsafe_allow_html=True,
+        )
+
+    # ---------- Statistik 3: Leistungen ueber dem offiziellen Rekord ----------
+    # Vergleich gegen die offizielle OeVK-Liste (Stand OEVK_RECORDS_STAND, Raw).
+    # Verglichen wird gegen die Altersklasse der Person UND gegen Open — ein Junioren-
+    # Rekord ist eine andere Bestmarke als der allgemeine Staatsrekord.
+    _recs = load_records(_data_version_token())
+    _rec_idx = {}
+    if not _recs.empty:
+        for _rr in _recs.itertuples():
+            _rk = getattr(_rr, "record_kg", None)
+            if pd.isna(_rk):
+                continue
+            _rec_idx[(str(_rr.sex), str(_rr.age_class), str(_rr.equipment),
+                      str(_rr.weight_class), str(_rr.lift))] = float(_rk)
+    _LIFTS = (("Best3SquatKg", "Squat", "Kniebeuge"), ("Best3BenchKg", "Bench", "Bankdrücken"),
+              ("Best3DeadliftKg", "Deadlift", "Kreuzheben"), ("TotalKg", "Total", "Total"))
+    _beat = []
+    for _t in _sm[~_sm["is_dq"]].itertuples():
+        _wc = wc_display(_t.WeightClassKg)
+        _sx = str(_t.Sex).upper()[:1]
+        _acs = {"Open"}
+        _ac_own = getattr(_t, "AgeClass", None)
+        if _ac_own and str(_ac_own) != "nan":
+            _acs.add(str(_ac_own))
+        for _col, _lift_key, _lift_lbl in _LIFTS:
+            _val = pd.to_numeric(getattr(_t, _col, None), errors="coerce")
+            if pd.isna(_val) or _val <= 0:
+                continue
+            for _ac in _acs:
+                _old = _rec_idx.get((_sx, _ac, "Raw", _wc, _lift_key))
+                if _old is not None and float(_val) > _old:
+                    _beat.append({"Name": _t.Name, "wc": _t.WeightClassKg, "ac": _ac,
+                                  "lift": _lift_lbl, "neu": float(_val), "alt": _old,
+                                  "team": _t.Team})
+    _beat_df = pd.DataFrame(_beat)
+    st.markdown(
+        '<div class="section-head" style="margin-top:26px"><div>'
+        '<div class="kicker kicker--gold">Statistik</div>'
+        '<h2>Über dem offiziellen Rekord</h2></div>'
+        f'<div class="meta">{len(_beat_df)} Rekorde übertroffen · '
+        f'{_beat_df["Name"].nunique() if not _beat_df.empty else 0} Athlet:innen</div></div>',
+        unsafe_allow_html=True,
+    )
+    if _beat_df.empty:
+        st.markdown('<div class="table-note">Keine Leistung über einem offiziellen '
+                    'Rekord der Liste.</div>', unsafe_allow_html=True)
+    else:
+        _beat_df = _beat_df.sort_values(["Name", "lift"])
+        _b_rows = "".join(
+            f'<tr><td class="l" title="{esc(_b.Name)}">{esc(_b.Name)}</td>'
+            f'<td class="mono">{wc_label(_b.wc)}</td>'
+            f'<td>{esc(_b.ac)}</td>'
+            f'<td class="l">{esc(_b.lift)}</td>'
+            f'<td class="num mono">{fmt_kg(_b.alt)}</td>'
+            f'<td class="num mono-strong">{fmt_kg(_b.neu)}</td>'
+            f'<td class="num"><span class="diff diff--pos">{fmt_diff(_b.neu - _b.alt)}</span></td>'
+            f'<td class="l" title="{esc(_b.team)}">{esc(_b.team)}</td></tr>'
+            for _b in _beat_df.itertuples()
+        )
+        st.markdown(
+            '<div class="tablecard"><div class="tablescroll">'
+            '<table class="tbl" data-sortable="1"><thead><tr>'
+            + _sh("Athlet:in", "text", "l") + _sh("Klasse", "text")
+            + _sh("Altersklasse", "text") + _sh("Disziplin", "text", "l")
+            + _sh("alter Rekord", "num", "num")
+            + _sh("SM 2026", "num", "num", "Leistung bei der SM 2026")
+            + _sh("Differenz", "diff", "num") + _sh("Verein", "text", "l")
+            + '</tr></thead>'
+            f'<tbody>{_b_rows}</tbody></table></div></div>'
+            f'<div class="table-note">Vergleich gegen die offizielle ÖVK-Rekordliste '
+            f'(Stand {fmt_date(OEVK_RECORDS_STAND)}).</div>',
+            unsafe_allow_html=True,
+        )
+
+    # ---------- Statistik 4: Qualifikations-Total vs. SM-Total ----------
+    # Bestes Total im Qualifikationsfenster (Raw + KDK) je Person aus `data`.
+    # TotalKg > 0: DQ-/Bombout-Zeilen haben in _process_entries ein fillna(0.0) bekommen.
+    # Ohne diesen Filter zaehlt eine ungueltige Qualifikations-Teilnahme als "Total 0" und
+    # die Person erscheint mit absurder Steigerung an der Spitze (Fall Philipp Lehner).
+    _qbest = (data[(data["Equipment"].astype(str) == "Raw")
+                   & (data["Event_Display"] == "KDK")
+                   & (data["TotalKg"] > 0)]
+              .groupby("Name")["TotalKg"].max())
+    _cmp = _sm[~_sm["is_dq"]].copy()
+    _cmp["qual_total"] = _cmp["Name"].map(_qbest)
+    _cmp["delta"] = (_cmp["TotalKg"] - _cmp["qual_total"]).round(2)
+    _with = _cmp[_cmp["qual_total"].notna()].sort_values("delta", ascending=False)
+    _n_up = int((_with["delta"] > 0).sum())
+    _n_dn = int((_with["delta"] < 0).sum())
+    _n_eq = int((_with["delta"] == 0).sum())
+    st.markdown(
+        '<div class="section-head" style="margin-top:26px"><div>'
+        '<div class="kicker kicker--gold">Statistik</div>'
+        '<h2>Steigerung zur Qualifikation</h2></div>'
+        f'<div class="meta">{_n_up} verbessert · {_n_dn} darunter · '
+        f'{_n_eq} gleich · '
+        f'{int(_cmp["qual_total"].isna().sum())} ohne Qualifikationsergebnis</div></div>',
+        unsafe_allow_html=True,
+    )
+    _cmp_rows = "".join(
+        f'<tr><td class="l" title="{esc(_t.Name)}">{esc(_t.Name)}</td>'
+        f'<td class="mono">{wc_label(_t.WeightClassKg)}</td>'
+        f'<td class="num mono">{fmt_kg(_t.qual_total)}</td>'
+        f'<td class="num mono-strong">{fmt_kg(_t.TotalKg)}</td>'
+        f'<td class="num"><span class="diff {diff_class(_t.delta)}">{fmt_diff(_t.delta)}</span></td>'
+        f'<td class="l" title="{esc(_t.Team)}">{esc(_t.Team)}</td></tr>'
+        for _t in _with.itertuples()
+    )
+    st.markdown(
+        '<div class="tablecard"><div class="tablescroll">'
+        '<table class="tbl" data-sortable="1"><thead><tr>'
+        + _sh("Athlet:in", "text", "l") + _sh("Klasse", "text")
+        + _sh("Qualifikation", "num", "num", "Bestes Total im Qualifikationsfenster")
+        + _sh("SM 2026 Total", "num", "num") + _sh("Differenz", "diff", "num")
+        + _sh("Verein", "text", "l")
+        + '</tr></thead>'
+        f'<tbody>{_cmp_rows}</tbody></table></div></div>'
+        '<div class="table-note">Vergleich mit dem besten Total im Qualifikationsfenster '
+        '(Raw, Kraftdreikampf). Wer dort kein Ergebnis hatte, ist hier nicht aufgeführt.</div>',
+        unsafe_allow_html=True,
+    )
+    # ---------- Statistik: Persönliche Bestleistung ----------
+    # Bisheriges Bestes = bestes Raw-KDK-Total VOR der SM. load_full_history enthaelt die
+    # SM selbst, daher Datumsfilter; TotalKg > 0, weil DQ-Zeilen ein fillna(0.0) haben.
+    _hist_all = load_full_history(_data_version_token())
+    _hp = _hist_all[(_hist_all["Equipment"].astype(str) == "Raw")
+                    & (_hist_all["Event_Display"] == "KDK")
+                    & (pd.to_numeric(_hist_all["TotalKg"], errors="coerce") > 0)].copy()
+    _hp["dt"] = pd.to_datetime(_hp["Date"], errors="coerce")
+    _hp_prior = _hp[_hp["dt"] < pd.Timestamp(SM_RESULTS_DATE)]
+    _prev_best = _hp_prior.groupby("Name")["TotalKg"].max()
+    _pbc = _sm[~_sm["is_dq"]].copy()
+    _pbc["prev_best"] = _pbc["Name"].map(_prev_best)
+    _pbc["pb_delta"] = (_pbc["TotalKg"] - _pbc["prev_best"]).round(2)
+    _pb_known = _pbc[_pbc["prev_best"].notna()]
+    _pb_new = _pb_known[_pb_known["pb_delta"] > 0].sort_values("pb_delta", ascending=False)
+    st.markdown(
+        '<div class="section-head" style="margin-top:26px"><div>'
+        '<div class="kicker kicker--gold">Statistik</div>'
+        '<h2>Persönliche Bestleistung</h2></div>'
+        f'<div class="meta">{len(_pb_new)} von {len(_pb_known)} mit Vorgeschichte haben '
+        'ihr bestes Total überboten</div></div>',
+        unsafe_allow_html=True,
+    )
+    if _pb_new.empty:
+        st.markdown('<div class="table-note">Keine neue persönliche Bestleistung in '
+                    'dieser Auswahl.</div>', unsafe_allow_html=True)
+    else:
+        _pb_rows = "".join(
+            f'<tr><td class="l" title="{esc(_t.Name)}">{esc(_t.Name)}</td>'
+            f'<td class="mono">{wc_label(_t.WeightClassKg)}</td>'
+            f'<td class="num mono">{fmt_kg(_t.prev_best)}</td>'
+            f'<td class="num mono-strong">{fmt_kg(_t.TotalKg)}</td>'
+            f'<td class="num"><span class="diff diff--pos">{fmt_diff(_t.pb_delta)}</span></td>'
+            f'<td class="l" title="{esc(_t.Team)}">{esc(_t.Team)}</td></tr>'
+            for _t in _pb_new.itertuples()
+        )
+        st.markdown(
+            '<div class="tablecard"><div class="tablescroll">'
+            '<table class="tbl" data-sortable="1"><thead><tr>'
+            + _sh("Athlet:in", "text", "l") + _sh("Klasse", "text")
+            + _sh("bisher bestes Total", "num", "num", "Bestes Raw-KDK-Total vor der SM 2026")
+            + _sh("SM 2026 Total", "num", "num") + _sh("Differenz", "diff", "num")
+            + _sh("Verein", "text", "l")
+            + '</tr></thead>'
+            f'<tbody>{_pb_rows}</tbody></table></div></div>'
+            f'<div class="table-note">{int(_pbc["prev_best"].isna().sum())} Personen ohne '
+            'früheres Raw-Kraftdreikampf-Ergebnis sind hier nicht aufgeführt.</div>',
+            unsafe_allow_html=True,
+        )
+
+    # ---------- Statistik: SM-Debüt ----------
+    # Veteran:innen = frueherer Start bei IRGENDEINER Staatsmeisterschaft — bewusst ohne
+    # Filter auf Event/Equipment: zwei Personen waren zuvor nur bei einer Bankdrueck- bzw.
+    # Equipped-SM am Start und wuerden sonst falsch als Debuet gezaehlt.
+    _hd = _hist_all.copy()
+    _hd["dt"] = pd.to_datetime(_hd["Date"], errors="coerce")
+    _sm_veterans = set(
+        _hd[(_hd["dt"] < pd.Timestamp(SM_RESULTS_DATE))
+            & _hd["MeetName"].astype(str).str.contains("Staatsmeisterschaft", case=False,
+                                                       na=False)]["Name"]
+    )
+    _scored = _sm[~_sm["is_dq"]]
+    _debut = (_scored[~_scored["Name"].isin(_sm_veterans)]
+              .sort_values("GL_Points", ascending=False))
+    st.markdown(
+        '<div class="section-head" style="margin-top:26px"><div>'
+        '<div class="kicker kicker--gold">Statistik</div>'
+        '<h2>SM-Debüt</h2></div>'
+        f'<div class="meta">{len(_debut)} von {len(_scored)} erstmals bei einer '
+        'Staatsmeisterschaft</div></div>',
+        unsafe_allow_html=True,
+    )
+    if _debut.empty:
+        st.markdown('<div class="table-note">Keine Debütant:innen in dieser Auswahl.</div>',
+                    unsafe_allow_html=True)
+    else:
+        _de_rows = "".join(
+            f'<tr><td class="l" title="{esc(_t.Name)}">{esc(_t.Name)}</td>'
+            f'<td><span class="sex-tag">{sex_display(_t.Sex)}</span></td>'
+            f'<td class="mono">{wc_label(_t.WeightClassKg)}</td>'
+            f'<td class="num mono">{"" if pd.isna(_t.place_num) else int(_t.place_num)}</td>'
+            f'<td class="num mono-strong">{fmt_kg(_t.TotalKg)}</td>'
+            f'<td class="num gold-strong">{fmt_kg(_t.GL_Points, 2)}</td>'
+            f'<td class="l" title="{esc(_t.Team)}">{esc(_t.Team)}</td></tr>'
+            for _t in _debut.itertuples()
+        )
+        st.markdown(
+            '<div class="tablecard"><div class="tablescroll">'
+            '<table class="tbl" data-sortable="1"><thead><tr>'
+            + _sh("Athlet:in", "text", "l") + _sh("Geschl.", "text", "", "Geschlecht")
+            + _sh("Klasse", "text") + _sh("Platz", "num", "num")
+            + _sh("Total", "num", "num") + _sh("IPF GL", "num", "num")
+            + _sh("Verein", "text", "l")
+            + '</tr></thead>'
+            f'<tbody>{_de_rows}</tbody></table></div></div>'
+            '<div class="table-note">Bezieht sich auf die bei OpenPowerlifting erfassten '
+            'Wettkämpfe; ältere Jahrgänge sind dort lückenhaft.</div>',
+            unsafe_allow_html=True,
+        )
+
+    # ---------- Statistik 5: Versuchs-Erfolgsquote ----------
+    # OPL-Konvention: Versuch > 0 = gültig, < 0 = ungültig, leer = nicht angetreten.
+    _att_rows = []
+    _tot_ok = _tot_all = 0
+    for _lift, _label in (("Squat", "Kniebeuge"), ("Bench", "Bankdrücken"),
+                          ("Deadlift", "Kreuzheben")):
+        _cols = [f"{_lift}{_i}Kg" for _i in (1, 2, 3)]
+        _vals = _sm[[c for c in _cols if c in _sm.columns]].apply(
+            pd.to_numeric, errors="coerce")
+        _ok = int((_vals > 0).sum().sum())
+        _bad = int((_vals < 0).sum().sum())
+        _all = _ok + _bad
+        _tot_ok += _ok
+        _tot_all += _all
+        _pct = round(_ok / _all * 100, 1) if _all else 0.0
+        _att_rows.append(
+            f'<tr><td class="l">{_label}</td>'
+            f'<td class="num mono">{_all}</td>'
+            f'<td class="num mono">{_ok}</td>'
+            f'<td class="num mono">{_bad}</td>'
+            f'<td class="num gold-strong">{fmt_kg(_pct, 1)} %</td></tr>'
+        )
+    _tot_pct = round(_tot_ok / _tot_all * 100, 1) if _tot_all else 0.0
+    _att_rows.append(
+        f'<tr class="tbl-section"><td class="l">Gesamt</td>'
+        f'<td class="num mono">{_tot_all}</td>'
+        f'<td class="num mono">{_tot_ok}</td>'
+        f'<td class="num mono">{_tot_all - _tot_ok}</td>'
+        f'<td class="num gold-strong">{fmt_kg(_tot_pct, 1)} %</td></tr>'
+    )
+    st.markdown(
+        '<div class="section-head" style="margin-top:26px"><div>'
+        '<div class="kicker kicker--gold">Statistik</div>'
+        '<h2>Gültige Versuche</h2></div>'
+        f'<div class="meta">{_sm_dq} Athlet:innen ohne gültiges Ergebnis</div></div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="tablecard"><div class="tablescroll"><table class="tbl">'
+        '<thead><tr><th class="l nosort">Disziplin</th>'
+        '<th class="num nosort">Versuche</th><th class="num nosort">gültig</th>'
+        '<th class="num nosort">ungültig</th><th class="num nosort">Quote</th>'
+        '</tr></thead>'
+        f'<tbody>{"".join(_att_rows)}</tbody></table></div></div>',
+        unsafe_allow_html=True,
+    )
+
+    # ---------- Statistik 6: 9 von 9 (alle Versuche gueltig) ----------
+    _att_all = [c for c in _SM_ATTEMPT_COLS if c in _sm.columns]
+    _av = _sm[_att_all].apply(pd.to_numeric, errors="coerce")
+    _ok_cnt = (_av > 0).sum(axis=1)
+    _try_cnt = ((_av > 0) | (_av < 0)).sum(axis=1)
+    _perfect = _sm[(_try_cnt == 9) & (_ok_cnt == 9)].sort_values("GL_Points", ascending=False)
+    st.markdown(
+        '<div class="section-head" style="margin-top:26px"><div>'
+        '<div class="kicker kicker--gold">Statistik</div>'
+        '<h2>9 von 9</h2></div>'
+        f'<div class="meta">{len(_perfect)} von {int((_try_cnt == 9).sum())} '
+        'Athlet:innen ohne Fehlversuch</div></div>',
+        unsafe_allow_html=True,
+    )
+    if _perfect.empty:
+        st.markdown('<div class="table-note">Niemand hat alle neun Versuche gültig '
+                    'abgeschlossen.</div>', unsafe_allow_html=True)
+    else:
+        _pf_rows = "".join(
+            f'<tr><td class="l" title="{esc(_t.Name)}">{esc(_t.Name)}</td>'
+            f'<td class="mono">{wc_label(_t.WeightClassKg)}</td>'
+            f'<td class="num mono">{fmt_sbd(getattr(_t, "Best3SquatKg", None), getattr(_t, "Best3BenchKg", None), getattr(_t, "Best3DeadliftKg", None))}</td>'
+            f'<td class="num mono-strong">{fmt_kg(_t.TotalKg)}</td>'
+            f'<td class="num gold-strong">{fmt_kg(_t.GL_Points, 2)}</td>'
+            f'<td class="l" title="{esc(_t.Team)}">{esc(_t.Team)}</td></tr>'
+            for _t in _perfect.itertuples()
+        )
+        st.markdown(
+            '<div class="tablecard"><div class="tablescroll">'
+            '<table class="tbl" data-sortable="1"><thead><tr>'
+            + _sh("Athlet:in", "text", "l") + _sh("Klasse", "text")
+            + '<th class="num nosort" title="Kniebeuge / Bankdrücken / Kreuzheben">SBD</th>'
+            + _sh("Total", "num", "num") + _sh("IPF GL", "num", "num")
+            + _sh("Verein", "text", "l")
+            + '</tr></thead>'
+            f'<tbody>{_pf_rows}</tbody></table></div></div>',
+            unsafe_allow_html=True,
+        )
+
+    # ---------- Statistik 7: Fail Queen & King ----------
+    # Fehlversuche je Person aus den Einzelversuchen (OPL: Wert < 0 = ungueltig).
+    # Ohne DQ: wer ausgeschieden ist, haeuft zwangslaeufig Fehlversuche an und wuerde
+    # die Wertung dominieren — hier zaehlen nur Athlet:innen mit gueltigem Ergebnis.
+    _fail_src = _sm[~_sm["is_dq"]].copy()
+    _fa = _fail_src[[c for c in _SM_ATTEMPT_COLS if c in _fail_src.columns]].apply(
+        pd.to_numeric, errors="coerce")
+    _fail_src["fails"] = (_fa < 0).sum(axis=1).astype(int)
+    _fail_src["goods"] = (_fa > 0).sum(axis=1).astype(int)
+    _fails = (_fail_src[_fail_src["fails"] >= 3]
+              .sort_values(["fails", "Name"], ascending=[False, True]))
+    st.markdown(
+        '<div class="section-head" style="margin-top:26px"><div>'
+        '<div class="kicker kicker--gold">Statistik</div>'
+        '<h2>Fail Queen &amp; King</h2></div>'
+        f'<div class="meta">{len(_fails)} Athlet:innen mit 3 oder mehr '
+        'Fehlversuchen</div></div>',
+        unsafe_allow_html=True,
+    )
+    if _fails.empty:
+        st.markdown('<div class="table-note">Niemand mit drei oder mehr '
+                    'Fehlversuchen.</div>', unsafe_allow_html=True)
+    else:
+        _f_rows = "".join(
+            f'<tr><td class="l" title="{esc(_t.Name)}">{esc(_t.Name)}</td>'
+            f'<td><span class="sex-tag">{sex_display(_t.Sex)}</span></td>'
+            f'<td class="mono">{wc_label(_t.WeightClassKg)}</td>'
+            f'<td class="num mono-strong">{int(_t.fails)}</td>'
+            f'<td class="num mono">{int(_t.goods)}</td>'
+            f'<td class="num mono">{fmt_kg(_t.TotalKg)}</td>'
+            f'<td class="l" title="{esc(_t.Team)}">{esc(_t.Team)}</td></tr>'
+            for _t in _fails.itertuples()
+        )
+        st.markdown(
+            '<div class="tablecard"><div class="tablescroll">'
+            '<table class="tbl" data-sortable="1"><thead><tr>'
+            + _sh("Athlet:in", "text", "l") + _sh("Geschl.", "text", "", "Geschlecht")
+            + _sh("Klasse", "text")
+            + _sh("Fehlversuche", "num", "num", "Ungültige Versuche")
+            + _sh("gültig", "num", "num", "Gültige Versuche")
+            + _sh("Total", "num", "num") + _sh("Verein", "text", "l")
+            + '</tr></thead>'
+            f'<tbody>{_f_rows}</tbody></table></div></div>',
+            unsafe_allow_html=True,
+        )
+
+    # ---------- Statistik 8: Körpergewicht vs. Total / IPF-GL-Punkte ----------
+    # Gleiche Optik wie auf der Statistik-Seite (Farben je Geschlecht + lineare
+    # Trendlinie). Nutzt die modulweiten Helfer _SEX_COLOR/_SEX_LABEL/_plot_theme.
+    _plot_src = _sm[(~_sm["is_dq"])
+                    & (pd.to_numeric(_sm["TotalKg"], errors="coerce") > 0)]
+    for _ycol, _ylab, _ytitle, _yfmt in (
+        ("TotalKg", "Total", "Körpergewicht vs. Total", ".1f"),
+        ("GL_Points", "IPF GL", "Körpergewicht vs. IPF-GL-Punkte", ".2f"),
+    ):
+        st.markdown(
+            '<div class="section-head" style="margin-top:26px"><div>'
+            '<div class="kicker kicker--gold">Statistik</div>'
+            f'<h2>{_ytitle}</h2></div>'
+            '<div class="meta">Punkt = eine Athlet:in · Linie = Trend je Geschlecht</div></div>',
+            unsafe_allow_html=True,
+        )
+        _fig = go.Figure()
+        for _sxk in ("F", "M"):
+            _d = _plot_src[_plot_src["sx1"] == _sxk]
+            if _d.empty:
+                continue
+            _bw = pd.to_numeric(_d["BodyweightKg"], errors="coerce")
+            _yv = pd.to_numeric(_d[_ycol], errors="coerce")
+            _fig.add_trace(go.Scatter(
+                x=_bw, y=_yv, mode="markers", name=_SEX_LABEL[_sxk],
+                marker=dict(size=9, color=_SEX_COLOR[_sxk],
+                            line=dict(width=0.5, color="#0B0B0C")),
+                customdata=list(zip(_d["Name"],
+                                    [wc_label(w) for w in _d["WeightClassKg"]],
+                                    _d["Team"])),
+                hovertemplate="<b>%{customdata[0]}</b> · %{customdata[1]}<br>"
+                              "BW %{x:.1f} kg · " + _ylab + " %{y:" + _yfmt + "}<br>"
+                              "%{customdata[2]}<extra></extra>",
+            ))
+            # Lineare Trendlinie je Geschlecht (mind. 3 Punkte, sonst nicht sinnvoll)
+            _ok = _bw.notna() & _yv.notna()
+            if int(_ok.sum()) >= 3:
+                _m, _b = np.polyfit(_bw[_ok], _yv[_ok], 1)
+                _x0, _x1 = float(_bw[_ok].min()), float(_bw[_ok].max())
+                _fig.add_trace(go.Scatter(
+                    x=[_x0, _x1], y=[_m * _x0 + _b, _m * _x1 + _b],
+                    mode="lines", name=f"Trend {_SEX_LABEL[_sxk]}",
+                    line=dict(color=_SEX_COLOR[_sxk], width=2.5, dash="dash"),
+                    hovertemplate="Trend " + _SEX_LABEL[_sxk]
+                                  + ": BW %{x:.0f} → ~%{y:" + _yfmt + "}<extra></extra>",
+                ))
+        _plot_theme(_fig, height=460)
+        _fig.update_layout(showlegend=True,
+                           legend=dict(orientation="h", y=1.08, x=0,
+                                       font=dict(color="#B6B6BB")))
+        _fig.update_xaxes(title_text="Körpergewicht [kg]")
+        _fig.update_yaxes(title_text=("Total [kg]" if _ycol == "TotalKg"
+                                      else "IPF GL Punkte"))
+        st.plotly_chart(_fig, use_container_width=True,
+                        config={"displayModeBar": False})
+
+    # ---------- Ergebnisse je Geschlecht und Gewichtsklasse (am Ende, Details) ----------
+    _SM_COLGROUP = (
+        '<colgroup>'
+        '<col style="width:56px"><col style="width:186px"><col style="width:64px">'
+        '<col style="width:66px"><col style="width:178px"><col style="width:72px">'
+        '<col style="width:74px"><col style="width:196px">'
+        '</colgroup>'
+    )
+    # Bewusst NICHT sortierbar: die Tabelle ist nach Gewichtsklassen gruppiert
+    # (Trennzeilen), Sortieren wuerde die Gruppierung zerreissen. Ausserdem bindet das
+    # Sortier-Skript ohnehin nur an #qual-table — sortierbar aussehende Koepfe, die
+    # nichts tun, waeren irrefuehrend.
+    _sm_head = (
+        '<th class="num nosort">Platz</th>'
+        '<th class="l nosort">Name</th>'
+        '<th class="nosort" title="Gewichtsklasse">Klasse</th>'
+        '<th class="num nosort" title="Körpergewicht in kg">BW</th>'
+        '<th class="num nosort" title="Kniebeuge / Bankdrücken / Kreuzheben">SBD</th>'
+        '<th class="num nosort">Total</th>'
+        '<th class="num nosort" title="IPF GL Punkte">IPF GL</th>'
+        '<th class="l nosort">Verein</th>'
+    )
+    for _sx_key, _sx_title in (("F", "Frauen"), ("M", "Männer")):
+        _grp = _sm[_sm["sx1"] == _sx_key]
+        if _grp.empty:
+            continue
+        st.markdown(
+            '<div class="section-head" style="margin-top:22px"><div>'
+            f'<div class="kicker kicker--gold">{_sx_title}</div>'
+            f'<h2>Ergebnisse {_sx_title}</h2></div>'
+            f'<div class="meta">{len(_grp)} Athlet:innen</div></div>',
+            unsafe_allow_html=True,
+        )
+        _wc_order = (_grp[["WeightClassKg", "wc_sort"]]
+                     .drop_duplicates("WeightClassKg")
+                     .sort_values("wc_sort")["WeightClassKg"].tolist())
+        _rows = []
+        for _wc in _wc_order:
+            _cls = _grp[_grp["WeightClassKg"] == _wc].sort_values(
+                ["is_dq", "place_num"], ascending=[True, True], na_position="last")
+            _rows.append(f'<tr class="tbl-section"><td colspan="8">{wc_label(_wc)} kg</td></tr>')
+            for _r in _cls.itertuples():
+                _href = f"?athlete={_urlquote(str(_r.Name))}"
+                _nm = f'<a class="nm nm-link" href="{_href}" target="_self">{esc(_r.Name)}</a>'
+                _is_dq = bool(getattr(_r, "is_dq"))
+                _pn = getattr(_r, "place_num")
+                _pl = "DQ" if _is_dq else (str(int(_pn)) if pd.notna(_pn) else "–")
+                _medal = "" if (_is_dq or pd.isna(_pn)) else \
+                    {1: "sm-gold", 2: "sm-silver", 3: "sm-bronze"}.get(int(_pn), "")
+                _rows.append(
+                    f'<tr class="{"row--w" if _is_dq else "row--q"}">'
+                    f'<td class="num rank {_medal}">{_pl}</td>'
+                    f'<td class="cell-name l" title="{esc(_r.Name)}">{_nm}</td>'
+                    f'<td class="mono">{wc_label(_r.WeightClassKg)}</td>'
+                    f'<td class="num mono">{fmt_kg(_r.BodyweightKg, 2)}</td>'
+                    f'<td class="num mono">{fmt_sbd(getattr(_r, "Best3SquatKg", None), getattr(_r, "Best3BenchKg", None), getattr(_r, "Best3DeadliftKg", None))}</td>'
+                    f'<td class="num mono-strong">{"–" if _is_dq else fmt_kg(_r.TotalKg)}</td>'
+                    f'<td class="num gold-strong">{"–" if _is_dq else fmt_kg(_r.GL_Points, 2)}</td>'
+                    f'<td class="l" title="{esc(_r.Team)}">{esc(_r.Team)}</td></tr>'
+                )
+        st.markdown(
+            f'<div class="tablecard"><div class="tablescroll">'
+            f'<table class="tbl tbl-sm">{_SM_COLGROUP}'
+            f'<thead><tr>{_sm_head}</tr></thead><tbody>{"".join(_rows)}</tbody></table></div></div>',
+            unsafe_allow_html=True,
+        )
+
+
 # --- Credits / Datenquelle ---
 st.markdown(
     '<div class="credit">Basiert auf Daten von '
@@ -4803,7 +5610,78 @@ _components.html(
     }
   }
 
-  function syncAll() { sync(); syncHead(); }
+  // ---- Sortierbare Tabellen (Seite "SM 2026 Ergebnisse") ----
+  // Das grosse Sortier-Skript oben bindet nur an #qual-table (mit Rang-Neunummerierung
+  // und sessionStorage). Hier eine schlanke Variante fuer die uebrigen Tabellen: alles,
+  // was <table data-sortable="1"> ist, wird an den Koepfen mit data-sort-type sortierbar.
+  // Absichtlich OHNE eigenen MutationObserver/Interval — laeuft in syncAll mit.
+  function _sortNum(t) {
+    var v = String(t == null ? '' : t).replace(/\u2212/g, '-').replace(/[^\-+\d.,]/g, '');
+    if (!v) return null;
+    v = v.replace(/\./g, '').replace(',', '.');   // de: Punkt=Tausender, Komma=Dezimal
+    var n = parseFloat(v);
+    return isNaN(n) ? null : n;
+  }
+  function _sortDate(t) {
+    var m = String(t == null ? '' : t).match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+    return m ? new Date(+m[3], +m[2] - 1, +m[1]).getTime() : null;
+  }
+  function _cellVal(td, type) {
+    var t = td ? td.textContent.trim() : '';
+    if (type === 'num' || type === 'diff') return _sortNum(t);
+    if (type === 'date') return _sortDate(t);
+    return t.toLowerCase();
+  }
+  function _applyTableSort(tbl, idx, type, dir) {
+    var tb = tbl.tBodies[0];
+    if (!tb) return;
+    var rows = [].slice.call(tb.rows);
+    rows.sort(function (a, b) {
+      var va = _cellVal(a.cells[idx], type), vb = _cellVal(b.cells[idx], type);
+      var ae = (va === null || va === ''), be = (vb === null || vb === '');
+      if (ae && be) return 0;
+      if (ae) return 1;              // Leerwerte immer ans Ende
+      if (be) return -1;
+      if (va < vb) return dir === 'asc' ? -1 : 1;
+      if (va > vb) return dir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    for (var i = 0; i < rows.length; i++) tb.appendChild(rows[i]);
+  }
+  function wireSortables() {
+    var tables = doc.querySelectorAll('table[data-sortable]');
+    for (var t = 0; t < tables.length; t++) {
+      (function (tbl) {
+        if (tbl.getAttribute('data-sort-wired')) return;
+        tbl.setAttribute('data-sort-wired', '1');
+        var ths = [].slice.call(tbl.querySelectorAll('thead th'));
+        ths.forEach(function (th, idx) {
+          var type = th.getAttribute('data-sort-type');
+          if (!type) return;
+          th.addEventListener('click', function () {
+            var cur = tbl.getAttribute('data-sort-col');
+            var curDir = tbl.getAttribute('data-sort-dir');
+            var dir;
+            if (String(idx) === cur) dir = (curDir === 'asc' ? 'desc' : 'asc');
+            else dir = (type === 'text' ? 'asc' : 'desc');   // Text A-Z, Zahlen gross zuerst
+            _applyTableSort(tbl, idx, type, dir);
+            tbl.setAttribute('data-sort-col', idx);
+            tbl.setAttribute('data-sort-dir', dir);
+            ths.forEach(function (o) {
+              o.classList.remove('sort-active');
+              var a = o.querySelector('.sort-arrow');
+              if (a) a.textContent = '\u2195';
+            });
+            th.classList.add('sort-active');
+            var ar = th.querySelector('.sort-arrow');
+            if (ar) ar.textContent = (dir === 'asc' ? '\u25B2' : '\u25BC');
+          });
+        });
+      })(tables[t]);
+    }
+  }
+
+  function syncAll() { sync(); syncHead(); wireSortables(); }
 
   win.addEventListener('scroll', syncAll, true);
   win.addEventListener('resize', syncAll);
