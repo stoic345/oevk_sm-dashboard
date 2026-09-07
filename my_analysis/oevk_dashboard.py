@@ -4801,11 +4801,11 @@ elif _page == SM_RESULTS_LABEL:
     if _sm.empty:
         st.info("Keine Ergebnisse für diese Filter — Auswahl in der Sidebar anpassen.")
 
-    # ---------- Statistik 1: Beste IPF-GL-Punkte ----------
+    # ---------- Statistik 1: Top 15 nach IPF GL Punkten ----------
     st.markdown(
         '<div class="section-head" style="margin-top:26px"><div>'
         '<div class="kicker kicker--gold">Statistik</div>'
-        '<h2>Beste IPF-GL-Punkte</h2></div>'
+        '<h2>Top 15 nach IPF GL Punkten</h2></div>'
         '<div class="meta">Relativpunktewertung nach IPF GL Punkten</div></div>',
         unsafe_allow_html=True,
     )
