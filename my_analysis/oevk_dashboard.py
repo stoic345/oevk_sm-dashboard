@@ -4937,7 +4937,7 @@ elif _page == SM_RESULTS_LABEL:
             unsafe_allow_html=True,
         )
 
-    # ---------- Statistik 3: Leistungen ueber dem offiziellen Rekord ----------
+    # ---------- Statistik 3: Neue Rekorde (ueber der offiziellen Rekordliste) ----------
     # Vergleich gegen die offizielle OeVK-Liste (Stand OEVK_RECORDS_STAND, Raw).
     # Verglichen wird gegen die Altersklasse der Person UND gegen Open — ein Junioren-
     # Rekord ist eine andere Bestmarke als der allgemeine Staatsrekord.
@@ -4974,7 +4974,7 @@ elif _page == SM_RESULTS_LABEL:
     st.markdown(
         '<div class="section-head" style="margin-top:26px"><div>'
         '<div class="kicker kicker--gold">Statistik</div>'
-        '<h2>Über dem offiziellen Rekord</h2></div>'
+        '<h2>Neue Rekorde</h2></div>'
         f'<div class="meta">{len(_beat_df)} Rekorde übertroffen · '
         f'{_beat_df["Name"].nunique() if not _beat_df.empty else 0} Athlet:innen</div></div>',
         unsafe_allow_html=True,
