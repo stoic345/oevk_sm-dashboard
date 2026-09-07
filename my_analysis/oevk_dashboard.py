@@ -960,6 +960,11 @@ table.tbl tbody tr.tbl-section:hover td { background:rgba(201,174,91,0.14); }
 table.tbl tbody tr.tbl-section.is-sel td { background:rgba(201,174,91,0.24); }
 table.tbl tbody tr.tbl-section.is-sel td:first-child {
   box-shadow:inset 3px 0 0 var(--gold-bright); }
+/* Gleiche Markierung fuer normale Zeilen (Staatsmeister-Podeste). Die Regel oben greift
+   nur auf Gruppenkopfzeilen; sie gewinnt dort weiter, weil sie zwei Klassen matcht. */
+table.tbl tbody tr.is-sel td { background:rgba(201,174,91,0.16); }
+table.tbl tbody tr.is-sel td:first-child {
+  box-shadow:inset 3px 0 0 var(--gold-bright); }
 tr.row--q td { background:transparent; }
 tr.row--q:hover td { background:var(--surface-3); }
 tr.row--q td:first-child { box-shadow:inset 3px 0 0 var(--green); }
@@ -4807,10 +4812,101 @@ elif _page == SM_RESULTS_LABEL:
     if _sm.empty:
         st.info("Keine Ergebnisse für diese Filter — Auswahl in der Sidebar anpassen.")
 
+    # ---------- Staatsmeister-Titel (World-Games-Klassen) ----------
+    # Die Staatsmeisterwertung laeuft NICHT in den acht IPF-Gewichtsklassen, sondern in vier
+    # zusammengelegten World-Games-Klassen je Geschlecht. Ausschreibung zur SM 2026:
+    # "Die Staatsmeisterwertung erfolgt in den Gewichtsklassen der World Games.
+    #  Frauen: Lightweight (-47 & -52) / Middleweight (-57 & -63) / Heavyweight (-69 & -76) /
+    #  Super Heavyweight (-84 & +84); Maenner: (-59 & -66) / (-74 & -83) / (-93 & -105) /
+    #  (-120 & +120)."
+    # OpenPowerlifting vergibt `Place` je IPF-Klasse (hier 14 Klassensiege) — die acht Titel
+    # sind daraus nicht ablesbar, deshalb rechnen wir sie.
+    # Gewertet wird nach IPF-GL-Punkten: die Wettkampfordnung schreibt das fuer die
+    # Titelvergabe vor, und innerhalb einer Gruppe aus zwei Gewichtsklassen waere ein
+    # Vergleich roher Totals unfair (Beispiel Schwergewicht Herren: Kreuzer gewinnt mit
+    # 787,5 kg gegen Hofers 791,0 kg, weil er leichter ist).
+    # ACHTUNG: §12 der Wettkampfordnung 2025 beschreibt noch die ALTE Regel — ein Titel je
+    # Geschlecht ueber alle Klassen. Fuer 2026 gilt die Ausschreibung. Nicht "zurueckfixen".
+    # Fuer 2027 gegen die dann gueltige Ausschreibung pruefen.
+    _WG_TITLES = {
+        "F": [("Leichtgewicht", ("47", "52")), ("Mittelgewicht", ("57", "63")),
+              ("Schwergewicht", ("69", "76")), ("Superschwergewicht", ("84", "84+"))],
+        "M": [("Leichtgewicht", ("59", "66")), ("Mittelgewicht", ("74", "83")),
+              ("Schwergewicht", ("93", "105")), ("Superschwergewicht", ("120", "120+"))],
+    }
+    # Basis bewusst _sm_full statt _sm: ein Titel wird ueber das ganze Feld vergeben. Ein
+    # gefiltertes Podest wuerde jemanden als Titeltraeger:in ausweisen, der es nicht ist.
+    # Dieselbe Basis nutzen weiter unten die Mannschaftswertungen.
+    _sm_scored = _sm_full.copy()
+    _sm_scored["sx1"] = _sm_scored["Sex"].astype(str).str.upper().str[:1]
+    _sm_scored["is_dq"] = (_sm_scored["Place"].astype(str).str.upper()
+                           .isin(["DQ", "DD", "NS"]))
+    # DQ faellt doppelt heraus: is_dq und GL_Points = NaN (weil TotalKg 0 ist).
+    _sm_scored = _sm_scored[(~_sm_scored["is_dq"]) & _sm_scored["GL_Points"].notna()]
+    # WeightClassKg liegt als "52.00"/"120+" vor, die Gruppenschluessel als "52"/"120+" —
+    # wie ueberall im File ueber wc_display() angleichen (nicht _normalize_wc_key, das
+    # haengt an QUAL_LIMITS).
+    _sm_scored["wc_key"] = _sm_scored["WeightClassKg"].astype(str).map(wc_display)
+
+    st.markdown(
+        '<div class="section-head" style="margin-top:26px"><div>'
+        '<h2>Staatsmeister:innen</h2></div>'
+        '<div class="meta">je 4 Titel in den World-Games-Klassen · nach IPF-GL-Punkten'
+        + (' · unabhängig von den Filtern' if _sm_filtered else '')
+        + '</div></div>',
+        unsafe_allow_html=True,
+    )
+    _WG_MEDAL = {1: "sm-gold", 2: "sm-silver", 3: "sm-bronze"}
+    _wg_cols = st.columns(2)
+    for _wg_i, (_wg_sx, _wg_title) in enumerate((("F", "Frauen"), ("M", "Männer"))):
+        _wg_rows = []
+        for _wg_name, _wg_wcs in _WG_TITLES[_wg_sx]:
+            _wg_lbl = " / ".join(wc_label(_w) for _w in _wg_wcs)
+            _wg_rows.append(
+                f'<tr class="tbl-section"><td colspan="6">{esc(_wg_name)}'
+                f'<span style="opacity:0.55"> · {_wg_lbl}</span></td></tr>'
+            )
+            _wg_pod = (_sm_scored[(_sm_scored["sx1"] == _wg_sx)
+                                  & (_sm_scored["wc_key"].isin(_wg_wcs))]
+                       .sort_values("GL_Points", ascending=False).head(3))
+            if _wg_pod.empty:
+                _wg_rows.append('<tr><td class="num">–</td>'
+                                '<td class="l" colspan="5">niemand am Start</td></tr>')
+                continue
+            for _wg_p, _wg_r in enumerate(_wg_pod.itertuples(), 1):
+                _wg_href = f"?athlete={_urlquote(str(_wg_r.Name))}"
+                _wg_tr = (' class="is-sel"'
+                          if (sm_team and str(_wg_r.Team).strip() == sm_team) else '')
+                _wg_rows.append(
+                    f'<tr{_wg_tr}>'
+                    f'<td class="num mono-strong {_WG_MEDAL[_wg_p]}">{_wg_p}</td>'
+                    f'<td class="l" title="{esc(_wg_r.Name)}">'
+                    f'<a class="nm nm-link" href="{_wg_href}" target="_self">'
+                    f'{esc(_wg_r.Name)}</a></td>'
+                    f'<td class="mono">{wc_label(_wg_r.WeightClassKg)}</td>'
+                    f'<td class="num mono">{fmt_kg(_wg_r.TotalKg)}</td>'
+                    f'<td class="num gold-strong">{fmt_kg(_wg_r.GL_Points, 2)}</td>'
+                    f'<td class="l" title="{esc(_wg_r.Team)}">{esc(_wg_r.Team)}</td></tr>'
+                )
+        # Bewusst NICHT sortierbar: nach Titelkategorien gruppiert, Sortieren wuerde die
+        # Gruppierung zerreissen — gleiche Begruendung wie bei Mannschaften/Ergebnissen.
+        _wg_cols[_wg_i].markdown(
+            '<div class="tablecard"><div class="tablescroll">'
+            '<table class="tbl"><thead><tr>'
+            '<th class="num nosort">#</th>'
+            f'<th class="l nosort">{_wg_title}</th>'
+            '<th class="nosort" title="Gewichtsklasse">Klasse</th>'
+            '<th class="num nosort">Total</th>'
+            '<th class="num nosort" title="IPF GL Punkte">IPF GL</th>'
+            '<th class="l nosort">Verein</th>'
+            '</tr></thead>'
+            f'<tbody>{"".join(_wg_rows)}</tbody></table></div></div>',
+            unsafe_allow_html=True,
+        )
+
     # ---------- Statistik 1: Top 15 nach IPF GL Punkten ----------
     st.markdown(
         '<div class="section-head" style="margin-top:26px"><div>'
-        '<div class="kicker kicker--gold">Statistik</div>'
         '<h2>Top 15 nach IPF GL Punkten</h2></div>'
         '<div class="meta">Relativpunktewertung nach IPF GL Punkten</div></div>',
         unsafe_allow_html=True,
@@ -4859,11 +4955,7 @@ elif _page == SM_RESULTS_LABEL:
     # gesamte Feld. Ein Gewichtsklassen-Filter wuerde Teams aus Teilmengen bilden und damit
     # Zahlen erzeugen, die es im Wettkampf nie gab; ein Vereinsfilter wuerde die Rangliste
     # auf eine Zeile reduzieren. Ist ein Verein gewaehlt, wird seine Zeile markiert.
-    _mt_base = _sm_full.copy()
-    _mt_base["sx1"] = _mt_base["Sex"].astype(str).str.upper().str[:1]
-    _mt_base["is_dq"] = _mt_base["Place"].astype(str).str.upper().isin(["DQ", "DD", "NS"])
-    # DQ-Zeilen fallen hier doppelt heraus: is_dq und GL_Points = NaN (weil TotalKg 0 ist).
-    _mt_base = _mt_base[(~_mt_base["is_dq"]) & _mt_base["GL_Points"].notna()]
+    _mt_base = _sm_scored   # dieselbe Basis wie die Staatsmeister-Podeste (siehe oben)
 
     _MT_ROMAN = ("I", "II", "III", "IV", "V", "VI", "VII", "VIII")
 
@@ -4918,24 +5010,17 @@ elif _page == SM_RESULTS_LABEL:
                            else _e["team"])
         return out
 
-    _MT_MULTI_NOTE = (" Stellt ein Verein mehr als ein vollständiges Team, werden "
-                      "Folgeteams (I, II, III …) nach Punkterang gebildet; ein Rest, der "
-                      "kein volles Team füllt, bleibt unberücksichtigt. Die genaue "
-                      "Bildungsregel des ÖVK ist nicht veröffentlicht.")
     _MT_LIMIT = 5   # je Tabelle nur die besten fuenf Mannschaften zeigen
 
-    for _mt_title, _mt_nf, _mt_nm, _mt_multi, _mt_note in (
-        ("Mannschaftscup", 2, 2, True,
-         "Cup-Mannschaft = die punktebesten 2 Frauen und 2 Männer eines Vereins, "
-         "Wertung nach IPF-GL-Punkten (Ausschreibung zur SM 2026). Die Ausschreibung "
-         "nennt je Verein eine Cup-Mannschaft — Folgeteams sind hier zusätzlich "
-         "ausgewiesen." + _MT_MULTI_NOTE),
-        ("Mannschaft Damen", 3, 0, True,
-         "Mannschaft = drei Frauen eines Vereins, Wertung nach IPF-GL-Punkten "
-         "(ÖVK-Wettkampfordnung, allgemeine Klasse)." + _MT_MULTI_NOTE),
-        ("Mannschaft Herren", 0, 4, True,
-         "Mannschaft = vier Männer eines Vereins, Wertung nach IPF-GL-Punkten "
-         "(ÖVK-Wettkampfordnung, allgemeine Klasse)." + _MT_MULTI_NOTE),
+    # Bewusst ohne Fussnote unter den Tabellen: die Teamgroesse steht bereits in der
+    # Unterzeile ("2 Frauen + 2 Männer"), alles Weitere ist Regelkunde, die auf der Seite
+    # niemand braucht. Die Vorbehalte — Ausschreibung kennt je Verein nur eine
+    # Cup-Mannschaft, Bildungsregel fuer Folgeteams ist nicht veroeffentlicht — stehen
+    # oben im Kommentar zu _sm_team_rank.
+    for _mt_title, _mt_nf, _mt_nm, _mt_multi in (
+        ("Mannschaftscup", 2, 2, True),
+        ("Mannschaft Damen", 3, 0, True),
+        ("Mannschaft Herren", 0, 4, True),
     ):
         _mt_all = _sm_team_rank(_mt_base, _mt_nf, _mt_nm, multi=_mt_multi)
         _mt_rank = _mt_all[:_MT_LIMIT]
@@ -4958,7 +5043,6 @@ elif _page == SM_RESULTS_LABEL:
             _mt_meta_txt = f'{len(_mt_rank)} Mannschaften ({_mt_size})'
         st.markdown(
             '<div class="section-head" style="margin-top:26px"><div>'
-            '<div class="kicker kicker--gold">Statistik</div>'
             f'<h2>{_mt_title}</h2></div>'
             f'<div class="meta">{_mt_meta_txt}'
             + (' · unabhängig von den Filtern' if _sm_filtered else '')
@@ -5005,8 +5089,7 @@ elif _page == SM_RESULTS_LABEL:
         st.markdown(
             '<div class="tablecard"><div class="tablescroll">'
             '<table class="tbl"><thead><tr>' + "".join(_mt_head) + '</tr></thead>'
-            f'<tbody>{"".join(_mt_rows)}</tbody></table></div></div>'
-            f'<div class="table-note">{_mt_note}</div>',
+            f'<tbody>{"".join(_mt_rows)}</tbody></table></div></div>',
             unsafe_allow_html=True,
         )
 
@@ -5028,7 +5111,6 @@ elif _page == SM_RESULTS_LABEL:
     _mtab = _mtab.sort_values(["ges", 1, 2, 3], ascending=False)
     st.markdown(
         '<div class="section-head" style="margin-top:26px"><div>'
-        '<div class="kicker kicker--gold">Statistik</div>'
         '<h2>Medaillen je Verein</h2></div>'
         f'<div class="meta">{len(_mtab)} Vereine auf dem Podium</div></div>',
         unsafe_allow_html=True,
@@ -5092,7 +5174,6 @@ elif _page == SM_RESULTS_LABEL:
     _beat_df = pd.DataFrame(_beat)
     st.markdown(
         '<div class="section-head" style="margin-top:26px"><div>'
-        '<div class="kicker kicker--gold">Statistik</div>'
         '<h2>Neue Rekorde</h2></div>'
         f'<div class="meta">{len(_beat_df)} Rekorde übertroffen · '
         f'{_beat_df["Name"].nunique() if not _beat_df.empty else 0} Athlet:innen</div></div>',
@@ -5146,7 +5227,6 @@ elif _page == SM_RESULTS_LABEL:
     _duel_df = pd.DataFrame(_duel).sort_values("gap") if _duel else pd.DataFrame()
     st.markdown(
         '<div class="section-head" style="margin-top:26px"><div>'
-        '<div class="kicker kicker--gold">Statistik</div>'
         '<h2>Engste Entscheidungen</h2></div>'
         f'<div class="meta">{len(_duel_df)} Klassen mit Platz 1 und 2 · '
         f'engster Abstand {fmt_kg(_duel_df["gap"].min()) if not _duel_df.empty else "–"} kg'
@@ -5203,7 +5283,6 @@ elif _page == SM_RESULTS_LABEL:
     _n_eq = int((_with["delta"] == 0).sum())
     st.markdown(
         '<div class="section-head" style="margin-top:26px"><div>'
-        '<div class="kicker kicker--gold">Statistik</div>'
         '<h2>Steigerung zur Qualifikation</h2></div>'
         f'<div class="meta">{_n_up} verbessert · {_n_dn} darunter · '
         f'{_n_eq} gleich · '
@@ -5249,7 +5328,6 @@ elif _page == SM_RESULTS_LABEL:
     _pb_new = _pb_known[_pb_known["pb_delta"] > 0].sort_values("pb_delta", ascending=False)
     st.markdown(
         '<div class="section-head" style="margin-top:26px"><div>'
-        '<div class="kicker kicker--gold">Statistik</div>'
         '<h2>Persönliche Bestleistung</h2></div>'
         f'<div class="meta">{len(_pb_new)} von {len(_pb_known)} mit Vorgeschichte haben '
         'ihr bestes Total überboten</div></div>',
@@ -5298,7 +5376,6 @@ elif _page == SM_RESULTS_LABEL:
               .sort_values("GL_Points", ascending=False))
     st.markdown(
         '<div class="section-head" style="margin-top:26px"><div>'
-        '<div class="kicker kicker--gold">Statistik</div>'
         '<h2>SM-Debüt</h2></div>'
         f'<div class="meta">{len(_debut)} von {len(_scored)} erstmals bei einer '
         'Staatsmeisterschaft</div></div>',
@@ -5364,7 +5441,6 @@ elif _page == SM_RESULTS_LABEL:
     )
     st.markdown(
         '<div class="section-head" style="margin-top:26px"><div>'
-        '<div class="kicker kicker--gold">Statistik</div>'
         '<h2>Gültige Versuche</h2></div>'
         f'<div class="meta">{_sm_dq} Athlet:innen ohne gültiges Ergebnis</div></div>',
         unsafe_allow_html=True,
@@ -5387,7 +5463,6 @@ elif _page == SM_RESULTS_LABEL:
     _perfect = _sm[(_try_cnt == 9) & (_ok_cnt == 9)].sort_values("GL_Points", ascending=False)
     st.markdown(
         '<div class="section-head" style="margin-top:26px"><div>'
-        '<div class="kicker kicker--gold">Statistik</div>'
         '<h2>9 von 9</h2></div>'
         f'<div class="meta">{len(_perfect)} von {int((_try_cnt == 9).sum())} '
         'Athlet:innen ohne Fehlversuch</div></div>',
@@ -5431,7 +5506,6 @@ elif _page == SM_RESULTS_LABEL:
               .sort_values(["fails", "Name"], ascending=[False, True]))
     st.markdown(
         '<div class="section-head" style="margin-top:26px"><div>'
-        '<div class="kicker kicker--gold">Statistik</div>'
         '<h2>Fail Queen &amp; King</h2></div>'
         f'<div class="meta">{len(_fails)} Athlet:innen mit 3 oder mehr '
         'Fehlversuchen</div></div>',
@@ -5475,7 +5549,6 @@ elif _page == SM_RESULTS_LABEL:
     ):
         st.markdown(
             '<div class="section-head" style="margin-top:26px"><div>'
-            '<div class="kicker kicker--gold">Statistik</div>'
             f'<h2>{_ytitle}</h2></div>'
             '<div class="meta">Punkt = eine Athlet:in · Linie = Trend je Geschlecht</div></div>',
             unsafe_allow_html=True,
