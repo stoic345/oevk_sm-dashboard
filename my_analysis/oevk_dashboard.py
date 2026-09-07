@@ -197,7 +197,7 @@ header[data-testid="stHeader"] [data-testid="stToolbarActions"] { display:none !
 .st-key-fb_pill button, .st-key-fb_pill_profile button {
   background:var(--gold) !important; border:1px solid var(--gold) !important;
   border-radius:var(--r-sm) !important; color:var(--gold-ink) !important;
-  width:100% !important; min-height:52px !important; height:100% !important;
+  width:100% !important; min-height:58px !important; height:100% !important;
   font-family:var(--font-body) !important; font-size:14px !important;
   letter-spacing:0.01em !important; text-transform:none !important; font-weight:700 !important; }
 .st-key-fb_pill button:hover, .st-key-fb_pill button:active, .st-key-fb_pill button:focus,
@@ -210,8 +210,10 @@ header[data-testid="stHeader"] [data-testid="stToolbarActions"] { display:none !
   color:var(--gold-ink) !important; font-weight:700 !important;
   font-family:var(--font-body) !important; font-size:14px !important;
   letter-spacing:0.01em !important; }
-/* Alle 4 Boxen gleich hoch */
-.status-pill { min-height:52px; height:auto; }
+/* Alle 4 Boxen gleich hoch. 58px, weil "Daten zuletzt aktualisiert" jetzt Datum UND
+   Wettkampfnamen zeigt und der Wert damit dreizeilig wird — mit 52px haengt genau diese
+   Box aus der Reihe heraus. */
+.status-pill { min-height:58px; height:auto; }
 /* Abstand zwischen den Top-Boxen und der Tab-Navigation verkleinern
    (Streamlit gibt der segmented_control standardmäßig 40px margin-top). */
 [data-testid="stButtonGroup"] { margin-top:6px !important; }
@@ -2773,7 +2775,15 @@ _last_sync_dt = _read_marker_dt(_LAST_DATA_FILE)
 _latest_meet_dt = None
 _latest_meet_name = None
 try:
-    _data_dated = data.copy()
+    # `data` ist auf das Qualifikationsfenster begrenzt — die SM selbst liegt bewusst
+    # ausserhalb. Ohne die SM-Ergebnisse wuerde hier ewig der letzte Wettkampf VOR der
+    # SM stehen (18.08.2026), obwohl die SM laengst gelaufen und im Dashboard zu sehen
+    # ist. Deshalb beide Quellen zusammenwerfen; load_sm_results ist gecacht und klein.
+    _lm_parts = [data[["Date", "MeetName"]]]
+    _sm_for_pill = load_sm_results(_data_version_token())
+    if not _sm_for_pill.empty:
+        _lm_parts.append(_sm_for_pill[["Date", "MeetName"]])
+    _data_dated = pd.concat(_lm_parts, ignore_index=True)
     _data_dated["_dt"] = pd.to_datetime(_data_dated["Date"], errors="coerce")
     _data_dated = _data_dated.dropna(subset=["_dt"])
     if not _data_dated.empty:
@@ -2797,10 +2807,18 @@ _latest_meet_val = (
 )
 
 # --- Info-Boxen (3) + Feedback-Box (4.) in einer Reihe ---
+# Hier bewusst das absolute Datum statt der relativen Form ("heute, 08:30"): die Box
+# beantwortet "welcher Stand liegt vor", und dafuer ist das Datum die Antwort. Die
+# relative Form bleibt bei "Zuletzt nach Updates gesucht", wo der Abstand zaehlt.
+# Dazu der Wettkampf, der zuletzt dazugekommen ist — das Datum allein sagt nicht, WAS
+# aktualisiert wurde.
+_sync_val = _last_sync_dt.strftime("%d.%m.%Y") if _last_sync_dt is not None else "—"
+if _last_sync_dt is not None and _latest_meet_name:
+    _sync_val += f' · {_html.escape(_latest_meet_name)}'
 _pill_sync = (
     f'<div class="status-pill{_sync_stale_cls}">'
     f'<span class="lab">Daten zuletzt aktualisiert</span>'
-    f'<span class="val">{_fmt_sync_dt(_last_sync_dt)}</span></div>'
+    f'<span class="val">{_sync_val}</span></div>'
 )
 _pill_meet = (
     f'<div class="status-pill">'

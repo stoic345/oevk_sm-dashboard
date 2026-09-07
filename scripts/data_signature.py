@@ -28,11 +28,20 @@ import sys
 # Müssen zum Qualifikationsfenster im Dashboard passen
 # (QUAL_WINDOW_START / QUAL_WINDOW_END in my_analysis/oevk_dashboard.py).
 WIN_START = "2025-09-05"
-WIN_END = "2026-09-05"   # exklusiv: die SM selbst zählt nicht mehr zum Fenster
+WIN_END = "2026-09-05"   # nur noch Doku: Ende des Qualifikationsfensters im Dashboard
 
 
 def in_window(date: str) -> bool:
-    return bool(date) and WIN_START <= date < WIN_END
+    """Alles ab Saisonbeginn — bewusst OHNE Obergrenze.
+
+    Die frühere Obergrenze (WIN_END) beruhte auf der Annahme, Wettkämpfe nach dem
+    Qualifikationsfenster änderten nichts Sichtbares. Das war schon damals ungenau
+    (Bestenliste/Rekorde/Statistik nutzen All-Time-Daten) und ist mit der Seite
+    „SM 2026 Ergebnisse" endgültig falsch: die SM liegt außerhalb des Fensters, ist
+    aber die zentrale Neuigkeit. Der Schutz gegen OpenPowerlifting-Nachträge alter
+    Wettkämpfe bleibt über WIN_START erhalten.
+    """
+    return bool(date) and date >= WIN_START
 
 
 def build(mode: str) -> set:
