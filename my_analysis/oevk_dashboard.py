@@ -954,6 +954,12 @@ table.tbl tbody tr.tbl-section td { background:rgba(201,174,91,0.10); color:var(
   text-transform:uppercase; padding:8px 12px; font-weight:700;
   border-top:1px solid var(--gold-dim); border-bottom:1px solid var(--gold-dim); }
 table.tbl tbody tr.tbl-section:hover td { background:rgba(201,174,91,0.14); }
+/* Hervorhebung der eigenen Mannschaft, wenn in der Sidebar ein Verein gewaehlt ist.
+   Die Mannschaftstabellen folgen den Filtern absichtlich NICHT (Rangliste ueber das
+   ganze Feld) — die Markierung ist der Ersatz dafuer. */
+table.tbl tbody tr.tbl-section.is-sel td { background:rgba(201,174,91,0.24); }
+table.tbl tbody tr.tbl-section.is-sel td:first-child {
+  box-shadow:inset 3px 0 0 var(--gold-bright); }
 tr.row--q td { background:transparent; }
 tr.row--q:hover td { background:var(--surface-3); }
 tr.row--q td:first-child { box-shadow:inset 3px 0 0 var(--green); }
@@ -4835,6 +4841,175 @@ elif _page == SM_RESULTS_LABEL:
                 unsafe_allow_html=True,
             )
 
+    # ---------- Statistik: Mannschaftswertungen ----------
+    # Zwei verschiedene Regeln, beide nach IPF-GL-Punkten (Summe der gewerteten Personen):
+    #  * Mannschaftscup — die punktebesten 2 Frauen + 2 Maenner eines Vereins bilden EINE
+    #    Cup-Mannschaft. So steht es in der Ausschreibung zur SM 2026; der Wettkampf hiess
+    #    offiziell "Oesterr. Staatsmeisterschaft ... und Oesterr. Mannschaftscup ... 2026".
+    #  * Mannschaft Damen/Herren — 3 Frauen bzw. 4 Maenner je Verein (OeVK-Wettkampfordnung
+    #    2025, S. 8, Kategorie "Allgemein"). Die SM ist eine Veranstaltung der allgemeinen
+    #    Klassen, deshalb keine Aufteilung nach Alterskategorie (dort waeren es auch bei den
+    #    Herren nur 3).
+    # Vereine ohne vollstaendige Mannschaft werden nicht gewertet. Weitere Teams aus den
+    # uebrigen Startern werden bewusst NICHT gebildet: die Ausschreibung sagt "bilden eine
+    # Cup-Mannschaft", und fuer Folgeteams (Verein I/II/III in den offiziellen Listen) ist
+    # nirgends ein Bildungsalgorithmus dokumentiert.
+    #
+    # Basis ist _sm_full, NICHT _sm: eine Mannschaftswertung ist eine Rangliste ueber das
+    # gesamte Feld. Ein Gewichtsklassen-Filter wuerde Teams aus Teilmengen bilden und damit
+    # Zahlen erzeugen, die es im Wettkampf nie gab; ein Vereinsfilter wuerde die Rangliste
+    # auf eine Zeile reduzieren. Ist ein Verein gewaehlt, wird seine Zeile markiert.
+    _mt_base = _sm_full.copy()
+    _mt_base["sx1"] = _mt_base["Sex"].astype(str).str.upper().str[:1]
+    _mt_base["is_dq"] = _mt_base["Place"].astype(str).str.upper().isin(["DQ", "DD", "NS"])
+    # DQ-Zeilen fallen hier doppelt heraus: is_dq und GL_Points = NaN (weil TotalKg 0 ist).
+    _mt_base = _mt_base[(~_mt_base["is_dq"]) & _mt_base["GL_Points"].notna()]
+
+    _MT_ROMAN = ("I", "II", "III", "IV", "V", "VI", "VII", "VIII")
+
+    def _sm_team_rank(src, n_f, n_m, multi=False):
+        """Mannschaften je Verein: beste n_f Frauen + n_m Maenner, Wertung = Summe der
+        IPF-GL-Punkte. Unvollstaendige Teams entfallen. n_f/n_m = 0 laesst das jeweilige
+        Geschlecht unberuecksichtigt.
+
+        multi=False — nur das beste Team je Verein. So fuer den Cup, weil die
+            Ausschreibung Singular verwendet ("bilden EINE Cup-Mannschaft").
+        multi=True — aus den uebrigen Startern werden Folgeteams gebildet (Verein I, II,
+            III ...), sequenziell nach Punkterang: Rang 1-n = Team I, n+1-2n = Team II usw.
+            Reste, die kein volles Team fuellen, entfallen. ACHTUNG: diese Bildungsregel
+            ist vom OeVK NICHT veroeffentlicht — die offizielle Cup-Liste 2025 laesst sich
+            damit nicht reproduzieren. Deshalb steht der Vorbehalt unter der Tabelle.
+        """
+        out = []
+        for _tm, _g in src.groupby(src["Team"].astype(str).str.strip()):
+            if not _tm:
+                continue
+            _pool = {_sx: _g[_g["sx1"] == _sx].sort_values("GL_Points", ascending=False)
+                     for _sx in ("F", "M")}
+            _k = 0
+            while True:
+                _picks = []
+                for _sx, _n in (("F", n_f), ("M", n_m)):
+                    if not _n:
+                        continue
+                    _sel = _pool[_sx].iloc[_k * _n:(_k + 1) * _n]
+                    if len(_sel) < _n:
+                        _picks = None
+                        break
+                    _picks.append(_sel)
+                if not _picks:
+                    break
+                _mem = pd.concat(_picks)
+                out.append({"team": _tm, "seq": _k,
+                            "pts": round(float(_mem["GL_Points"].sum()), 2),
+                            "members": _mem})
+                _k += 1
+                if not multi:
+                    break
+        out.sort(key=lambda r: -r["pts"])
+        # Roemische Zusatznummer nur, wenn ein Verein mehr als ein Team stellt — genau so
+        # halten es auch die offiziellen OeVK-Listen.
+        _per_team = {}
+        for _e in out:
+            _per_team[_e["team"]] = _per_team.get(_e["team"], 0) + 1
+        for _e in out:
+            _e["label"] = (f'{_e["team"]} {_MT_ROMAN[_e["seq"]]}'
+                           if _per_team[_e["team"]] > 1 and _e["seq"] < len(_MT_ROMAN)
+                           else _e["team"])
+        return out
+
+    _MT_MULTI_NOTE = (" Stellt ein Verein mehr als ein vollständiges Team, werden "
+                      "Folgeteams (I, II, III …) nach Punkterang gebildet; ein Rest, der "
+                      "kein volles Team füllt, bleibt unberücksichtigt. Die genaue "
+                      "Bildungsregel des ÖVK ist nicht veröffentlicht.")
+    _MT_LIMIT = 5   # je Tabelle nur die besten fuenf Mannschaften zeigen
+
+    for _mt_title, _mt_nf, _mt_nm, _mt_multi, _mt_note in (
+        ("Mannschaftscup", 2, 2, True,
+         "Cup-Mannschaft = die punktebesten 2 Frauen und 2 Männer eines Vereins, "
+         "Wertung nach IPF-GL-Punkten (Ausschreibung zur SM 2026). Die Ausschreibung "
+         "nennt je Verein eine Cup-Mannschaft — Folgeteams sind hier zusätzlich "
+         "ausgewiesen." + _MT_MULTI_NOTE),
+        ("Mannschaft Damen", 3, 0, True,
+         "Mannschaft = drei Frauen eines Vereins, Wertung nach IPF-GL-Punkten "
+         "(ÖVK-Wettkampfordnung, allgemeine Klasse)." + _MT_MULTI_NOTE),
+        ("Mannschaft Herren", 0, 4, True,
+         "Mannschaft = vier Männer eines Vereins, Wertung nach IPF-GL-Punkten "
+         "(ÖVK-Wettkampfordnung, allgemeine Klasse)." + _MT_MULTI_NOTE),
+    ):
+        _mt_all = _sm_team_rank(_mt_base, _mt_nf, _mt_nm, multi=_mt_multi)
+        _mt_rank = _mt_all[:_MT_LIMIT]
+        _mt_sex_col = bool(_mt_nf and _mt_nm)
+        _mt_ncol = 5 if _mt_sex_col else 4
+        _mt_size = (f"{_mt_nf} Frauen + {_mt_nm} Männer" if _mt_sex_col
+                    else (f"{_mt_nf} Frauen" if _mt_nf else f"{_mt_nm} Männer"))
+        # Bei Folgeteams sind Team- und Vereinszahl verschieden — beides nennen, sonst
+        # wirkt "5 Vereine" falsch, wenn drei davon derselbe Verein sind. Und wenn das
+        # Limit greift, muss die Gesamtzahl dastehen, sonst sieht die Tabelle nach der
+        # vollen Rangliste aus.
+        _mt_clubs = len({_e["team"] for _e in _mt_rank})
+        if len(_mt_all) > _MT_LIMIT:
+            _mt_meta_txt = (f'Top {len(_mt_rank)} von {len(_mt_all)} Mannschaften '
+                            f'({_mt_size})')
+        elif len(_mt_rank) != _mt_clubs:
+            _mt_meta_txt = (f'{len(_mt_rank)} Mannschaften aus {_mt_clubs} Vereinen '
+                            f'({_mt_size})')
+        else:
+            _mt_meta_txt = f'{len(_mt_rank)} Mannschaften ({_mt_size})'
+        st.markdown(
+            '<div class="section-head" style="margin-top:26px"><div>'
+            '<div class="kicker kicker--gold">Statistik</div>'
+            f'<h2>{_mt_title}</h2></div>'
+            f'<div class="meta">{_mt_meta_txt}'
+            + (' · unabhängig von den Filtern' if _sm_filtered else '')
+            + '</div></div>',
+            unsafe_allow_html=True,
+        )
+        if not _mt_rank:
+            st.markdown('<div class="table-note">Kein Verein konnte eine vollständige '
+                        'Mannschaft stellen.</div>', unsafe_allow_html=True)
+            continue
+        _mt_rows = []
+        for _mt_i, _mt_e in enumerate(_mt_rank, 1):
+            _mt_hl = " is-sel" if (sm_team and _mt_e["team"] == sm_team) else ""
+            _mt_rows.append(
+                f'<tr class="tbl-section{_mt_hl}"><td class="num">{_mt_i}</td>'
+                f'<td class="l" colspan="{_mt_ncol - 2}" title="{esc(_mt_e["label"])}">'
+                f'{esc(_mt_e["label"])}</td>'
+                f'<td class="num">{fmt_kg(_mt_e["pts"], 2)}</td></tr>'
+            )
+            for _mt_r in _mt_e["members"].itertuples():
+                _mt_href = f"?athlete={_urlquote(str(_mt_r.Name))}"
+                _mt_cells = [
+                    '<td></td>',
+                    f'<td class="l" title="{esc(_mt_r.Name)}">'
+                    f'<a class="nm nm-link" href="{_mt_href}" target="_self">'
+                    f'{esc(_mt_r.Name)}</a></td>',
+                ]
+                if _mt_sex_col:
+                    _mt_cells.append(
+                        f'<td><span class="sex-tag">{sex_display(_mt_r.Sex)}</span></td>')
+                _mt_cells.append(f'<td class="mono">{wc_label(_mt_r.WeightClassKg)}</td>')
+                _mt_cells.append(
+                    f'<td class="num gold-strong">{fmt_kg(_mt_r.GL_Points, 2)}</td>')
+                _mt_rows.append('<tr>' + "".join(_mt_cells) + '</tr>')
+        # Bewusst NICHT sortierbar: die Tabelle ist nach Mannschaften gruppiert
+        # (Kopfzeile + Mitglieder), Sortieren wuerde die Gruppierung zerreissen — gleiche
+        # Begruendung wie bei den Ergebnis-Tabellen weiter unten.
+        _mt_head = ['<th class="num nosort">#</th>',
+                    '<th class="l nosort">Verein / Athlet:in</th>']
+        if _mt_sex_col:
+            _mt_head.append('<th class="nosort" title="Geschlecht">Geschl.</th>')
+        _mt_head.append('<th class="nosort" title="Gewichtsklasse">Klasse</th>')
+        _mt_head.append('<th class="num nosort" title="IPF GL Punkte">IPF GL</th>')
+        st.markdown(
+            '<div class="tablecard"><div class="tablescroll">'
+            '<table class="tbl"><thead><tr>' + "".join(_mt_head) + '</tr></thead>'
+            f'<tbody>{"".join(_mt_rows)}</tbody></table></div></div>'
+            f'<div class="table-note">{_mt_note}</div>',
+            unsafe_allow_html=True,
+        )
+
     # ---------- Statistik 2: Medaillenspiegel je Verein ----------
     _med = _sm[(~_sm["is_dq"]) & _sm["place_num"].isin([1, 2, 3])]
     if _med.empty:
@@ -4880,62 +5055,6 @@ elif _page == SM_RESULTS_LABEL:
         f'<tbody>{_med_rows}</tbody></table></div></div>',
         unsafe_allow_html=True,
     )
-
-    # ---------- Statistik: Engste Entscheidungen ----------
-    # Abstand zwischen Platz 1 und 2 je (Geschlecht, Gewichtsklasse).
-    _duel = []
-    for (_dsx, _dwc), _grp2 in _sm[~_sm["is_dq"]].groupby(["sx1", "WeightClassKg"]):
-        _p1 = _grp2[_grp2["place_num"] == 1]
-        _p2 = _grp2[_grp2["place_num"] == 2]
-        if _p1.empty or _p2.empty:
-            continue
-        _a, _b2 = _p1.iloc[0], _p2.iloc[0]
-        _duel.append({"sx": _dsx, "wc": _dwc,
-                      "win": _a["Name"], "wt": float(_a["TotalKg"]), "wteam": _a["Team"],
-                      "sec": _b2["Name"], "st": float(_b2["TotalKg"]), "steam": _b2["Team"],
-                      "gap": round(float(_a["TotalKg"]) - float(_b2["TotalKg"]), 2),
-                      "wcs": float(_a["wc_sort"])})
-    _duel_df = pd.DataFrame(_duel).sort_values("gap") if _duel else pd.DataFrame()
-    st.markdown(
-        '<div class="section-head" style="margin-top:26px"><div>'
-        '<div class="kicker kicker--gold">Statistik</div>'
-        '<h2>Engste Entscheidungen</h2></div>'
-        f'<div class="meta">{len(_duel_df)} Klassen mit Platz 1 und 2 · '
-        f'engster Abstand {fmt_kg(_duel_df["gap"].min()) if not _duel_df.empty else "–"} kg'
-        '</div></div>',
-        unsafe_allow_html=True,
-    )
-    if _duel_df.empty:
-        st.markdown('<div class="table-note">Keine Klasse mit Platz 1 und 2 in dieser '
-                    'Auswahl.</div>', unsafe_allow_html=True)
-    else:
-        _du_rows = "".join(
-            f'<tr><td><span class="sex-tag">{sex_display(_t.sx)}</span></td>'
-            f'<td class="mono">{wc_label(_t.wc)}</td>'
-            f'<td class="l sm-gold" title="{esc(_t.win)}">{esc(_t.win)}</td>'
-            f'<td class="l" title="{esc(_t.wteam)}">{esc(_t.wteam)}</td>'
-            f'<td class="num mono-strong">{fmt_kg(_t.wt)}</td>'
-            f'<td class="l sm-silver" title="{esc(_t.sec)}">{esc(_t.sec)}</td>'
-            f'<td class="l" title="{esc(_t.steam)}">{esc(_t.steam)}</td>'
-            f'<td class="num mono">{fmt_kg(_t.st)}</td>'
-            f'<td class="num gold-strong">{fmt_kg(_t.gap)}</td></tr>'
-            for _t in _duel_df.itertuples()
-        )
-        st.markdown(
-            '<div class="tablecard"><div class="tablescroll">'
-            '<table class="tbl" data-sortable="1"><thead><tr>'
-            + _sh("Geschl.", "text", "", "Geschlecht") + _sh("Klasse", "text")
-            + _sh("Sieger:in", "text", "l")
-            + _sh("Verein", "text", "l", "Verein der Siegerin / des Siegers")
-            + _sh("Total", "num", "num")
-            + _sh("Zweite:r", "text", "l")
-            + _sh("Verein", "text", "l", "Verein auf Platz 2")
-            + _sh("Total", "num", "num")
-            + _sh("Abstand", "num", "num", "Vorsprung auf Platz 2")
-            + '</tr></thead>'
-            f'<tbody>{_du_rows}</tbody></table></div></div>',
-            unsafe_allow_html=True,
-        )
 
     # ---------- Statistik 3: Neue Rekorde (ueber der offiziellen Rekordliste) ----------
     # Vergleich gegen die offizielle OeVK-Liste (Stand OEVK_RECORDS_STAND, Raw).
@@ -5007,6 +5126,62 @@ elif _page == SM_RESULTS_LABEL:
             f'<tbody>{_b_rows}</tbody></table></div></div>'
             f'<div class="table-note">Vergleich gegen die offizielle ÖVK-Rekordliste '
             f'(Stand {fmt_date(OEVK_RECORDS_STAND)}).</div>',
+            unsafe_allow_html=True,
+        )
+
+    # ---------- Statistik: Engste Entscheidungen ----------
+    # Abstand zwischen Platz 1 und 2 je (Geschlecht, Gewichtsklasse).
+    _duel = []
+    for (_dsx, _dwc), _grp2 in _sm[~_sm["is_dq"]].groupby(["sx1", "WeightClassKg"]):
+        _p1 = _grp2[_grp2["place_num"] == 1]
+        _p2 = _grp2[_grp2["place_num"] == 2]
+        if _p1.empty or _p2.empty:
+            continue
+        _a, _b2 = _p1.iloc[0], _p2.iloc[0]
+        _duel.append({"sx": _dsx, "wc": _dwc,
+                      "win": _a["Name"], "wt": float(_a["TotalKg"]), "wteam": _a["Team"],
+                      "sec": _b2["Name"], "st": float(_b2["TotalKg"]), "steam": _b2["Team"],
+                      "gap": round(float(_a["TotalKg"]) - float(_b2["TotalKg"]), 2),
+                      "wcs": float(_a["wc_sort"])})
+    _duel_df = pd.DataFrame(_duel).sort_values("gap") if _duel else pd.DataFrame()
+    st.markdown(
+        '<div class="section-head" style="margin-top:26px"><div>'
+        '<div class="kicker kicker--gold">Statistik</div>'
+        '<h2>Engste Entscheidungen</h2></div>'
+        f'<div class="meta">{len(_duel_df)} Klassen mit Platz 1 und 2 · '
+        f'engster Abstand {fmt_kg(_duel_df["gap"].min()) if not _duel_df.empty else "–"} kg'
+        '</div></div>',
+        unsafe_allow_html=True,
+    )
+    if _duel_df.empty:
+        st.markdown('<div class="table-note">Keine Klasse mit Platz 1 und 2 in dieser '
+                    'Auswahl.</div>', unsafe_allow_html=True)
+    else:
+        _du_rows = "".join(
+            f'<tr><td><span class="sex-tag">{sex_display(_t.sx)}</span></td>'
+            f'<td class="mono">{wc_label(_t.wc)}</td>'
+            f'<td class="l sm-gold" title="{esc(_t.win)}">{esc(_t.win)}</td>'
+            f'<td class="l" title="{esc(_t.wteam)}">{esc(_t.wteam)}</td>'
+            f'<td class="num mono-strong">{fmt_kg(_t.wt)}</td>'
+            f'<td class="l sm-silver" title="{esc(_t.sec)}">{esc(_t.sec)}</td>'
+            f'<td class="l" title="{esc(_t.steam)}">{esc(_t.steam)}</td>'
+            f'<td class="num mono">{fmt_kg(_t.st)}</td>'
+            f'<td class="num gold-strong">{fmt_kg(_t.gap)}</td></tr>'
+            for _t in _duel_df.itertuples()
+        )
+        st.markdown(
+            '<div class="tablecard"><div class="tablescroll">'
+            '<table class="tbl" data-sortable="1"><thead><tr>'
+            + _sh("Geschl.", "text", "", "Geschlecht") + _sh("Klasse", "text")
+            + _sh("Sieger:in", "text", "l")
+            + _sh("Verein", "text", "l", "Verein der Siegerin / des Siegers")
+            + _sh("Total", "num", "num")
+            + _sh("Zweite:r", "text", "l")
+            + _sh("Verein", "text", "l", "Verein auf Platz 2")
+            + _sh("Total", "num", "num")
+            + _sh("Abstand", "num", "num", "Vorsprung auf Platz 2")
+            + '</tr></thead>'
+            f'<tbody>{_du_rows}</tbody></table></div></div>',
             unsafe_allow_html=True,
         )
 
