@@ -1,7 +1,7 @@
 """Signatur der Wettkämpfe — in zwei Varianten, weil zwei verschiedene Dinge daran hängen.
 
     python scripts/data_signature.py all      → ALLE Meets, ohne Datumsfilter
-    python scripts/data_signature.py window   → nur WIN_START <= Datum < WIN_END
+    python scripts/data_signature.py window   → nur Datum >= WIN_START
     python scripts/data_signature.py          → wie "window" (Rückwärtskompatibilität)
 
 Warum zwei:
@@ -27,8 +27,10 @@ import sys
 
 # Müssen zum Qualifikationsfenster im Dashboard passen
 # (QUAL_WINDOW_START / QUAL_WINDOW_END in my_analysis/oevk_dashboard.py).
-WIN_START = "2025-09-05"
-WIN_END = "2026-09-05"   # nur noch Doku: Ende des Qualifikationsfensters im Dashboard
+# Saison 2026/27: Fenster ab der SM 2026 (05.09.2026, zählt mit), offenes Ende bis der
+# Termin der SM 2027 feststeht.
+WIN_START = "2026-09-05"
+WIN_END = None           # nur Doku — in_window() hat bewusst keine Obergrenze
 
 
 def in_window(date: str) -> bool:

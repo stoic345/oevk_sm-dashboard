@@ -1,14 +1,13 @@
 # ÖVK Qualifikations-Dashboard
 
 Live-Übersicht der österreichischen Athlet:innen, die das Limit für die
-**Staatsmeisterschaft 2026 (KDK Classic, 5.–6. September 2026)** bereits erreicht
-haben.
+**Staatsmeisterschaft 2027 (KDK Classic, Termin folgt)** bereits erreicht haben.
+Qualifikationsfenster ab der SM 2026 (05.09.2026). Bis die Limits 2027 veröffentlicht
+sind, gelten vorläufig die Limits 2026. Die Ergebnisse der SM 2026 bleiben als Archiv
+abrufbar.
 
 Daten stammen aus dem [OpenPowerlifting](https://www.openpowerlifting.org) /
 [OpenIPF](https://www.openipf.org) Datensatz (Lizenz: CC0).
-
-> ⚠ **Beta:** Diese Seite befindet sich in Entwicklung. Berechnungen können
-> fehlerhaft sein — bitte im Zweifel auf openpowerlifting.org gegenprüfen.
 
 ---
 

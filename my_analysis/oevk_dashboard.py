@@ -214,9 +214,6 @@ header[data-testid="stHeader"] [data-testid="stToolbarActions"] { display:none !
    Wettkampfnamen zeigt und der Wert damit dreizeilig wird — mit 52px haengt genau diese
    Box aus der Reihe heraus. */
 .status-pill { min-height:58px; height:auto; }
-/* Abstand zwischen den Top-Boxen und der Tab-Navigation verkleinern
-   (Streamlit gibt der segmented_control standardmäßig 40px margin-top). */
-[data-testid="stButtonGroup"] { margin-top:6px !important; }
 /* --- Feedback-Formular: goldene Box, Felder an die Dashboard-Optik --- */
 [data-testid="stForm"] { background:var(--surface) !important;
   border:1px solid var(--gold-dim) !important; border-radius:var(--r-md) !important;
@@ -332,7 +329,12 @@ a.brand.brand--link:hover { opacity:0.85; }
   transition:opacity .14s ease; }
 .logo--img:hover img { opacity:0.85; }
 .brand__divider { width:1px; align-self:stretch; background:var(--line); margin:0 4px; }
-.brand__title { font-family:var(--font-display); font-weight:800; font-size:30px; letter-spacing:-0.01em;
+.brand__title { font-family:var(--font-display); font-weight:800; letter-spacing:-0.01em;
+  /* So groß wie möglich, ohne dass der Titel in drei Zeilen umbricht. Der freie Platz ist
+     Fensterbreite minus Sidebar, Ränder und "NEU 2027"-Box (zusammen ~776px), und
+     "ÖSTERREICHISCHE STAATSMEISTERSCHAFT" braucht ~18,9 × Schriftgröße. Daraus die Formel
+     (mit etwas Reserve) — ergibt ~34px bei 1440, ~30px bei 1366, 36px ab ~1480. */
+  font-size:clamp(24px, calc((100vw - 776px) / 19.5), 36px);
   line-height:1.15; text-transform:none; color:var(--text); }
 .brand__title .beta { display:inline-block; vertical-align:middle; font-family:var(--font-mono);
   font-size:11px; font-weight:700; letter-spacing:0.16em; color:var(--amber);
@@ -366,6 +368,55 @@ a.brand.brand--link:hover { opacity:0.85; }
 .target__count .unit { font-family:var(--font-mono); font-size:11px; letter-spacing:0.14em; color:var(--gold); text-transform:uppercase; margin-top:5px; font-weight:600; white-space:nowrap; }
 .target--solo { padding:10px 18px; min-width:0; }
 .target--solo .target__count { padding-left:0; border-left:none; }
+/* "NEU 2027"-Hinweis rechts im Kopf, solange der SM-Termin offen ist (statt Countdown). */
+/* flex-shrink:0 — sonst quetscht der lange Titel die Box, und ihr Text läuft rechts aus
+   der Kopfzeile. Lieber bricht der Titel um (sauber nach "2027!", s. .nowrap). */
+.brand__title .nowrap { white-space:nowrap; }
+.target--season { align-items:center; padding:10px 20px 10px 16px; min-width:0; flex-shrink:0;
+  border-color:var(--gold-dim);
+  box-shadow:0 0 0 1px rgba(201,174,91,0.16), 0 0 26px rgba(201,174,91,0.10); }
+.target--season .target__body { gap:2px; }
+.target--season .v { font-size:15px; white-space:nowrap; }
+.target--season .v2 { white-space:nowrap; }
+.target--season .v3 { font-family:var(--font-mono); font-size:11px; color:var(--text-2);
+  white-space:nowrap; letter-spacing:0.02em; }
+.season-mark { display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding-right:16px; border-right:1px solid var(--line); }
+.season-mark__new { font-family:var(--font-mono); font-size:10px; font-weight:700;
+  letter-spacing:0.18em; text-transform:uppercase; color:var(--gold-ink);
+  background:var(--gold-bright); border-radius:999px; padding:2px 10px;
+  animation:oevk-pulse 2.4s ease-in-out infinite; }
+.season-mark__year { font-family:var(--font-mono); font-size:34px; font-weight:700;
+  color:var(--gold-bright); line-height:1; margin-top:6px; }
+@keyframes oevk-pulse { 0%,100% { box-shadow:0 0 0 0 rgba(226,201,119,0.55); }
+                        50% { box-shadow:0 0 0 6px rgba(226,201,119,0); } }
+@media (prefers-reduced-motion: reduce) { .season-mark__new { animation:none; } }
+
+/* Kopfbereich (Titel + Tabs + Status-Boxen) bleibt beim Scrollen oben stehen, damit man
+   die Seite wechseln kann, ohne erst ganz nach oben zu scrollen. Nur am Desktop: auf dem
+   Handy wären das gestapelt fast 400px — dort hilft der "Nach oben"-Knopf. */
+.st-key-topzone .topbar { margin-bottom:0; }
+/* Sticky muss am stLayoutWrapper sitzen, den Streamlit um den Container legt: ein
+   Sticky-Element klebt nur innerhalb seines Elternelements, und der Wrapper ist genau so
+   hoch wie der Container selbst — dort hätte es keinen Platz zum Mitwandern. */
+@media (min-width: 641px) and (min-height: 600px) {
+  [data-testid="stLayoutWrapper"]:has(> .st-key-topzone) {
+    position:sticky; top:0; z-index:9980; background:var(--bg);
+    padding-top:6px; margin-top:-6px; padding-bottom:2px;
+    box-shadow:0 12px 14px -14px rgba(0,0,0,0.9); }
+}
+
+/* "Nach oben"-Knopf unten rechts (wird vom Skript am Dateiende eingefügt). Sitzt über der
+   schwebenden Tabellen-Scrollleiste (bottom:16px). */
+.oevk-totop { position:fixed; right:22px; bottom:44px; z-index:9995;
+  width:46px; height:46px; border-radius:50%; border:1px solid var(--gold-bright);
+  background:var(--gold); color:var(--gold-ink); font-size:22px; font-weight:800; line-height:1;
+  cursor:pointer; box-shadow:0 6px 18px rgba(0,0,0,0.5);
+  opacity:0; pointer-events:none; transform:translateY(10px);
+  transition:opacity .18s ease, transform .18s ease, background .12s ease; }
+.oevk-totop.is-on { opacity:1; pointer-events:auto; transform:none; }
+.oevk-totop:hover { background:var(--gold-bright); }
+@media (max-width: 640px) { .oevk-totop { right:14px; bottom:22px; width:42px; height:42px; } }
 
 /* KPI cards */
 .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin:0 0 18px; }
@@ -771,10 +822,29 @@ button[data-testid="stExpandSidebarButton"] * {
   font-variant-numeric:tabular-nums;
 }
 
-/* === Seiten-Navigation (Segmented-Control = stButtonGroup) — Gold-Theme === */
-[data-testid="stButtonGroup"] { gap:6px !important; margin:40px 0 6px;
+/* === Seiten-Navigation (Segmented-Control in st.container(key="main_nav")) — Gold-Theme ===
+   Auf .st-key-main_nav beschränkt: vorher galten die Regeln für JEDES segmented_control /
+   pills-Widget im Dashboard. Die Navigation steht direkt unter der Kopfzeile, noch vor den
+   Status-Boxen. */
+.st-key-main_nav [data-testid="stButtonGroup"] { margin:6px 0 14px !important;
   border-bottom:1px solid var(--gold-dim); }
-[data-testid="stButtonGroup"] button {
+/* Volle Breite: der Container richtet Kinder per align-items:start aus, die Leiste schrumpfte
+   dadurch auf ihren Inhalt — und margin-left:auto am Archiv-Tab hatte keinen Platz. */
+.st-key-main_nav [data-testid="stElementContainer"],
+.st-key-main_nav [data-testid="stButtonGroup"],
+.st-key-main_nav [data-testid="stButtonGroup"] > div { width:100% !important; }
+/* Streamlit deckelt die Flex-Zeile per Atom-Klasse mit max-width:fit-content. */
+.st-key-main_nav [data-testid="stButtonGroup"] > div { max-width:none !important; }
+.st-key-main_nav [data-testid="stButtonGroup"] > div { gap:6px !important; }
+/* Fünftes Segment = Archiv der letzten SM (gibt es nur, wenn deren Ergebnisse vorliegen —
+   nth-child(5) greift sonst nicht): rechtsbündig, Trennlinie, gedämpfte Farbe. */
+.st-key-main_nav [data-testid="stButtonGroup"] > div > button:nth-child(5) {
+  margin-left:auto !important; border-left:1px solid var(--gold-dim) !important;
+  color:var(--text-3) !important; }
+.st-key-main_nav [data-testid="stButtonGroup"] > div > button:nth-child(5):hover,
+.st-key-main_nav [data-testid="stButtonGroup"] > div > button[kind="segmented_controlActive"]:nth-child(5) {
+  color:var(--gold-bright) !important; }
+.st-key-main_nav [data-testid="stButtonGroup"] button {
   background:transparent !important; border:none !important;
   border-bottom:3px solid transparent !important; border-radius:0 !important;
   box-shadow:none !important;
@@ -784,19 +854,30 @@ button[data-testid="stExpandSidebarButton"] * {
   color:var(--text-2) !important; padding:12px 22px !important;
   transition:color .12s ease, border-color .12s ease, background .12s ease;
 }
-[data-testid="stButtonGroup"] button:hover {
+.st-key-main_nav [data-testid="stButtonGroup"] button:hover {
   color:var(--gold-bright) !important; background:rgba(201,174,91,0.04) !important;
   border-bottom-color:transparent !important;
 }
 /* Aktives Segment */
-[data-testid="stButtonGroup"] button[kind="segmented_controlActive"] {
+.st-key-main_nav [data-testid="stButtonGroup"] button[kind="segmented_controlActive"] {
   color:var(--gold-bright) !important;
   border-bottom-color:var(--gold-bright) !important;
   background:rgba(201,174,91,0.06) !important;
 }
-[data-testid="stButtonGroup"] button p,
-[data-testid="stButtonGroup"] button div {
+.st-key-main_nav [data-testid="stButtonGroup"] button p,
+.st-key-main_nav [data-testid="stButtonGroup"] button div {
   font-weight:700 !important; font-size:16px !important; color:inherit !important;
+}
+/* Mobil: fünf Tabs in Großbuchstaben passen nicht in 375px. Nicht umbrechen (zweizeilige
+   Tab-Leiste wirkt kaputt), sondern horizontal scrollen lassen; Schrift und Abstände kleiner. */
+@media (max-width: 640px) {
+  .st-key-main_nav [data-testid="stButtonGroup"] > div {
+    flex-wrap:nowrap !important; overflow-x:auto; scrollbar-width:none; }
+  .st-key-main_nav [data-testid="stButtonGroup"] > div::-webkit-scrollbar { display:none; }
+  .st-key-main_nav [data-testid="stButtonGroup"] button {
+    padding:10px 12px !important; letter-spacing:0.08em !important; flex:0 0 auto !important; }
+  .st-key-main_nav [data-testid="stButtonGroup"] button p,
+  .st-key-main_nav [data-testid="stButtonGroup"] button div { font-size:13px !important; }
 }
 
 /* === Rekorde-Tabelle === */
@@ -995,6 +1076,63 @@ tr.row--n { color:var(--text-2); }
 .sumrow__label .mono { display:block; font-size:10.5px; color:var(--text-3); }
 .sumrow__bar { flex:1; height:8px; border-radius:4px; background:var(--surface-2); overflow:hidden; }
 .sumrow__bar i { display:block; height:100%; background:linear-gradient(90deg,var(--gold-dim),var(--gold)); border-radius:4px; }
+/* Vereinszeile mit Gesamtbalken + Frauen/Männer-Balken darunter */
+.sumrow--split { align-items:center; }
+/* Kompakt: Zeilenhöhe nicht von der Zahlen-Schrift (16px / 26px Zeilenhöhe) bestimmen
+   lassen — sonst ist jede Vereinszeile ~95px hoch und man sieht nur ~7 Vereine zugleich. */
+.sumrow--split { padding-top:5px; padding-bottom:5px; }
+.sumrow--split .sumrow__bars { gap:3px; }
+.sumrow--split .sumrow__line { height:13px; }
+.sumrow--split .sumrow__line--sub { height:8px; }
+.sumrow--split .sumrow__num { font-size:12.5px; line-height:1; min-width:24px; }
+.sumrow--split .sumrow__line--sub .sumrow__num { font-size:9.5px; }
+.sumrow--split .sumrow__sx { font-size:9px; line-height:1; }
+.sumrow--split .ubar { height:9px; }
+.sumrow--split .ubar--sub { height:4px; }
+.sumrow--split.sumrow--axis .sumrow__line { height:auto; }
+/* Feste Namensspalte: alle Balken beginnen an derselben x-Position. Lange Vereinsnamen
+   brechen innerhalb der Spalte um, statt die Balken nach rechts zu schieben. */
+.sumrow--split .sumrow__label { flex:0 0 280px; min-width:0; white-space:normal; line-height:1.3;
+  display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.sumrow__name { min-width:0; }
+.sumrow__total { font-family:var(--font-mono); font-weight:700; font-size:15px;
+  color:var(--gold-bright); flex:0 0 auto; }
+
+.sumrow__bars { flex:1; display:flex; flex-direction:column; gap:5px; min-width:0; }
+.sumrow__line { display:flex; align-items:center; gap:12px; }
+.sumrow__line .sumrow__bar { flex:1; }
+.sumrow__line--sub .sumrow__bar { height:5px; background:transparent; }
+.sumrow__line--sub .sumrow__num { font-size:11.5px; color:var(--text-2); }
+.sumrow__sx { font-family:var(--font-mono); font-size:10px; letter-spacing:0.04em;
+  color:var(--text-3); flex:0 0 48px; }
+.sumrow__line:not(.sumrow__line--sub) .sumrow__sx { color:var(--gold); }
+/* Blockbalken: ein Block je Person, alle Balken auf derselben Skala (--max Blöcke). */
+.ubar { flex:1; display:flex; gap:2px; height:8px; min-width:0; }
+.ubar--sub { height:5px; }
+/* min-width:0 — sonst wächst eine Achsenzelle mit "10" auf ihre Textbreite und die
+   Blöcke stehen nicht mehr unter ihren Nummern. */
+.ubar .u { flex:0 0 calc((100% - (var(--max) - 1) * 2px) / var(--max)); border-radius:2px;
+  min-width:0; overflow:visible; white-space:nowrap; }
+.u--t { background:var(--gold); }
+/* Frauen und Männer im selben Grau: die Zeilen sind über "Frauen"/"Männer" beschriftet,
+   Gold bleibt der Gesamtzahl vorbehalten. */
+.u--f, .u--m { background:#9A9AA2; }
+.u--empty { background:var(--surface-2); }
+.sumrow--axis { padding-top:8px; padding-bottom:6px; }
+.ubar--axis { height:auto; }
+.ubar--axis .u { font-family:var(--font-mono); font-size:10px; color:var(--text-3);
+  text-align:right; line-height:1; padding-right:1px;
+  border-right:1px solid var(--line); padding-bottom:3px; border-radius:0; }
+/* Handy: Vereinsname über die Balken, damit die Blöcke die ganze Zeilenbreite bekommen
+   (neben einer Namensspalte wären sie nur ~3px breit). */
+@media (max-width: 640px) {
+  .sumrow--split { flex-wrap:wrap; row-gap:6px; }
+  .sumrow--split .sumrow__label { flex:0 0 100%; font-size:12px; }
+  .sumrow--axis .sumrow__label { display:none; }
+  .sumrow--split .sumrow__sx { flex-basis:40px; font-size:9px; }
+  .sumrow--axis .ubar--axis .u { font-size:8.5px; }
+}
+
 .sumrow__num { font-family:var(--font-mono); font-weight:600; min-width:28px; text-align:right; color:var(--gold); }
 a.sumrow.sumrow--link, a.sumrow.sumrow--link:link, a.sumrow.sumrow--link:visited {
   text-decoration:none !important; color:inherit !important; cursor:pointer;
@@ -1217,6 +1355,9 @@ div[data-testid="stButton"] > button.filter-row,
     align-items:baseline !important; gap:8px !important; }
   .target--solo .target__count .num { font-size:32px !important; }
   .target--solo .target__count .unit { margin-top:0 !important; }
+  .target--season { padding:8px 14px !important; }
+  .season-mark__year { font-size:24px !important; }
+  .target--season .v { font-size:13px !important; white-space:normal !important; }
 
   /* Disclaimer kompakter, linksbündig */
   .dev-banner { font-size:11px !important; padding:8px 10px !important; text-align:left !important;
@@ -1289,14 +1430,48 @@ GL_COEFFS = {
     ('F', 'BD',  'Single-ply'): (221.82209,  357.00377,  0.02937),
 }
 
-# Qualifikationsfenster für die Österreichische Staatsmeisterschaft KDK Classic 2026
-# (5.–6. September 2026).
-# START: Die Staatsmeisterschaft 2025 (06.09.2025) liegt BEWUSST im Fenster — Ergebnisse
-#        von dort zählen für die Qualifikation 2026 (vom Verband so gewollt).
-# END:   Die SM 2026 selbst zählt NICHT für ihre eigene Qualifikation — Wettkämpfe am
-#        Tag des Fensterendes und danach werden ausgeschlossen (`< QUAL_WINDOW_END`).
-QUAL_WINDOW_START = pd.Timestamp("2025-09-05")
-QUAL_WINDOW_END   = pd.Timestamp("2026-09-05")  # championship start — meets ON/after excluded
+# === SAISON ===
+# Alles, was beim Saisonwechsel angefasst werden muss, steht hier.
+# Ziel ist die Österreichische Staatsmeisterschaft KDK Classic SEASON_YEAR.
+SEASON_YEAR = 2027
+# Termin der SM — solange unbekannt: None. Sobald er feststeht, NUR diese Zeile setzen
+# (z. B. pd.Timestamp("2027-09-04")) plus SM_DATE_LABEL; Fensterende, Countdown und
+# Datumszeile in der Kopfzeile folgen daraus automatisch.
+SM_DATE = None
+SM_DATE_LABEL = None          # z. B. "4. – 5. September 2027"
+# START: Die SM 2026 (05.09.2026) liegt BEWUSST im Fenster — ihre Ergebnisse zählen für
+#        die Qualifikation 2027 (so vom Verband vorgegeben, wie im Vorjahr die SM 2025).
+# END:   Die SM selbst zählt nie für ihre eigene Qualifikation (`< QUAL_WINDOW_END`).
+#        None = offenes Ende, solange der Termin nicht feststeht.
+QUAL_WINDOW_START = pd.Timestamp("2026-09-05")
+QUAL_WINDOW_END = SM_DATE
+# Die Limits 2027 sind noch nicht veröffentlicht; QUAL_LIMITS oben sind die Werte 2026.
+# Steuert nur den Hinweis "vorläufig" in der Sidebar — auf False setzen, sobald getauscht.
+QUAL_LIMITS_PROVISIONAL = True
+# Startliste der Ziel-SM (Spalte "Start SM", Filter "Nur Startende"). Fehlt die Datei,
+# blendet sich alles Startlisten-Bezogene aus.
+STARTERS_FILE = f"sm{SEASON_YEAR % 100}_starters.csv"
+
+
+def _in_window(dates, start, end):
+    """Bool-Maske `start <= dates < end`; `end=None` heißt offenes Ende.
+    NaT liegt nie im Fenster. Funktioniert für Series und einzelne Timestamps."""
+    mask = dates >= start
+    if end is not None:
+        mask = mask & (dates < end)
+    return mask
+
+
+def _window_label(start, end) -> str:
+    """'05.09.2026 – 04.09.2027' bzw. 'seit 05.09.2026' bei offenem Ende."""
+    if end is None:
+        return f"seit {start.strftime('%d.%m.%Y')}"
+    return f"{start.strftime('%d.%m.%Y')} – {(end - pd.Timedelta(days=1)).strftime('%d.%m.%Y')}"
+
+
+def _season_label(start) -> str:
+    """'Saison 2026/27' aus dem Fensterbeginn."""
+    return f"Saison {start.year}/{(start.year + 1) % 100:02d}"
 
 # Offizielle ÖVK/IPF-Gewichtsklassen (vor PROFILE_MODE definiert, da der Profil-Branch
 # st.stop() aufruft und die spätere Sidebar-Definition nie erreicht würde).
@@ -1506,9 +1681,13 @@ def _data_version_token() -> str:
 
 
 @st.cache_data(show_spinner="Lade Wettkämpfe …")
-def load_data(cache_token: str = "") -> pd.DataFrame:
+def load_data(cache_token: str = "", win_start=None, win_end=None) -> pd.DataFrame:
     """Lädt und verarbeitet alle OeVK-Meets im Qualifikationszeitraum. Ergebnis wird gecacht;
-    `cache_token` (Datenversion) ist Teil des Cache-Keys → neu laden bei neuen Daten."""
+    `cache_token` (Datenversion) ist Teil des Cache-Keys → neu laden bei neuen Daten.
+    `win_start`/`win_end` überschreiben das aktuelle Fenster (z. B. für das SM-2026-Archiv);
+    ohne Angabe gilt QUAL_WINDOW_START/QUAL_WINDOW_END. Beide sind Teil des Cache-Keys."""
+    if win_start is None:
+        win_start, win_end = QUAL_WINDOW_START, QUAL_WINDOW_END
     if not BASE_PATH.exists():
         return pd.DataFrame()
 
@@ -1527,11 +1706,9 @@ def load_data(cache_token: str = "") -> pd.DataFrame:
             m_date_raw = fields[1] if len(fields) > 1 else ""
             m_name = fields[5] if len(fields) > 5 else folder.name
             m_date_parsed = pd.to_datetime(m_date_raw, errors="coerce")
-            # Fenster beidseitig prüfen: die SM 2026 selbst (und alles danach) darf nicht
-            # in die Qualifikation einfließen — vorher wurde nur die Untergrenze geprüft.
-            if (pd.isna(m_date_parsed)
-                    or m_date_parsed < QUAL_WINDOW_START
-                    or m_date_parsed >= QUAL_WINDOW_END):
+            # Fenster beidseitig prüfen (Obergrenze nur, wenn bekannt): die Ziel-SM selbst
+            # darf nie in ihre eigene Qualifikation einfließen.
+            if pd.isna(m_date_parsed) or not _in_window(m_date_parsed, win_start, win_end):
                 continue
 
             df = pd.read_csv(
@@ -1548,7 +1725,7 @@ def load_data(cache_token: str = "") -> pd.DataFrame:
         _intl = load_international_for_austrians(cache_token)
         if not _intl.empty:
             _dt = pd.to_datetime(_intl.get("Date"), errors="coerce")
-            _intl_in_window = _intl[(_dt >= QUAL_WINDOW_START) & (_dt < QUAL_WINDOW_END)]
+            _intl_in_window = _intl[_in_window(_dt, win_start, win_end)]
             if not _intl_in_window.empty:
                 all_entries.append(_intl_in_window)
     except Exception:
@@ -1892,7 +2069,9 @@ def normalize_pdf_name(raw: str) -> str:
 
 # Stand-Datum der offiziellen ÖVK-Rekordliste (aus der PDF-Kopfzeile "Stand: …").
 # Beim Aktualisieren der Rekord-CSV hier ebenfalls anpassen (ISO YYYY-MM-DD).
-OEVK_RECORDS_STAND = "2026-06-07"
+# Erzeugt mit scripts/parse_records_pdf.py. Die Liste mit Stand 07.06.2026 liegt als
+# oevk_records_2026-06-07.csv daneben (nur für "bisher" auf der SM-2026-Seite).
+OEVK_RECORDS_STAND = "2026-09-06"
 
 
 # --- SM-ERGEBNISSE ---
@@ -1900,8 +2079,12 @@ OEVK_RECORDS_STAND = "2026-06-07"
 # also aus. Deshalb ein eigener, schlanker Loader nur fuer dieses eine Meet.
 # Ausserdem verwirft `_USE_COLS` die Einzelversuche (Squat1Kg …) — die brauchen wir hier
 # fuer die Erfolgsquote, also wird die entries.csv bewusst mit ALLEN Spalten gelesen.
+# Archiv: Staatsmeisterschaft 2026. Eigenes, eingefrorenes Qualifikationsfenster — die
+# Seite vergleicht SM-Totals mit der Qualifikation 2025/26 ("Steigerung zur Qualifikation").
+# Würde sie das aktuelle Fenster nehmen, wäre die SM selbst ihre Vergleichsbasis.
 SM_RESULTS_DATE = "2026-09-05"          # Tag 1 der Staatsmeisterschaft 2026
-SM_RESULTS_LABEL = "SM 2026 Ergebnisse"
+SM_RESULTS_LABEL = "SM 2026"
+SM_ARCHIVE_WINDOW = (pd.Timestamp("2025-09-05"), pd.Timestamp("2026-09-05"))
 _SM_ATTEMPT_COLS = [f"{lift}{i}Kg" for lift in ("Squat", "Bench", "Deadlift") for i in (1, 2, 3)]
 
 
@@ -1943,7 +2126,7 @@ def load_sm_results(cache_token: str = "") -> pd.DataFrame:
 
 @st.cache_data(show_spinner=False)
 def load_sm_starters(cache_token: str = "") -> frozenset:
-    """Namen der SM-2026-Starter:innen aus der offiziellen Startliste.
+    """Namen der Starter:innen der Ziel-SM aus der offiziellen Startliste (STARTERS_FILE).
 
     `name_opl` ist die Matching-Spalte: dort steht der Name genau so wie in den
     OpenPowerlifting-Daten. Nötig, weil Verband und OPL bei einigen Personen
@@ -1951,7 +2134,7 @@ def load_sm_starters(cache_token: str = "") -> frozenset:
     „Montalbetti Victoria" in der Startliste, bei OPL aber „Victoria Moser".
     Fehlt die Datei, ist das Feature einfach aus.
     `cache_token` gehört zum Cache-Key, damit neue Daten den Cache invalidieren."""
-    p = PROJECT_DATA_DIR / "sm26_starters.csv"
+    p = PROJECT_DATA_DIR / STARTERS_FILE
     if not p.exists():
         return frozenset()
     try:
@@ -1963,10 +2146,25 @@ def load_sm_starters(cache_token: str = "") -> frozenset:
         return frozenset()
 
 
+def load_records(cache_token: str = "", filename: str = "oevk_records.csv") -> pd.DataFrame:
+    """Lädt die ÖVK-Rekordliste (Quelle der Wahrheit), erzeugt mit
+    scripts/parse_records_pdf.py. `filename` erlaubt ältere, archivierte Listen.
+
+    Der Cache hängt zusätzlich an Größe + Änderungszeit der Datei: `cache_token` ändert sich
+    nur bei neuen Wettkampfdaten — eine neu eingespielte Rekordliste wäre sonst bis zum
+    nächsten Neustart unsichtbar geblieben."""
+    p = PROJECT_DATA_DIR / filename
+    try:
+        _st = p.stat()
+        _sig = f"{_st.st_size}:{_st.st_mtime_ns}"
+    except OSError:
+        _sig = ""
+    return _load_records_cached(cache_token, filename, _sig)
+
+
 @st.cache_data(show_spinner="Lade offizielle Rekorde …")
-def load_records(cache_token: str = "") -> pd.DataFrame:
-    """Lädt die manuell gepflegte ÖVK-Rekordliste (Quelle der Wahrheit)."""
-    p = PROJECT_DATA_DIR / "oevk_records.csv"
+def _load_records_cached(cache_token: str, filename: str, file_sig: str) -> pd.DataFrame:
+    p = PROJECT_DATA_DIR / filename
     if not p.exists():
         return pd.DataFrame(columns=_RECORDS_COLS)
     try:
@@ -2221,17 +2419,16 @@ def render_athlete_profile(name: str, hist: pd.DataFrame) -> None:
         unsafe_allow_html=True,
     )
 
-    # Qualifikations-Status für Staatsmeisterschaft 2026 (Raw + KDK, im Fenster)
+    # Qualifikations-Status für die Staatsmeisterschaft SEASON_YEAR (Raw + KDK, im Fenster)
     qual_pool = h[
         (h["Equipment"].astype(str) == "Raw")
         & (h.get("Event_Display").astype(str) == "KDK")
-        & (h["_dt"] >= QUAL_WINDOW_START)
-        & (h["_dt"] < QUAL_WINDOW_END)
+        & _in_window(h["_dt"], QUAL_WINDOW_START, QUAL_WINDOW_END)
     ].copy()
     qual_state = "x"   # x = keine wertbaren Versuche im Fenster
     qual_badge_text = "Nicht ausgewertet"
     qual_title = "Kein wertbarer KDK-Raw-Wettkampf im Qualifikationsfenster"
-    qual_sub = f"Fenster: {QUAL_WINDOW_START.strftime('%d.%m.%Y')} – {(QUAL_WINDOW_END - pd.Timedelta(days=1)).strftime('%d.%m.%Y')}"
+    qual_sub = f"Fenster: {_window_label(QUAL_WINDOW_START, QUAL_WINDOW_END)}"
     qual_right = ""
     if not qual_pool.empty:
         qual_pool["TotalKg"] = pd.to_numeric(qual_pool["TotalKg"], errors="coerce")
@@ -2251,7 +2448,7 @@ def render_athlete_profile(name: str, hist: pd.DataFrame) -> None:
                 if diff >= 0:
                     qual_state = "q"
                     qual_badge_text = "✓ Qualifiziert"
-                    qual_title = "Qualifiziert für die Staatsmeisterschaft 2026"
+                    qual_title = f"Qualifiziert für die Staatsmeisterschaft {SEASON_YEAR}"
                     qual_sub = f"Limit erreicht in Klasse {wc_show} · {best_meet}" + (
                         f" · {fmt_date(best_date)}" if pd.notna(best_date) else ""
                     )
@@ -2520,7 +2717,7 @@ def kpi_card(label, value, suffix="", icon="", accent=False, foot="", raw_value=
 # --- UI ---
 _favicon_path = PROJECT_DATA_DIR / "oevklogo.png"
 st.set_page_config(
-    page_title="SM Dashboard 2026",
+    page_title=f"SM Dashboard {SEASON_YEAR}",
     layout="wide",
     page_icon=str(_favicon_path) if _favicon_path.exists() else "🏋️",
     initial_sidebar_state="auto",
@@ -2655,6 +2852,10 @@ if PROFILE_MODE:
         if _rec_sex_back:
             _extra += "&rec_sex=" + _urlquote(str(_rec_sex_back))
         _back_qs = (_extra + "&" + _back_qs) if _back_qs else _extra
+    elif _from_param == "sm":
+        # Vom SM-Archiv aus geöffnet → dorthin zurück. Vorher ergab sich das nur zufällig,
+        # weil die SM-Seite die Startseite war; jetzt ist es die Qualifikation.
+        _back_qs = "tab=sm"
     elif _from_param == "topn":
         _extra = "tab=topn"
         for _k in ("topn_disc", "topn_sex", "topn_ac", "topn_wc", "topn_n"):
@@ -2701,39 +2902,103 @@ if PROFILE_MODE:
     st.stop()
 
 # --- TOP-HEADER ---
-_days = (QUAL_WINDOW_END.normalize() - pd.Timestamp.now().normalize()).days
-# Der komplette Label-Text steckt in _count_unit — vorher hing " bis zur SM" fest im
-# Markup und wurde an jeden Fall angeklebt ("Heute bis zur SM", "Absolviert bis zur SM").
-# Das Jahr kommt aus QUAL_WINDOW_END, muss also fuer 2027 nicht angepasst werden.
-if _days > 1:
-    _count_num, _count_unit = str(_days), "Tage bis zur SM"
-elif _days == 1:
-    _count_num, _count_unit = "1", "Tag bis zur SM"
-elif _days == 0:
-    _count_num, _count_unit = "0", "Heute ist es soweit"
-else:
-    _count_num, _count_unit = "✓", f"SM {QUAL_WINDOW_END.year} vorbei"
+# Countdown nur, solange ein Termin bekannt ist und die SM noch bevorsteht. Ohne Termin
+# (SM_DATE = None) und nach der SM gibt es keine Box — die Kopfzeile nimmt dann die volle
+# Breite. Ein "SM vorbei" zeigen wir bewusst nicht mehr: nach der SM beginnt die neue
+# Saison, und dann steht hier ohnehin schon das nächste Jahr.
+_count_html = ""
+if SM_DATE is not None:
+    _days = (SM_DATE.normalize() - pd.Timestamp.now().normalize()).days
+    if _days >= 0:
+        if _days > 1:
+            _count_num, _count_unit = str(_days), "Tage bis zur SM"
+        elif _days == 1:
+            _count_num, _count_unit = "1", "Tag bis zur SM"
+        else:
+            _count_num, _count_unit = "0", "Heute ist es soweit"
+        _count_html = (
+            '<div class="target target--solo"><div class="target__count">'
+            f'<span class="num">{_count_num}</span>'
+            f'<span class="unit">{_count_unit}</span></div></div>'
+        )
+_date_html = (f'<div class="brand__date">{_html.escape(SM_DATE_LABEL)}</div>'
+              if SM_DATE_LABEL else "")
+# Solange es keinen Countdown gibt (Termin der Ziel-SM unbekannt), steht rechts ein
+# "NEU"-Hinweis auf die neue Saison — wer das Dashboard von 2026 kennt, soll sofort sehen,
+# dass sich etwas geändert hat. Sobald SM_DATE gesetzt ist, übernimmt der Countdown.
+if not _count_html:
+    _count_html = (
+        '<div class="target target--season">'
+        '<div class="season-mark"><span class="season-mark__new">Neu</span>'
+        f'<span class="season-mark__year">{SEASON_YEAR}</span></div>'
+        '<div class="target__body">'
+        f'<span class="k">Neue Saison · {_season_label(QUAL_WINDOW_START)[7:]}</span>'
+        f'<span class="v">Qualifikation seit {QUAL_WINDOW_START.strftime("%d.%m.%Y")}</span>'
+        + (f'<span class="v2">Termin &amp; Limits {SEASON_YEAR} folgen</span>'
+           f'<span class="v3">vorerst gelten die Limits {QUAL_WINDOW_START.year}</span>'
+           if QUAL_LIMITS_PROVISIONAL else
+           f'<span class="v2">Termin der SM {SEASON_YEAR} folgt</span>')
+        + '</div></div>'
+    )
 
-st.markdown(
-    f"""
-    <div class="topbar">
-      <a class="brand brand--link" href="?reset=1" target="_self">
-        <div>
-          <div class="brand__title"><span class="accent">ÖSTERREICHISCHE STAATSMEISTERSCHAFT {QUAL_WINDOW_END.year}!</span> Wer ist qualifiziert?</div>
-          <div class="brand__date">5. – 6. September 2026</div>
-          <div class="brand__sub">Alle Athlet:innen, die das Limit erreicht haben — hier zusammengefasst.</div>
-        </div>
-      </a>
-      <div class="target target--solo">
-        <div class="target__count">
-          <span class="num">{_count_num}</span>
-          <span class="unit">{_count_unit}</span>
-        </div>
-      </div>
-    </div>
-    """,
+# Kopfbereich = Titel + Tabs + Status-Boxen in EINEM Container, der beim Scrollen oben
+# stehen bleibt (CSS .st-key-topzone). Die Teile werden nacheinander hineingeschrieben —
+# dazwischen laufen Datenladen und Box-Berechnung, die nichts rendern. Das Feedback-
+# Formular bleibt bewusst draußen: ein aufgeklapptes Formular soll nicht mitkleben.
+_topzone = st.container(key="topzone")
+# Als EIN String ohne Zeilenumbrüche/Einrückung: ist _date_html leer, entstünde sonst eine
+# Leerzeile im HTML-Block, und Markdown würde die folgenden eingerückten Zeilen als
+# Code-Block rendern (rohes "<div class=…>" im Kopf).
+_topzone.markdown(
+    '<div class="topbar">'
+    '<a class="brand brand--link" href="?reset=1" target="_self"><div>'
+    f'<div class="brand__title"><span class="accent">ÖSTERREICHISCHE STAATSMEISTERSCHAFT '
+    f'{SEASON_YEAR}!</span> <span class="nowrap">Wer ist qualifiziert?</span></div>'
+    f'{_date_html}'
+    '</div></a>'
+    f'{_count_html}'
+    '</div>',
     unsafe_allow_html=True,
 )
+
+# --- NAVIGATION: Seitenauswahl ---
+# Steht direkt unter der Kopfzeile, noch VOR den Status-Boxen: vorher kam sie erst nach
+# Kopfzeile + vier Boxen und lag auf kleinen Laptops fast am unteren Bildschirmrand.
+# Startseite ist die Qualifikation; die Ergebnisse der letzten SM hängen als Archiv
+# rechtsbündig am Ende (nur, wenn das Meet in den Daten liegt).
+_sm_results = load_sm_results(_data_version_token())
+_HAS_SM = not _sm_results.empty
+_PAGES = (["Qualifikation", "Rekorde", "Bestenliste", "Statistik"]
+          + ([SM_RESULTS_LABEL] if _HAS_SM else []))
+_DEFAULT_PAGE = "Qualifikation"
+_url_tab = st.query_params.get("tab")
+_TAB_MAP = {"records": "Rekorde", "topn": "Bestenliste", "stats": "Statistik",
+            "qual": "Qualifikation"}
+if _HAS_SM:
+    _TAB_MAP["sm"] = SM_RESULTS_LABEL
+if _url_tab in _TAB_MAP:
+    st.session_state["_active_page"] = _TAB_MAP[_url_tab]
+    # ?tab= nur EINMAL anwenden. Blieb der Parameter stehen, setzte diese Zeile die Seite
+    # bei jedem Rerun zurück — wer über einen ?tab=sm-Link kam, konnte nicht mehr wechseln.
+    # records/topn räumt weiter unten der Rekorde-/Bestenliste-Block samt ihrer
+    # Filter-Parameter auf (die werden dort noch gebraucht).
+    if _url_tab not in ("records", "topn"):
+        try:
+            del st.query_params["tab"]
+        except (KeyError, AttributeError):
+            pass
+elif "_active_page" not in st.session_state:
+    st.session_state["_active_page"] = _DEFAULT_PAGE
+# Falls ein alter Session-State auf eine Seite zeigt, die es nicht (mehr) gibt — z. B. das
+# frühere Label "SM 2026 Ergebnisse".
+if st.session_state.get("_active_page") not in _PAGES:
+    st.session_state["_active_page"] = _DEFAULT_PAGE
+with _topzone, st.container(key="main_nav"):
+    # Archiv-Optik des 5. Segments steht im THEME_CSS (.st-key-main_nav … nth-child(5)).
+    _page = st.segmented_control("Ansicht", _PAGES, key="_active_page",
+                                 label_visibility="collapsed")
+if _page is None:
+    _page = st.session_state.get("_active_page") or _DEFAULT_PAGE
 
 data = load_data(_data_version_token())
 
@@ -2783,24 +3048,34 @@ _last_check_dt = _read_marker_dt(_LAST_CHECK_FILE)
 _LAST_DATA_FILE = Path(__file__).parent.parent / ".last_data_update"
 _last_sync_dt = _read_marker_dt(_LAST_DATA_FILE)
 
-_latest_meet_dt = None
-_latest_meet_name = None
+# Zwei verschiedene "neueste Wettkämpfe":
+#  * _latest_meet_*: der neueste überhaupt (jede Ausrüstung) — für "Daten zuletzt
+#    aktualisiert", denn das beschreibt, was mit dem Update hereinkam (z. B. die
+#    Equipped-SM am 10.10.2026).
+#  * _latest_raw_*: der neueste Classic-Wettkampf — für "Letzter Wettkampf". Nur Classic
+#    zählt für die Qualifikation; ein Equipped-Meet dort würde suggerieren, es zähle mit.
+_latest_meet_dt = _latest_meet_name = None
+_latest_raw_dt = _latest_raw_name = None
 try:
-    # `data` ist auf das Qualifikationsfenster begrenzt — die SM selbst liegt bewusst
-    # ausserhalb. Ohne die SM-Ergebnisse wuerde hier ewig der letzte Wettkampf VOR der
-    # SM stehen (18.08.2026), obwohl die SM laengst gelaufen und im Dashboard zu sehen
-    # ist. Deshalb beide Quellen zusammenwerfen; load_sm_results ist gecacht und klein.
-    _lm_parts = [data[["Date", "MeetName"]]]
+    # Die letzte SM liegt nicht in jedem Fenster (z. B. sobald SM_DATE gesetzt ist und
+    # das Fenster vor ihr endet) — deshalb ihre Ergebnisse immer dazunehmen.
+    _lm_parts = [data[["Date", "MeetName", "Equipment"]]]
     _sm_for_pill = load_sm_results(_data_version_token())
     if not _sm_for_pill.empty:
-        _lm_parts.append(_sm_for_pill[["Date", "MeetName"]])
+        _lm_parts.append(_sm_for_pill[["Date", "MeetName", "Equipment"]])
     _data_dated = pd.concat(_lm_parts, ignore_index=True)
     _data_dated["_dt"] = pd.to_datetime(_data_dated["Date"], errors="coerce")
     _data_dated = _data_dated.dropna(subset=["_dt"])
-    if not _data_dated.empty:
-        _latest_row = _data_dated.loc[_data_dated["_dt"].idxmax()]
-        _latest_meet_dt = _latest_row["_dt"]
-        _latest_meet_name = str(_latest_row.get("MeetName") or "").strip() or None
+
+    def _newest(df):
+        if df.empty:
+            return None, None
+        r = df.loc[df["_dt"].idxmax()]
+        return r["_dt"], (str(r.get("MeetName") or "").strip() or None)
+
+    _latest_meet_dt, _latest_meet_name = _newest(_data_dated)
+    _latest_raw_dt, _latest_raw_name = _newest(
+        _data_dated[_data_dated["Equipment"].astype(str) == "Raw"])
 except Exception:
     pass
 
@@ -2809,12 +3084,15 @@ def _is_stale(dt):
     return dt is not None and (datetime.now() - dt).days > 7
 
 _check_stale_cls = " is-stale" if (_last_check_dt is None or _is_stale(_last_check_dt)) else ""
-_sync_stale_cls  = " is-stale" if _is_stale(_last_sync_dt) else ""
+# Bewusst KEIN Stale-Flag für "Daten zuletzt aktualisiert": wenn wochenlang kein neuer
+# Wettkampf stattfindet, sind die Daten nicht veraltet, sondern aktuell. Ob der Abgleich
+# selbst läuft, zeigt die Box "Zuletzt nach Updates gesucht" (die wird orange).
+_sync_stale_cls = ""
 
 _latest_meet_val = (
-    f'{_latest_meet_dt.strftime("%d.%m.%Y")}'
-    + (f' · {_html.escape(_latest_meet_name)}' if _latest_meet_name else "")
-    if _latest_meet_dt is not None else "—"
+    f'{_latest_raw_dt.strftime("%d.%m.%Y")}'
+    + (f' · {_html.escape(_latest_raw_name)}' if _latest_raw_name else "")
+    if _latest_raw_dt is not None else "—"
 )
 
 # --- Info-Boxen (3) + Feedback-Box (4.) in einer Reihe ---
@@ -2841,7 +3119,7 @@ _pill_check = (
     f'<span class="lab">Zuletzt nach Updates gesucht</span>'
     f'<span class="val">{_fmt_sync_dt(_last_check_dt) if _last_check_dt is not None else "noch nie"}</span></div>'
 )
-_status_cols = st.columns(4)
+_status_cols = _topzone.columns(4)
 _status_cols[0].markdown(_pill_check, unsafe_allow_html=True)
 _status_cols[1].markdown(_pill_sync, unsafe_allow_html=True)
 _status_cols[2].markdown(_pill_meet, unsafe_allow_html=True)
@@ -2850,12 +3128,10 @@ with _status_cols[3]:
 if st.session_state.get("_fb_open"):
     _render_feedback_form(st.session_state.get("_active_page", ""))
 
-# Fester Qualifikationszeitraum — keine UI nötig. Grenzen kommen aus den Konstanten
-# (vorher war der Start hier ein zweites Mal hart codiert und das Ende fehlte ganz,
-# wodurch die SM 2026 für ihre eigene Qualifikation gezählt hätte).
-qual_start_date = QUAL_WINDOW_START.date()
+# Fester Qualifikationszeitraum — keine UI nötig. Grenzen kommen aus den Konstanten;
+# offenes Ende (QUAL_WINDOW_END = None), solange der SM-Termin nicht feststeht.
 meet_dates = pd.to_datetime(data["Date"], errors="coerce")
-in_window = (meet_dates >= QUAL_WINDOW_START) & (meet_dates < QUAL_WINDOW_END)
+in_window = _in_window(meet_dates, QUAL_WINDOW_START, QUAL_WINDOW_END)
 limit_num = pd.to_numeric(data["smLimit"], errors="coerce")
 data = data.copy()
 # Bewusst KEIN Filter auf `Place`: Gaststarts (Place == "G") zählen, wenn das Limit
@@ -2864,35 +3140,11 @@ data = data.copy()
 data["Qualifiziert"] = (data["TotalKg"] >= limit_num) & in_window
 # Startet die Person laut offizieller Startliste bei der SM 2026?
 _SM_STARTERS = load_sm_starters(_data_version_token())
+# Ohne Startliste (z. B. vor der Veröffentlichung für die Ziel-SM) verschwindet alles
+# Startlisten-Bezogene: Spalte "Start SM", Filter, KPI-Karte, Hinweiszeile.
+_HAS_STARTERS = bool(_SM_STARTERS)
 data["StartetSM"] = data["Name"].astype(str).isin(_SM_STARTERS)
 data["_wc_disp"] = data["WeightClassKg"].apply(wc_display)
-
-# --- NAVIGATION: Seitenauswahl (ersetzt st.tabs) ---
-# Segmented-Control oben im Hauptbereich; die Sidebar zeigt anschließend nur die Filter
-# der aktiven Seite. ?tab=records|topn (vom Athleten-Profil-Back-Button) erzwingt die Seite.
-# SM-Ergebnisse nur anbieten, wenn das Meet auch in den Daten liegt. Solange der Sync
-# es noch nicht geholt hat, fehlt der Tab ganz und die Startseite bleibt die
-# Qualifikation — sonst wäre die Startseite leer.
-_sm_results = load_sm_results(_data_version_token())
-_HAS_SM = not _sm_results.empty
-_PAGES = ([SM_RESULTS_LABEL] if _HAS_SM else []) + ["Qualifikation", "Rekorde", "Bestenliste", "Statistik"]
-_DEFAULT_PAGE = SM_RESULTS_LABEL if _HAS_SM else "Qualifikation"
-_url_tab = st.query_params.get("tab")
-_TAB_MAP = {"records": "Rekorde", "topn": "Bestenliste", "stats": "Statistik",
-            "qual": "Qualifikation"}
-if _HAS_SM:
-    _TAB_MAP["sm"] = SM_RESULTS_LABEL
-if _url_tab in _TAB_MAP:
-    st.session_state["_active_page"] = _TAB_MAP[_url_tab]
-elif "_active_page" not in st.session_state:
-    st.session_state["_active_page"] = _DEFAULT_PAGE
-# Falls ein alter Session-State auf eine Seite zeigt, die es (noch) nicht gibt.
-if st.session_state.get("_active_page") not in _PAGES:
-    st.session_state["_active_page"] = _DEFAULT_PAGE
-_page = st.segmented_control("Ansicht", _PAGES, key="_active_page",
-                             label_visibility="collapsed")
-if _page is None:
-    _page = st.session_state.get("_active_page") or _DEFAULT_PAGE
 
 # --- SIDEBAR: Filter ---
 # Kombinierte Gewichtsklassen-Optionen (Frauen zuerst, dann Männer).
@@ -3021,10 +3273,14 @@ if _page == "Qualifikation":
         st.session_state[f"only_starters_v{_GEN}"] = (
             True if _persist_only_start is None else bool(_persist_only_start)
         )
-    show_only_starters = st.sidebar.checkbox(
-        "Nur Startende anzeigen",
-        key=f"only_starters_v{_GEN}",
-    )
+    if _HAS_STARTERS:
+        show_only_starters = st.sidebar.checkbox(
+            "Nur Startende anzeigen",
+            key=f"only_starters_v{_GEN}",
+        )
+    else:
+        # Default "an" würde ohne Startliste eine leere Tabelle erzeugen.
+        show_only_starters = False
     show_only_qualified = st.sidebar.checkbox(
         "Nur Qualifizierte anzeigen",
         key=f"only_qualified_v{_GEN}",
@@ -3054,7 +3310,9 @@ if _page == "Qualifikation":
         f'<table class="lim-tbl">{_lim_rows_f}</table>'
         '<div class="lim-cap">Männer</div>'
         f'<table class="lim-tbl">{_lim_rows_m}</table>'
-        '<div class="lim-foot">Werte in kg · KDK Raw</div>'
+        '<div class="lim-foot">Werte in kg · KDK Raw'
+        + (f' · vorläufig (Limits {QUAL_WINDOW_START.year})' if QUAL_LIMITS_PROVISIONAL else '')
+        + '</div>'
         '</div>',
         unsafe_allow_html=True,
     )
@@ -3158,6 +3416,18 @@ _qual_unique = (
     .drop_duplicates("Name")
 )
 n_qual = len(_qual_unique)
+# Vereine mit mindestens einer qualifizierten Person — gesamt und je Geschlecht (dieselben
+# Zahlen wie in "Qualifizierte pro Verein" weiter unten).
+_q_team = _qual_unique["Team"].astype(str).str.strip()
+_q_sx = _qual_unique["Sex"].astype(str).str.upper().str[:1]
+_n_clubs_q = int(_q_team[_q_team != ""].nunique())
+_clubs_foot = (
+    f'<span style="color:var(--gold);font-weight:600">Frauen · '
+    f'{int(_q_team[(_q_sx == "F") & (_q_team != "")].nunique())}</span>'
+    f'<span style="opacity:0.4;margin:0 8px">|</span>'
+    f'<span style="color:var(--gold);font-weight:600">Männer · '
+    f'{int(_q_team[(_q_sx == "M") & (_q_team != "")].nunique())}</span>'
+)
 n_qual_f = int((_qual_unique["Sex"].astype(str).str.upper() == "F").sum())
 n_qual_m = int((_qual_unique["Sex"].astype(str).str.upper() == "M").sum())
 
@@ -3207,8 +3477,8 @@ athlete_foot = (
 
 # --- Rekorde-Tab Rückkehr-Zustand aus URL ---
 # Wenn der Benutzer vom Athleten-Profil aus dem Rekorde-Tab zurückkommt (?tab=records&rec_wc=F-47),
-# (a) Filter wiederherstellen, (b) JS-Snippet klickt nach dem Rendern den zweiten Tab.
-_url_tab = st.query_params.get("tab")
+# Filter wiederherstellen. Die Seite selbst hat die Navigation oben schon über `_url_tab`
+# gesetzt (dort einmal gelesen; ein zweites Lesen wäre nach dem Aufräumen leer).
 _url_rec_wc = st.query_params.get("rec_wc")
 _url_rec_ac = st.query_params.get("rec_ac")
 _url_rec_sex = st.query_params.get("rec_sex")
@@ -3270,11 +3540,25 @@ if _url_tab in ("records", "topn"):
         pass
 
 if _page == "Qualifikation":
+    if _HAS_STARTERS:
+        _kpi_first = kpi_card("Starter:innen", n_start, foot=starters_foot)
+    else:
+        # Ohne Startliste: wie viele gewertete Wettkämpfe stecken bisher im Fenster? Sagt
+        # Besucher:innen, wie weit die Saison ist (zu Beginn: nur die SM des Vorjahres).
+        _meets = (df_filtered[["MeetName", "Date"]].drop_duplicates()
+                  .assign(_dt=lambda d: pd.to_datetime(d["Date"], errors="coerce"))
+                  .sort_values("_dt"))
+        _meets_foot = ""
+        if not _meets.empty:
+            _lm = _meets.iloc[-1]
+            _meets_foot = (f'<span style="color:var(--gold);font-weight:600">zuletzt · '
+                           f'{fmt_date(_lm["Date"])}</span>')
+        _kpi_first = kpi_card("Wettkämpfe", len(_meets), foot=_meets_foot)
     st.markdown(
         '<div class="kpis kpis--3">'
-        + kpi_card("Starter:innen", n_start, foot=starters_foot)
+        + _kpi_first
         + kpi_card("Qualifizierte", n_qual, accent=True, foot=qual_foot)
-        + kpi_card("Athlet:innen", n_athletes, foot=athlete_foot)
+        + kpi_card("Vereine", _n_clubs_q, foot=_clubs_foot)
         + "</div>",
         unsafe_allow_html=True,
     )
@@ -3293,7 +3577,7 @@ if _page == "Qualifikation":
     # tatsächlich bei der SM 2026 antreten.
     if show_only_starters and "StartetSM" in table_df.columns:
         table_df = table_df[table_df["StartetSM"] == True]
-        section_title = "Starter:innen SM 2026"
+        section_title = f"Starter:innen SM {SEASON_YEAR}"
 
     # Bestleistung pro Person (höchstes Total). Default-Sortierung: Qualifizierte zuerst,
     # dann IPF GL Punkte absteigend. (Wird auch für den CSV-Export verwendet.)
@@ -3316,7 +3600,8 @@ if _page == "Qualifikation":
             rows.append({
                 "#": i,
                 "Name": r.Name,
-                "Start SM": "ja" if getattr(r, "StartetSM", False) else "nein",
+                **({"Start SM": "ja" if getattr(r, "StartetSM", False) else "nein"}
+                   if _HAS_STARTERS else {}),
                 "Geschlecht": sex_display(r.Sex),
                 "Alter": fmt_age(r.Age),
                 "Körpergewicht (kg)": fmt_kg(r.BodyweightKg, 2),
@@ -3360,7 +3645,8 @@ if _page == "Qualifikation":
         _q_head = (
             '<th class="num nosort">#</th>'
             + _sh("Name", "text")
-            + _sh("Start SM", "text", "num", "Startet bei der Staatsmeisterschaft 2026")
+            + (_sh("Start SM", "text", "num", f"Startet bei der Staatsmeisterschaft {SEASON_YEAR}")
+               if _HAS_STARTERS else "")
             + _sh("Geschl.", "text", "", "Geschlecht")
             + _sh("Alter", "num", "num")
             + _sh("BW", "num", "num", "Körpergewicht in kg")
@@ -3382,14 +3668,16 @@ if _page == "Qualifikation":
             _athlete_href = f"?athlete={_urlquote(str(r.Name))}" + (f"&{_fqs}" if _fqs else "")
             _name_link = f'<a class="nm nm-link" href="{_athlete_href}" target="_self">{esc(r.Name)}</a>'
             _start_cell = (
-                '<span class="yes" title="Startet bei der SM 2026">✓</span>'
+                f'<span class="yes" title="Startet bei der SM {SEASON_YEAR}">✓</span>'
                 if getattr(r, "StartetSM", False) else "–"
             )
+            _start_td = (f'<td class="num start-sm" data-label="Start SM">{_start_cell}</td>'
+                         if _HAS_STARTERS else "")
             _q_rows.append(
                 f'<tr class="{row_cls}">'
                 f'<td class="num rank" data-label="">{i}</td>'
                 f'<td class="cell-name l" data-label="Name" title="{esc(r.Name)}">{_name_link}</td>'
-                f'<td class="num start-sm" data-label="Start SM">{_start_cell}</td>'
+                f'{_start_td}'
                 f'<td data-label="Geschlecht"><span class="sex-tag">{sex_display(r.Sex)}</span></td>'
                 f'<td class="num mono" data-label="Alter">{fmt_age(r.Age)}</td>'
                 f'<td class="num mono" data-label="Körpergewicht">{fmt_kg(r.BodyweightKg, 2)}</td>'
@@ -3413,8 +3701,8 @@ if _page == "Qualifikation":
             '<colgroup>'
             '<col style="width:42px">'    # #
             '<col style="width:150px">'   # Name (gekürzt)
-            '<col style="width:44px">'    # Start SM
-            '<col style="width:58px">'    # Geschl.
+            + ('<col style="width:44px">' if _HAS_STARTERS else '')    # Start SM
+            + '<col style="width:58px">'    # Geschl.
             '<col style="width:48px">'    # Alter
             '<col style="width:56px">'    # BW
             '<col style="width:58px">'    # Klasse
@@ -3459,7 +3747,7 @@ if _page == "Qualifikation":
             _components.html(
                 """
     <script>
-    (function(){ try { window.parent.sessionStorage.removeItem('oevk_sort_state_v1'); window.parent.sessionStorage.removeItem('oevk_sort_state_v2'); } catch(e){} })();
+    (function(){ try { window.parent.sessionStorage.removeItem('oevk_sort_state_v1'); window.parent.sessionStorage.removeItem('oevk_sort_state_v2'); window.parent.sessionStorage.removeItem('oevk_sort_state_v3'); } catch(e){} })();
     </script>
                 """,
                 height=0,
@@ -3472,7 +3760,10 @@ if _page == "Qualifikation":
     (function () {
       const doc = window.parent.document;
       const SS = window.parent.sessionStorage;
-      const SORT_KEY = 'oevk_sort_state_v2';
+      // v3: der gespeicherte Zustand enthält den Spalten-INDEX. Ohne Startliste fehlt die
+      // Spalte "Start SM", alle Indizes verschieben sich um eins — ein v2-Zustand würde
+      // dann nach der falschen Spalte sortieren (z. B. "Verein" statt "Diff").
+      const SORT_KEY = 'oevk_sort_state_v3';
       function loadState() {
         try { const raw = SS.getItem(SORT_KEY); if (!raw) return null; const o = JSON.parse(raw);
               if (typeof o.col === 'number' && (o.dir === 'asc' || o.dir === 'desc')) return o; }
@@ -3511,8 +3802,16 @@ if _page == "Qualifikation":
         return text.toLowerCase();
       }
 
-      // Default sort: IPF GL Punkte (column index 10), descending.
-      const DEFAULT_STATE = { col: 11, dir: 'desc' };
+      // Default-Sortierung: IPF GL Punkte absteigend. Die Spalte wird über ihren Kopf
+      // gesucht statt über einen festen Index — die Spaltenzahl hängt davon ab, ob es
+      // eine Startliste gibt ("Start SM"). Mit festem Index 11 wurde ohne Startliste nach
+      // "Verein" sortiert.
+      function defaultState() {
+        const t = doc.getElementById('qual-table');
+        const ths = t ? Array.from(t.querySelectorAll('thead th')) : [];
+        const i = ths.findIndex(th => (th.textContent || '').trim().startsWith('IPF GL'));
+        return { col: i >= 0 ? i : 0, dir: 'desc' };
+      }
 
       // Track per-table state so we know when to re-apply (tbody-content fingerprint).
       let wiredTable = null;
@@ -3522,7 +3821,7 @@ if _page == "Qualifikation":
 
       function getCurrentState() {
         const s = loadState();
-        return s ? s : Object.assign({}, DEFAULT_STATE);
+        return s ? s : defaultState();
       }
 
       // Cheap signature of tbody content — set of (first-cell-text, name) pairs.
@@ -3771,13 +4070,55 @@ if _page == "Qualifikation":
             unsafe_allow_html=True,
         )
 
-        max_team = int(count_team["n"].max()) if not count_team.empty else 1
-        team_rows_html = "".join(
-            f'<a class="sumrow sumrow--link" href="?team={_urlquote(str(r.Team))}" target="_self">'
-            f'<div class="sumrow__label">{esc(r.Team)}</div>'
-            f'<div class="sumrow__bar"><i style="width:{r.n / max_team * 100:.0f}%"></i></div>'
-            f'<div class="sumrow__num">{r.n}</div></a>'
-            for r in count_team.itertuples()
+        # Eine Zeile je Verein: Gesamtbalken (gold) und darunter je ein dünner Balken für
+        # Frauen und Männer. Jeder Balken besteht aus EINEM Block pro Person — Supakraft mit
+        # 14 Qualifizierten hat also 14 Blöcke. Alle Balken laufen auf derselben Skala
+        # (größte Gesamtzahl = volle Breite); die Achse oben nummeriert die Blöcke.
+        _tv = _base_view.assign(_sx=_base_view["Sex"].astype(str).str.upper().str[:1])
+        _team_tab = (pd.crosstab(_tv["Team"], _tv["_sx"])
+                     .reindex(columns=["F", "M"], fill_value=0))
+        _team_tab["n"] = _team_tab["F"] + _team_tab["M"]
+        _team_tab = (_team_tab.reset_index()
+                     .sort_values(["n", "Team"], ascending=[False, True]))
+        max_team = int(_team_tab["n"].max()) if not _team_tab.empty else 1
+
+        def _ubar(n, cls, sub=False, empty=False):
+            cells = f'<span class="u {cls}"></span>' * int(n)
+            if empty:
+                cells += '<span class="u u--empty"></span>' * (max_team - int(n))
+            return (f'<div class="ubar{" ubar--sub" if sub else ""}" style="--max:{max_team}">'
+                    f'{cells}</div>')
+
+        def _line(word, bar, num, sub=False):
+            return (f'<div class="sumrow__line{" sumrow__line--sub" if sub else ""}">'
+                    f'<span class="sumrow__sx">{word}</span>{bar}'
+                    f'<div class="sumrow__num">{num}</div></div>')
+
+        # Achse: Blocknummern; bei vielen Blöcken nur jede 2./5. beschriften.
+        _step = 1 if max_team <= 20 else (2 if max_team <= 40 else 5)
+        _axis_cells = "".join(
+            f'<span class="u u--tick">{i if i % _step == 0 else ""}</span>'
+            for i in range(1, max_team + 1))
+        _axis_bar = (f'<div class="ubar ubar--axis" style="--max:{max_team}">'
+                     f'{_axis_cells}</div>')
+        _axis_html = (
+            '<div class="sumrow sumrow--split sumrow--axis">'
+            '<div class="sumrow__label"></div><div class="sumrow__bars">'
+            + _line("", _axis_bar, "")
+            + '</div></div>'
+        )
+        team_rows_html = _axis_html + "".join(
+            f'<a class="sumrow sumrow--link sumrow--split" '
+            f'href="?tab=qual&team={_urlquote(str(r.Team))}" target="_self">'
+            # Gesamtzahl steht links neben dem Vereinsnamen (rechts nur Frauen/Männer).
+            f'<div class="sumrow__label"><span class="sumrow__name">{esc(r.Team)}</span>'
+            f'<span class="sumrow__total">{r.n}</span></div>'
+            '<div class="sumrow__bars">'
+            + _line("Gesamt", _ubar(r.n, "u--t", empty=True), "")
+            + _line("Frauen", _ubar(r.F, "u--f", sub=True), r.F, sub=True)
+            + _line("Männer", _ubar(r.M, "u--m", sub=True), r.M, sub=True)
+            + '</div></a>'
+            for r in _team_tab.itertuples()
         )
         st.markdown(
             f'<div class="sumcard">{team_rows_html}</div>',
@@ -4375,13 +4716,12 @@ elif _page == "Statistik":
     _pool = _pool[_pool["_sx"].isin(_SEXES)]
 
     st.markdown('<div class="section-head"><h2>Statistik</h2>'
-                '<div class="meta">KDK Raw · Saison 2025/26</div></div>',
+                f'<div class="meta">KDK Raw · {_season_label(QUAL_WINDOW_START)}</div></div>',
                 unsafe_allow_html=True)
     st.markdown(
         '<p style="color:var(--text-2);font-size:13.5px;margin:6px 0 4px;max-width:820px">'
         'Auswertung aller gewerteten KDK-Raw-Leistungen im Qualifikationsfenster '
-        f'({QUAL_WINDOW_START.strftime("%d.%m.%Y")} – '
-        f'{(QUAL_WINDOW_END - pd.Timedelta(days=1)).strftime("%d.%m.%Y")}), '
+        f'({_window_label(QUAL_WINDOW_START, QUAL_WINDOW_END)}), '
         'eine (beste) Leistung je Athlet:in.</p>',
         unsafe_allow_html=True)
 
@@ -4400,7 +4740,8 @@ elif _page == "Statistik":
         st.markdown(
             '<div class="kpis" style="grid-template-columns:repeat(2,1fr)">'
             + kpi_card("Athlet:innen", _n_ath, accent=True, foot=f"{_nf} Frauen · {_nm} Männer")
-            + kpi_card("Qualifiziert", _n_qual, foot=f"{_quote:.0f}% des Feldes · {_n_meets} Wettkämpfe")
+            + kpi_card("Qualifiziert", _n_qual, foot=f"{_quote:.0f}% des Feldes · {_n_meets} "
+                                   f"{'Wettkampf' if _n_meets == 1 else 'Wettkämpfe'}")
             + "</div>",
             unsafe_allow_html=True)
 
@@ -4874,7 +5215,7 @@ elif _page == SM_RESULTS_LABEL:
                                 '<td class="l" colspan="5">niemand am Start</td></tr>')
                 continue
             for _wg_p, _wg_r in enumerate(_wg_pod.itertuples(), 1):
-                _wg_href = f"?athlete={_urlquote(str(_wg_r.Name))}"
+                _wg_href = f"?athlete={_urlquote(str(_wg_r.Name))}&from=sm"
                 _wg_tr = (' class="is-sel"'
                           if (sm_team and str(_wg_r.Team).strip() == sm_team) else '')
                 _wg_rows.append(
@@ -5063,7 +5404,7 @@ elif _page == SM_RESULTS_LABEL:
                 f'<td class="num">{fmt_kg(_mt_e["pts"], 2)}</td></tr>'
             )
             for _mt_r in _mt_e["members"].itertuples():
-                _mt_href = f"?athlete={_urlquote(str(_mt_r.Name))}"
+                _mt_href = f"?athlete={_urlquote(str(_mt_r.Name))}&from=sm"
                 _mt_cells = [
                     '<td></td>',
                     f'<td class="l" title="{esc(_mt_r.Name)}">'
@@ -5138,75 +5479,86 @@ elif _page == SM_RESULTS_LABEL:
         unsafe_allow_html=True,
     )
 
-    # ---------- Statistik 3: Neue Rekorde (ueber der offiziellen Rekordliste) ----------
-    # Vergleich gegen die offizielle OeVK-Liste (Stand OEVK_RECORDS_STAND, Raw).
-    # Verglichen wird gegen die Altersklasse der Person UND gegen Open — ein Junioren-
-    # Rekord ist eine andere Bestmarke als der allgemeine Staatsrekord.
+    # ---------- Statistik 3: Neue Rekorde (offiziell anerkannt) ----------
+    # Quelle ist die offizielle ÖVK-Liste selbst: alle Einträge, die der Verband mit dem
+    # Datum dieser SM eingetragen hat. Früher wurden SM-Leistungen gegen die Liste VOR der
+    # SM verglichen und daraus "Rekorde" abgeleitet — mit der aktuellen Liste, die die
+    # SM-Rekorde schon enthält, ginge das nicht mehr (jede Leistung wäre "gleich"), und es
+    # war ohnehin nur eine Schätzung. "bisher" kommt aus der archivierten Vorliste.
+    _sm_days = {SM_RESULTS_DATE,
+                (pd.Timestamp(SM_RESULTS_DATE) + pd.Timedelta(days=1)).strftime("%Y-%m-%d")}
     _recs = load_records(_data_version_token())
-    _rec_idx = {}
-    if not _recs.empty:
-        for _rr in _recs.itertuples():
-            _rk = getattr(_rr, "record_kg", None)
-            if pd.isna(_rk):
-                continue
-            _rec_idx[(str(_rr.sex), str(_rr.age_class), str(_rr.equipment),
-                      str(_rr.weight_class), str(_rr.lift))] = float(_rk)
-    _LIFTS = (("Best3SquatKg", "Squat", "Kniebeuge"), ("Best3BenchKg", "Bench", "Bankdrücken"),
-              ("Best3DeadliftKg", "Deadlift", "Kreuzheben"), ("TotalKg", "Total", "Total"))
-    _beat = []
-    for _t in _sm[~_sm["is_dq"]].itertuples():
-        _wc = wc_display(_t.WeightClassKg)
-        _sx = str(_t.Sex).upper()[:1]
-        _acs = {"Open"}
-        _ac_own = getattr(_t, "AgeClass", None)
-        if _ac_own and str(_ac_own) != "nan":
-            _acs.add(str(_ac_own))
-        for _col, _lift_key, _lift_lbl in _LIFTS:
-            _val = pd.to_numeric(getattr(_t, _col, None), errors="coerce")
-            if pd.isna(_val) or _val <= 0:
-                continue
-            for _ac in _acs:
-                _old = _rec_idx.get((_sx, _ac, "Raw", _wc, _lift_key))
-                if _old is not None and float(_val) > _old:
-                    _beat.append({"Name": _t.Name, "wc": _t.WeightClassKg, "ac": _ac,
-                                  "lift": _lift_lbl, "neu": float(_val), "alt": _old,
-                                  "team": _t.Team})
-    _beat_df = pd.DataFrame(_beat)
+    _prev = load_records(_data_version_token(), "oevk_records_2026-06-07.csv")
+    _prev_idx = {}
+    for _pr in _prev.itertuples():
+        if pd.notna(_pr.record_kg):
+            _prev_idx[(_pr.sex, _pr.age_class, _pr.weight_class, _pr.lift)] = float(_pr.record_kg)
+    _new_recs = (_recs[_recs["date_iso"].isin(_sm_days)
+                       & _recs["meet"].str.contains("Staatsmeisterschaft", na=False)
+                       & _recs["record_kg"].notna()].copy()
+                 if not _recs.empty else _recs)
+    # Profil-Link nur bei eindeutigem Treffer in den SM-Ergebnissen. Die Liste schreibt
+    # Namen teils kürzer als OpenPowerlifting ("Joel Catena" vs. "Joel Christopher
+    # Catena") — deshalb Vor- und Nachname getrennt vergleichen.
+    _sm_name_idx = {}
+    for _n in _sm_full["Name"].dropna().astype(str).unique():
+        _tok = _n.lower().split()
+        if len(_tok) >= 2:
+            _sm_name_idx.setdefault((_tok[0], _tok[-1]), []).append(_n)
+
+    def _sm_profile_name(rec_name: str):
+        _tok = str(rec_name).lower().split()
+        if len(_tok) < 2:
+            return None
+        _hits = _sm_name_idx.get((_tok[0], _tok[-1]), [])
+        return _hits[0] if len(_hits) == 1 else None
+
+    _LIFT_DE = {"Squat": "Kniebeuge", "Bench": "Bankdrücken", "Deadlift": "Kreuzheben",
+                "Total": "Total"}
+    _n_ath = _new_recs["athlete"].nunique() if not _new_recs.empty else 0
     st.markdown(
         '<div class="section-head" style="margin-top:26px"><div>'
         '<h2>Neue Rekorde</h2></div>'
-        f'<div class="meta">{len(_beat_df)} Rekorde übertroffen · '
-        f'{_beat_df["Name"].nunique() if not _beat_df.empty else 0} Athlet:innen</div></div>',
+        f'<div class="meta">{len(_new_recs)} Rekorde · {_n_ath} Athlet:innen</div></div>',
         unsafe_allow_html=True,
     )
-    if _beat_df.empty:
-        st.markdown('<div class="table-note">Keine Leistung über einem offiziellen '
-                    'Rekord der Liste.</div>', unsafe_allow_html=True)
+    if _new_recs.empty:
+        st.markdown('<div class="table-note">In der offiziellen Rekordliste ist für diese '
+                    'Meisterschaft (noch) kein Rekord eingetragen.</div>',
+                    unsafe_allow_html=True)
     else:
-        _beat_df = _beat_df.sort_values(["Name", "lift"])
-        _b_rows = "".join(
-            f'<tr><td class="l" title="{esc(_b.Name)}">{esc(_b.Name)}</td>'
-            f'<td class="mono">{wc_label(_b.wc)}</td>'
-            f'<td>{esc(_b.ac)}</td>'
-            f'<td class="l">{esc(_b.lift)}</td>'
-            f'<td class="num mono">{fmt_kg(_b.alt)}</td>'
-            f'<td class="num mono-strong">{fmt_kg(_b.neu)}</td>'
-            f'<td class="num"><span class="diff diff--pos">{fmt_diff(_b.neu - _b.alt)}</span></td>'
-            f'<td class="l" title="{esc(_b.team)}">{esc(_b.team)}</td></tr>'
-            for _b in _beat_df.itertuples()
-        )
+        _new_recs = _new_recs.sort_values(["athlete", "lift", "age_class"])
+        _b_rows = []
+        for _b in _new_recs.itertuples():
+            _old = _prev_idx.get((_b.sex, _b.age_class, _b.weight_class, _b.lift))
+            _pn = _sm_profile_name(_b.athlete)
+            _nm = (f'<a class="nm nm-link" href="?athlete={_urlquote(_pn)}&from=sm" '
+                   f'target="_self">{esc(_b.athlete)}</a>' if _pn else esc(_b.athlete))
+            _club = getattr(_b, "club", "") or ""
+            _b_rows.append(
+                f'<tr><td class="l" title="{esc(_b.athlete)}">{_nm}</td>'
+                f'<td class="mono">{wc_label(_b.weight_class)}</td>'
+                f'<td>{esc(_b.age_class)}</td>'
+                f'<td class="l">{esc(_LIFT_DE.get(_b.lift, _b.lift))}</td>'
+                f'<td class="num mono">{fmt_kg(_old) if _old is not None else "–"}</td>'
+                f'<td class="num mono-strong">{fmt_kg(_b.record_kg)}</td>'
+                + (f'<td class="num"><span class="diff diff--pos">'
+                   f'{fmt_diff(float(_b.record_kg) - _old)}</span></td>'
+                   if _old is not None else '<td class="num">–</td>')
+                + f'<td class="l" title="{esc(_club)}">{esc(_club)}</td></tr>'
+            )
         st.markdown(
             '<div class="tablecard"><div class="tablescroll">'
             '<table class="tbl" data-sortable="1"><thead><tr>'
             + _sh("Athlet:in", "text", "l") + _sh("Klasse", "text")
             + _sh("Altersklasse", "text") + _sh("Disziplin", "text", "l")
-            + _sh("alter Rekord", "num", "num")
-            + _sh("SM 2026", "num", "num", "Leistung bei der SM 2026")
+            + _sh("bisher", "num", "num", "Rekord laut Liste vor der SM (Stand 07.06.2026)")
+            + _sh("Rekord", "num", "num", "Neuer Rekord laut offizieller Liste")
             + _sh("Differenz", "diff", "num") + _sh("Verein", "text", "l")
             + '</tr></thead>'
-            f'<tbody>{_b_rows}</tbody></table></div></div>'
-            f'<div class="table-note">Vergleich gegen die offizielle ÖVK-Rekordliste '
-            f'(Stand {fmt_date(OEVK_RECORDS_STAND)}).</div>',
+            f'<tbody>{"".join(_b_rows)}</tbody></table></div></div>'
+            f'<div class="table-note">Offizielle ÖVK-Rekordliste, Stand '
+            f'{fmt_date(OEVK_RECORDS_STAND)}.</div>',
             unsafe_allow_html=True,
         )
 
@@ -5266,13 +5618,17 @@ elif _page == SM_RESULTS_LABEL:
         )
 
     # ---------- Statistik 4: Qualifikations-Total vs. SM-Total ----------
-    # Bestes Total im Qualifikationsfenster (Raw + KDK) je Person aus `data`.
+    # Bestes Total im Qualifikationsfenster DIESER SM (Raw + KDK) je Person.
+    # Bewusst NICHT `data`: das ist das Fenster der aktuellen Saison, und darin liegt die
+    # SM 2026 selbst — jede Person würde mit sich selbst verglichen (Steigerung 0).
+    # SM_ARCHIVE_WINDOW friert das Fenster 2025/26 ein.
     # TotalKg > 0: DQ-/Bombout-Zeilen haben in _process_entries ein fillna(0.0) bekommen.
     # Ohne diesen Filter zaehlt eine ungueltige Qualifikations-Teilnahme als "Total 0" und
     # die Person erscheint mit absurder Steigerung an der Spitze (Fall Philipp Lehner).
-    _qbest = (data[(data["Equipment"].astype(str) == "Raw")
-                   & (data["Event_Display"] == "KDK")
-                   & (data["TotalKg"] > 0)]
+    _arch = load_data(_data_version_token(), *SM_ARCHIVE_WINDOW)
+    _qbest = (_arch[(_arch["Equipment"].astype(str) == "Raw")
+                    & (_arch["Event_Display"] == "KDK")
+                    & (_arch["TotalKg"] > 0)]
               .groupby("Name")["TotalKg"].max())
     _cmp = _sm[~_sm["is_dq"]].copy()
     _cmp["qual_total"] = _cmp["Name"].map(_qbest)
@@ -5635,7 +5991,7 @@ elif _page == SM_RESULTS_LABEL:
                 ["is_dq", "place_num"], ascending=[True, True], na_position="last")
             _rows.append(f'<tr class="tbl-section"><td colspan="8">{wc_label(_wc)} kg</td></tr>')
             for _r in _cls.itertuples():
-                _href = f"?athlete={_urlquote(str(_r.Name))}"
+                _href = f"?athlete={_urlquote(str(_r.Name))}&from=sm"
                 _nm = f'<a class="nm nm-link" href="{_href}" target="_self">{esc(_r.Name)}</a>'
                 _is_dq = bool(getattr(_r, "is_dq"))
                 _pn = getattr(_r, "place_num")
@@ -5853,8 +6209,17 @@ _components.html(
     if (!el) { h.classList.remove('is-on'); return; }
     var t = buildHead(el);
     if (!t) { h.classList.remove('is-on'); return; }
+    // Oberkante, unter der der Klon hängt: unter dem klebenden Kopfbereich (Desktop),
+    // sonst unter Streamlits transparentem Header.
+    var zone = doc.querySelector('.st-key-topzone');
+    if (zone && zone.parentElement &&
+        zone.parentElement.getAttribute('data-testid') === 'stLayoutWrapper') {
+      zone = zone.parentElement;               // dort sitzt position:sticky (s. CSS)
+    }
+    var zoneSticky = !!zone && win.getComputedStyle(zone).position === 'sticky';
     var hdr = doc.querySelector('[data-testid="stHeader"]');
-    var top = hdr ? Math.max(0, hdr.getBoundingClientRect().bottom) : 0;
+    var top = zoneSticky ? Math.max(0, zone.getBoundingClientRect().bottom)
+                         : (hdr ? Math.max(0, hdr.getBoundingClientRect().bottom) : 0);
     var r = el.getBoundingClientRect();
     // Höhe am ORIGINAL messen — der Klon ist bis zum Einblenden display:none (Höhe 0).
     var srcHead = el.querySelector('thead');
@@ -5864,12 +6229,19 @@ _components.html(
     if (r.top < top && r.bottom > top + hh + 30) {
       h.classList.add('is-on');
       h.style.left = r.left + 'px';
-      // Bis ganz nach oben ziehen und den Klon per padding-top unter Streamlits
-      // (transparenten) Header schieben — sonst bleiben dort Zeilen sichtbar.
-      h.style.top = '0px';
-      h.style.paddingTop = top + 'px';
+      if (zoneSticky) {
+        // Der Kopfbereich ist undurchsichtig und deckt alles darüber ab.
+        h.style.top = top + 'px';
+        h.style.paddingTop = '0px';
+        h.style.height = hh + 'px';
+      } else {
+        // Bis ganz nach oben ziehen und den Klon per padding-top unter Streamlits
+        // (transparenten) Header schieben — sonst bleiben dort Zeilen sichtbar.
+        h.style.top = '0px';
+        h.style.paddingTop = top + 'px';
+        h.style.height = (top + hh) + 'px';
+      }
       h.style.width = r.width + 'px';
-      h.style.height = (top + hh) + 'px';
       t.style.transform = 'translateX(' + (-el.scrollLeft) + 'px)';
     } else {
       h.classList.remove('is-on');
@@ -5947,7 +6319,28 @@ _components.html(
     }
   }
 
-  function syncAll() { sync(); syncHead(); wireSortables(); }
+  // ---- "Nach oben"-Knopf unten rechts ----
+  // Gescrollt wird in stMain, nicht im Fenster. Einblenden erst nach ein paar Bildschirm-
+  // zeilen; Klick scrollt weich nach oben.
+  var TOP_ID = 'oevk-totop';
+  function syncTop() {
+    var m = doc.querySelector('[data-testid="stMain"]');
+    var b = doc.getElementById(TOP_ID);
+    if (!b) {
+      b = doc.createElement('button');
+      b.id = TOP_ID; b.className = 'oevk-totop'; b.type = 'button';
+      b.title = 'Nach oben'; b.setAttribute('aria-label', 'Nach oben');
+      b.textContent = '↑';
+      b.addEventListener('click', function () {
+        var mm = doc.querySelector('[data-testid="stMain"]');
+        if (mm) mm.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      doc.body.appendChild(b);
+    }
+    b.classList.toggle('is-on', !!m && m.scrollTop > 400);
+  }
+
+  function syncAll() { sync(); syncHead(); syncTop(); wireSortables(); }
 
   win.addEventListener('scroll', syncAll, true);
   win.addEventListener('resize', syncAll);
