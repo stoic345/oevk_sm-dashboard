@@ -1414,6 +1414,94 @@ div[data-testid="stButton"] > button.filter-row,
   .qual-hero__sub { font-size:10px !important; line-height:1.4 !important; word-break:break-word !important;
     white-space:normal !important; }
 }
+
+/* ===== Handy (≤640px): gut lesbar, nichts unnötig hoch, Antwort im ersten Bildschirm =====
+   Steht bewusst am Ende — überschreibt die älteren Handy-Regeln weiter oben. */
+.credit__stand { display:none; }
+@media (max-width:640px) {
+  /* Status-Boxen weg: am Handy schaut niemand, wann der Abgleich lief. Der Datenstand
+     steht klein im Seitenfuß (.credit__stand). */
+  .st-key-topzone [data-testid="stColumn"]:has(.status-pill) { display:none !important; }
+  .credit__stand { display:inline; }
+
+  /* Feedback & Teilen: flach statt 58px */
+  .st-key-fb_pill button { min-height:40px !important; height:40px !important;
+    padding:4px 10px !important; }
+  .st-key-fb_pill button p { font-size:13px !important; }
+  .oevk-share { min-height:40px !important; height:40px; font-size:13px; }
+
+  /* "NEU 2027" als schmale Leiste statt Kasten (Saison-Zeile und "Termin folgt" weg) */
+  .topbar { gap:8px !important; padding:10px 12px !important; }
+  .target--season { padding:6px 12px !important; gap:12px !important; }
+  .season-mark { flex-direction:row !important; align-items:center !important; gap:7px !important;
+    padding-right:12px !important; }
+  .season-mark__new { font-size:11px !important; padding:1px 8px !important; }
+  /* Die "2027" neben "NEU" wiederholt am Handy nur den Titel — ohne sie passt jede
+     Hinweiszeile in eine Zeile (sonst brach "vorerst gelten die Limits 2026" um). */
+  .season-mark__year { display:none !important; }
+  .target--season .k, .target--season .v2 { display:none !important; }
+  .target--season .v { font-size:12.5px !important; }
+  .target--season .v3 { font-size:11px !important; white-space:normal !important; }
+
+  /* CSV-Export braucht am Telefon niemand — samt seiner Spalte, sonst bleibt eine Lücke */
+  [data-testid="stDownloadButton"],
+  [data-testid="stColumn"]:has([data-testid="stDownloadButton"]) { display:none !important; }
+
+  /* KPI-Karten: nur Bezeichnung + Zahl (die Fußzeilen waren 8,5px und unlesbar) */
+  .kpi__foot { display:none !important; }
+  .kpi { padding:8px 6px !important; }
+  .kpi__label { font-size:11px !important; letter-spacing:0.04em !important; }
+  .kpi__value { font-size:24px !important; }
+
+  /* Tabs in EINE Zeile statt seitlich zu wischen: normale Schrift statt Mono-Versalien
+     (416px → 294px Textbreite). Reicht der Platz auf sehr schmalen Geräten trotzdem nicht,
+     brechen sie in eine zweite Zeile um — nie seitliches Scrollen. Tipphöhe 44px. */
+  .st-key-main_nav [data-testid="stButtonGroup"] > div {
+    flex-wrap:wrap !important; overflow-x:visible !important; gap:2px !important; }
+  .st-key-main_nav [data-testid="stButtonGroup"] button {
+    flex:1 1 auto !important; min-height:44px !important; padding:10px 2px !important;
+    letter-spacing:0 !important; text-transform:none !important;
+    font-family:var(--font-body) !important; }
+  .st-key-main_nav [data-testid="stButtonGroup"] button p,
+  .st-key-main_nav [data-testid="stButtonGroup"] button div {
+    font-size:12.5px !important; font-family:var(--font-body) !important; }
+
+  /* Nur die Tab-Leiste bleibt beim Scrollen oben. Der Kopfbereich klebt, wird aber per
+     negativem top (setzt das Skript, syncNavPin) so weit hochgeschoben, dass nur die Tabs
+     sichtbar bleiben — direkt unter Streamlits Kopfleiste mit dem Filter-Knopf (»), die
+     dann einen Hintergrund bekommt. Dafür stehen Feedback/Teilen am Handy ÜBER den Tabs. */
+  [data-testid="stLayoutWrapper"]:has(> .st-key-topzone) {
+    position:sticky; z-index:9980; background:var(--bg); }
+  .st-key-topzone > *:has(.topbar) { order:0; }
+  .st-key-topzone > *:has(.status-pill) { order:1; }
+  .st-key-topzone > *:has(.st-key-main_nav) { order:2; }
+  .st-key-main_nav [data-testid="stButtonGroup"] { margin:0 !important; }
+  header[data-testid="stHeader"].oevk-pinned { background:var(--bg) !important; }
+
+  /* Mindestschrift 11px (vorher bis 8,5px) */
+  .sumrow--split .sumrow__sx { font-size:11px !important; flex-basis:46px !important; }
+  .sumrow--split .sumrow__line { height:15px !important; }
+  .sumrow--split .sumrow__line--sub { height:14px !important; }
+  .sumrow--split .sumrow__line--sub .sumrow__num { font-size:11px !important; }
+  .sumrow--axis .ubar--axis .u { font-size:11px !important; }
+  table.tbl thead th { font-size:11.5px !important; }
+  .sort-arrow { font-size:11px !important; }
+
+  /* Profil: Zeile unter dem Qualifikationsstatus und "… Wettkämpfe" (vorher 10px) */
+  .qual-hero__sub { font-size:11.5px !important; }
+  .foot { font-size:11px !important; }
+
+  /* "↺ Filter zurücksetzen" in der Sidebar (vorher 9,5px) */
+  /* gleicher Selektor wie die Sidebar-Regel oben — sonst gewinnt deren höhere Spezifität */
+  [data-testid="stSidebar"] [data-testid="stButton"] > button,
+  [data-testid="stSidebar"] [data-testid="stButton"] > button p,
+  [data-testid="stSidebar"] [data-testid="stButton"] > button:hover p { font-size:12px !important; }
+
+  /* Tippfläche: Namen in Tabellen höher (vorher 18px). Dafür in diesen Zeilen weniger
+     Zellen-Innenabstand — sonst wird jede Zeile ~58px hoch und man sieht kaum Einträge. */
+  table.tbl a.nm-link { display:inline-block; padding:10px 0; }
+  table.tbl tbody tr:has(a.nm-link) td { padding-top:1px !important; padding-bottom:1px !important; }
+}
 </style>
 """
 
@@ -6050,7 +6138,11 @@ elif _page == SM_RESULTS_LABEL:
 st.markdown(
     '<div class="credit">Basiert auf Daten von '
     '<a href="https://www.openpowerlifting.org" target="_blank" rel="noopener">openpowerlifting.org</a> · '
-    'OpenIPF-Distribution: <a href="https://www.openipf.org" target="_blank" rel="noopener">openipf.org</a></div>',
+    'OpenIPF-Distribution: <a href="https://www.openipf.org" target="_blank" rel="noopener">openipf.org</a>'
+    # Am Handy sind die Status-Boxen ausgeblendet — dort steht der Datenstand hier.
+    + (f'<span class="credit__stand"> · Datenstand {_last_sync_dt.strftime("%d.%m.%Y")}</span>'
+       if _last_sync_dt is not None else '')
+    + '</div>',
     unsafe_allow_html=True,
 )
 
@@ -6429,7 +6521,34 @@ _components.html(
     }
   }
 
-  function syncAll() { sync(); syncHead(); syncTop(); wireShare(); wireSortables(); }
+  // ---- Handy: nur die Tab-Leiste oben anheften ----
+  // Der Kopfbereich ist am Handy sticky (CSS); hier wird sein top so weit ins Negative
+  // gesetzt, dass beim Scrollen alles oberhalb der Tabs verschwindet und die Tabs direkt
+  // unter Streamlits Kopfleiste (mit dem Filter-Knopf ») stehen bleiben. Sobald die Tabs
+  // angeheftet sind, bekommt die Kopfleiste einen Hintergrund — sonst schiene Inhalt durch.
+  // Am Desktop wird alles zurückgesetzt (dort klebt der ganze Kopf, CSS top:0).
+  function syncNavPin() {
+    var zone = doc.querySelector('.st-key-topzone');
+    if (!zone) return;
+    var wrap = zone.parentElement;
+    if (!wrap || wrap.getAttribute('data-testid') !== 'stLayoutWrapper') return;
+    var hdr = doc.querySelector('[data-testid="stHeader"]');
+    var mobile = win.matchMedia && win.matchMedia('(max-width: 640px)').matches;
+    if (!mobile) {
+      if (wrap.style.top) wrap.style.top = '';
+      if (hdr) hdr.classList.remove('oevk-pinned');
+      return;
+    }
+    var nav = zone.querySelector('.st-key-main_nav');
+    if (!nav) return;
+    var hh = hdr ? Math.round(hdr.getBoundingClientRect().height) : 0;
+    var off = Math.round(nav.getBoundingClientRect().top - wrap.getBoundingClientRect().top);
+    var v = (hh - off) + 'px';
+    if (wrap.style.top !== v) wrap.style.top = v;
+    if (hdr) hdr.classList.toggle('oevk-pinned', nav.getBoundingClientRect().top <= hh + 1);
+  }
+
+  function syncAll() { syncNavPin(); sync(); syncHead(); syncTop(); wireShare(); wireSortables(); }
 
   win.addEventListener('scroll', syncAll, true);
   win.addEventListener('resize', syncAll);
