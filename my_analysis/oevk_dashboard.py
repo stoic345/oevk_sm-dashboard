@@ -210,6 +210,21 @@ header[data-testid="stHeader"] [data-testid="stToolbarActions"] { display:none !
   color:var(--gold-ink) !important; font-weight:700 !important;
   font-family:var(--font-body) !important; font-size:14px !important;
   letter-spacing:0.01em !important; }
+/* "Teilen" neben "Feedback & Kontakt": gleiche Höhe, goldener Rahmen statt Füllung
+   (zweitrangig neben dem Feedback-Knopf). */
+.oevk-share { width:100%; min-height:58px; display:flex; align-items:center;
+  justify-content:center; gap:7px; cursor:pointer; padding:0 8px;
+  background:transparent; color:var(--gold-bright); border:1px solid var(--gold);
+  border-radius:var(--r-sm); font-family:var(--font-body); font-size:14px; font-weight:700;
+  letter-spacing:0.01em; transition:background .12s ease, color .12s ease; }
+.oevk-share:hover { background:rgba(201,174,91,0.12); }
+.oevk-share.is-done { background:var(--gold); color:var(--gold-ink); }
+.st-key-fbshare [data-testid="stHorizontalBlock"] { gap:8px !important; }
+/* Am Handy nebeneinander lassen statt untereinander zu stapeln. */
+@media (max-width: 640px) {
+  .st-key-fbshare [data-testid="stHorizontalBlock"] { flex-wrap:nowrap !important; }
+  .st-key-fbshare [data-testid="stColumn"] { min-width:0 !important; }
+}
 /* Alle 4 Boxen gleich hoch. 58px, weil "Daten zuletzt aktualisiert" jetzt Datum UND
    Wettkampfnamen zeigt und der Wert damit dreizeilig wird — mit 52px haengt genau diese
    Box aus der Reihe heraus. */
@@ -3123,8 +3138,22 @@ _status_cols = _topzone.columns(4)
 _status_cols[0].markdown(_pill_check, unsafe_allow_html=True)
 _status_cols[1].markdown(_pill_sync, unsafe_allow_html=True)
 _status_cols[2].markdown(_pill_meet, unsafe_allow_html=True)
-with _status_cols[3]:
-    _feedback_toggle("fb_pill")
+with _status_cols[3], st.container(key="fbshare"):
+    # "Feedback & Kontakt" (Streamlit-Button) und daneben "Teilen". Teilen braucht
+    # Browser-Code (Teilen-Menü / Zwischenablage) — der Knopf ist deshalb reines HTML und
+    # wird vom Skript am Dateiende verdrahtet (wireShare).
+    _fb_col, _share_col = st.columns([2.1, 1], gap="small")
+    with _fb_col:
+        _feedback_toggle("fb_pill")
+    _share_col.markdown(
+        '<button type="button" class="oevk-share" title="Link zum Dashboard teilen">'
+        '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="none" '
+        'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" '
+        'stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/>'
+        '<path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>'
+        '<span class="oevk-share__lbl">Teilen</span></button>',
+        unsafe_allow_html=True,
+    )
 if st.session_state.get("_fb_open"):
     _render_feedback_form(st.session_state.get("_active_page", ""))
 
@@ -6340,7 +6369,67 @@ _components.html(
     b.classList.toggle('is-on', !!m && m.scrollTop > 400);
   }
 
-  function syncAll() { sync(); syncHead(); syncTop(); wireSortables(); }
+  // ---- "Teilen"-Knopf neben "Feedback & Kontakt" ----
+  // Touch-Geräte: natives Teilen-Menü (WhatsApp, Instagram, …). Sonst: Link in die
+  // Zwischenablage + kurze Bestätigung im Knopf. Geteilt wird die Startadresse ohne
+  // Filter-/Tab-Parameter — aus dem obersten Fenster, denn auf Streamlit Cloud läuft die
+  // App selbst in einem iframe unter /~/+/ (dessen Adresse taugt nicht zum Teilen).
+  function shareUrl() {
+    try { return win.top.location.origin + '/'; } catch (e) { return win.location.origin + '/'; }
+  }
+  // Zwischenablage: erst die moderne API, bei Ablehnung die klassische Kopier-Methode,
+  // erst wenn beides scheitert der Dialog mit dem Link (s. onShare).
+  function copyLegacy(t) {
+    return new Promise(function (res, rej) {
+      var ta = doc.createElement('textarea');
+      ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      doc.body.appendChild(ta); ta.select();
+      try { if (doc.execCommand('copy')) { res(); } else { rej(); } } catch (e) { rej(e); }
+      doc.body.removeChild(ta);
+    });
+  }
+  function copyText(t) {
+    if (win.navigator.clipboard && win.navigator.clipboard.writeText) {
+      return win.navigator.clipboard.writeText(t).catch(function () { return copyLegacy(t); });
+    }
+    return copyLegacy(t);
+  }
+  function onShare(ev) {
+    ev.preventDefault();
+    var btn = ev.currentTarget, url = shareUrl();
+    var touch = win.matchMedia && win.matchMedia('(pointer: coarse)').matches;
+    if (touch && win.navigator.share) {
+      win.navigator.share({
+        title: doc.title,
+        text: 'Wer ist für die Österreichische Staatsmeisterschaft __SEASON__ qualifiziert?',
+        url: url
+      }).catch(function () {});           // Abbrechen im Teilen-Menü ist kein Fehler
+      return;
+    }
+    var lbl = btn.querySelector('.oevk-share__lbl');
+    copyText(url).then(function () {
+      btn.classList.add('is-done');
+      if (lbl) lbl.textContent = 'Kopiert ✓';
+      win.setTimeout(function () {
+        btn.classList.remove('is-done');
+        if (lbl) lbl.textContent = 'Teilen';
+      }, 1800);
+    }, function () { win.prompt('Link zum Dashboard:', url); });
+  }
+  function wireShare() {
+    var btns = doc.querySelectorAll('.oevk-share');
+    for (var i = 0; i < btns.length; i++) {
+      var b = btns[i];
+      if (b.__oevkShare === onShare) continue;
+      // Handler einer früheren Skript-Instanz ersetzen statt einen zweiten anzuhängen —
+      // sonst öffnete ein Tippen das Teilen-Menü doppelt.
+      if (b.__oevkShare) b.removeEventListener('click', b.__oevkShare);
+      b.addEventListener('click', onShare);
+      b.__oevkShare = onShare;
+    }
+  }
+
+  function syncAll() { sync(); syncHead(); syncTop(); wireShare(); wireSortables(); }
 
   win.addEventListener('scroll', syncAll, true);
   win.addEventListener('resize', syncAll);
@@ -6349,6 +6438,6 @@ _components.html(
   syncAll();
 })();
 </script>
-""".replace("__GC_CODE__", _gc_code_safe()),
+""".replace("__GC_CODE__", _gc_code_safe()).replace("__SEASON__", str(SEASON_YEAR)),
     height=0,
 )
