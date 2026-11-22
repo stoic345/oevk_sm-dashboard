@@ -1,4 +1,4 @@
-# DATA_VERSION: 2026-11-09
+# DATA_VERSION: 2026-11-22
 # ^ Auto-bumped by the sync-oevk-data GitHub Action whenever meet data changes.
 #   Touching this source file forces Streamlit Community Cloud to redeploy with a
 #   fresh checkout — data-only commits alone do NOT trigger a redeploy, so new
